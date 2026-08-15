@@ -446,6 +446,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/bindings/text-embeddings-wasm/Cargo.toml"
 dependencies = ["moenarch-text-embeddings"]
 tag = "moenarch-text-embeddings-wasm-v0.1.1"
+published_checksum = "70637831461d43d4e7e6a4f656d46882340d50ef6260553b412a2a9feff30ce0"
 
 [[packages]]
 name = "moenarch-text-generation-linguistics"
@@ -454,6 +455,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-generation-linguistics/Cargo.toml"
 dependencies = ["moenarch-text-core", "moenarch-text-generation", "moenarch-text-linguistics"]
 tag = "moenarch-text-generation-linguistics-v0.1.1"
+published_checksum = "87dfa7f041bed5a254b0e2e48dcf8d48ac9f03feb777d31581281840df1cba8e"
 
 [[packages]]
 name = "moenarch-text-index"
@@ -462,6 +464,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-index/Cargo.toml"
 dependencies = ["moenarch-text-core", "moenarch-text-embeddings", "moenarch-text-lexical"]
 tag = "moenarch-text-index-v0.1.1"
+published_checksum = "50b75554994390b6aa1f17a11c44640ca8c62af84c5f9907d10c85b4ef473ef3"
 
 [[packages]]
 name = "moenarch-text-linguistics-cli"
@@ -470,6 +473,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-linguistics-cli/Cargo.toml"
 dependencies = ["moenarch-text-linguistics"]
 tag = "moenarch-text-linguistics-cli-v0.1.1"
+published_checksum = "e257d2209307ba936c3f03a076a305af50da99dbd639e1154564b99262bb4707"
 
 [[packages]]
 name = "moenarch-text-linguistics-server"
@@ -478,6 +482,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-linguistics-server/Cargo.toml"
 dependencies = ["moenarch-text-linguistics", "moenarch-text-model-runtime"]
 tag = "moenarch-text-linguistics-server-v0.1.1"
+published_checksum = "9e4e8e5bc0f9207c6f3c175227af6e277b9c83fce23a1c94f56db6212cfe9a7d"
 
 [[packages]]
 name = "moenarch-text-linguistics-wasm"
