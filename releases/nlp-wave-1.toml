@@ -262,6 +262,7 @@ tag = "moenarch-text-model-runtime-cli-v0.1.1"
 [[packages]]
 name = "moenarch-text-model-runtime-server"
 version = "0.1.1"
+published_checksum = "99eed0644a2885d10588d672c3d6ff2d59c2696ef80aeaaaeda37a22b1b8cb51"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-model-runtime-server/Cargo.toml"
 dependencies = ["moenarch-text-model-runtime"]
