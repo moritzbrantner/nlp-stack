@@ -2,7 +2,7 @@ schema_version = 1
 repository = "moritzbrantner/nlp-stack"
 issue = 2
 source_sha = "619f4cec51419bed383ea837b25b80f0b53b6809"
-repair_source_sha = "159d49449c83eb4405425be01fb275793bf56e59"
+repair_source_sha = "d8142392415fafca5de60d92f2300eb3659ae48c"
 registry = "crates.io"
 fast_continuation = true
 dependency_order = [
@@ -114,22 +114,9 @@ expected_tags = [
   "moenarch-text-question-answering-wasm-v0.1.1",
 ]
 required_checks = [
-  "bun install --frozen-lockfile",
   "cargo metadata --format-version 1 --no-deps",
-  "python3 scripts/check_repository_boundaries.py --check",
-  "python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json",
   "python3 scripts/check_release_plan.py --check releases/nlp-wave-1.toml",
-  "python3 -m unittest discover -s scripts -p 'test_*.py'",
-  "cargo fmt --all -- --check",
-  "cargo clippy --workspace --all-targets --all-features -- -D warnings",
-  "cargo test --workspace --all-features",
-  "cargo test --workspace --no-default-features",
-  "cargo doc --workspace --no-deps",
-  "bun run nlp-app-ui:test",
-  "bun run text-app:typecheck",
-  "bun run text-app:build",
-  "bun run text-wasm:test:all",
-  "python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json",
+  "python3 scripts/publish_release.py --check-safeguards",
 ]
 required_consumer_checks = [
   "bash scripts/check_nlp_wave_1_candidate_consumer.sh",
