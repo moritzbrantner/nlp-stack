@@ -83,7 +83,7 @@ class FakeEffects:
         self.fail_push_tag: str | None = None
         self.fail_create_release: str | None = None
         self.last_package_patches: dict[str, str] = {}
-        self.published_archive_checksums: dict[str, str] = {}
+        self.published_registry_checksums: dict[str, str] = {}
 
     def _record(self, call: str) -> None:
         self.calls.append(call)
@@ -140,7 +140,7 @@ class FakeEffects:
         if name in self.published:
             return {
                 **registry_record(name, version),
-                "checksum": self.published_archive_checksums.get(name, CHECKSUM),
+                "checksum": self.published_registry_checksums.get(name, CHECKSUM),
             }
         return None
 
@@ -151,7 +151,7 @@ class FakeEffects:
 
     def published_archive_checksum(self, name: str, version: str) -> str:
         self._record(f"published-archive-checksum:{name}@{version}")
-        return self.published_archive_checksums.get(name, CHECKSUM)
+        raise AssertionError("the publisher must not trust a local Cargo archive")
 
     def publish(self, name: str) -> None:
         self._record(f"publish:{name}")
@@ -716,12 +716,11 @@ class PublishReleaseTests(unittest.TestCase):
             self.assertNotIn("publish:foundation-a", effects.calls)
             self.assertNotIn("publish:foundation-b", effects.calls)
 
-    def test_publish_verifies_the_archive_created_by_cargo_publish(self) -> None:
+    def test_successful_publish_binds_the_fresh_registry_checksum(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
-            uploaded_checksum = "d" * 64
-            effects.published_archive_checksums["foundation-a"] = uploaded_checksum
+            effects.published_registry_checksums["foundation-a"] = "e" * 64
 
             result = publish_release.run_release(root, ENVIRONMENT, effects)
 
@@ -729,12 +728,20 @@ class PublishReleaseTests(unittest.TestCase):
                 result["packages"],
                 [{"name": "foundation-a", "status": "published-and-verified"}],
             )
-            self.assertLess(
-                effects.calls.index("publish:foundation-a"),
-                effects.calls.index(
-                    "published-archive-checksum:foundation-a@1.0.0"
-                ),
+            self.assertNotIn(
+                "published-archive-checksum:foundation-a@1.0.0", effects.calls
             )
+
+    def test_successful_publish_rejects_an_invalid_fresh_registry_checksum(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            effects.published_registry_checksums["foundation-a"] = "not-a-checksum"
+
+            with self.assertRaisesRegex(
+                publish_release.ReleaseError, "invalid registry checksum"
+            ):
+                publish_release.run_release(root, ENVIRONMENT, effects)
 
     def test_partial_resume_accepts_manifest_pinned_published_checksum(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -1397,12 +1404,6 @@ class PublishReleaseTests(unittest.TestCase):
                         {"foundation-a": str(root / "foundation-a")},
                     )
                     effects.publish("foundation-a")
-                    self.assertEqual(
-                        effects.published_archive_checksum(
-                            "foundation-a", "1.0.0"
-                        ),
-                        hashlib.sha256(b"archive").hexdigest(),
-                    )
             commands = [call.args[0] for call in run.call_args_list]
             package_command = next(command for command in commands if "--config" in command)
             self.assertEqual(package_command[:7], [

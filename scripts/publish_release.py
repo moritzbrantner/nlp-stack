@@ -84,7 +84,6 @@ class Effects(Protocol):
     def registry_version(self, name: str, version: str) -> dict[str, Any] | None: ...
     def verify(self, command: str) -> None: ...
     def package(self, name: str, version: str, patches: Mapping[str, str]) -> str: ...
-    def published_archive_checksum(self, name: str, version: str) -> str: ...
     def publish(self, name: str) -> None: ...
     def wait_for_registry(self) -> None: ...
     def local_tag_target(self, tag: str) -> str | None: ...
@@ -252,23 +251,6 @@ class CommandEffects:
             return hashlib.sha256(archive.read_bytes()).hexdigest()
         except OSError as error:
             raise ReleaseError(f"cannot checksum packaged archive {archive}: {error}") from error
-
-    def published_archive_checksum(self, name: str, version: str) -> str:
-        """Checksum the exact archive left behind by the completed Cargo publish."""
-
-        configured_target = Path(os.environ.get("CARGO_TARGET_DIR", "target"))
-        target = (
-            configured_target
-            if configured_target.is_absolute()
-            else self.root / configured_target
-        )
-        archive = target / "package" / f"{name}-{version}.crate"
-        try:
-            return hashlib.sha256(archive.read_bytes()).hexdigest()
-        except OSError as error:
-            raise ReleaseError(
-                f"cannot checksum published archive {archive}: {error}"
-            ) from error
 
     def publish(self, name: str) -> None:
         self._run(
@@ -454,6 +436,16 @@ def _validate_registry_record(
         or (checksum is not None and record.get("checksum") != checksum)
     ):
         raise ReleaseError(f"registry conflict for {name} {version}")
+
+
+def _registry_checksum(record: dict[str, Any], name: str, version: str) -> str:
+    """Return the immutable checksum from one valid crates.io version record."""
+
+    _validate_registry_record(record, name, version)
+    checksum = record.get("checksum")
+    if not isinstance(checksum, str) or re.fullmatch(r"[0-9a-f]{64}", checksum) is None:
+        raise ReleaseError(f"invalid registry checksum for {name} {version}")
+    return checksum
 
 
 def _expected_checksum(package: Mapping[str, Any], candidate_checksum: str) -> str:
@@ -974,9 +966,10 @@ def run_release(
         effects.verify(command)
 
     # Package every candidate before the first publishing side effect. These
-    # patched archives prove the complete candidate closure. Cargo creates the
-    # exact upload archive during `cargo publish`; checksum that resulting file,
-    # never a separately generated package archive.
+    # patched archives prove the complete candidate closure. A fresh registry
+    # checksum is bound only after the version was absent immediately before a
+    # successful Cargo publish; any later invocation requires that immutable
+    # checksum to be pinned in the manifest.
     patches = {
         package["name"]: str(
             _inside(root, package["manifest_path"], "package manifest").parent
@@ -1072,18 +1065,12 @@ def run_release(
                         "the release manifest and resume"
                     ) from error
                 raise _effect_failure(f"publish {package['name']}", error) from error
-            checksums[index] = effects.published_archive_checksum(
-                package["name"], package["version"]
-            )
             record = None
             for _ in range(12):
                 record = effects.registry_version(package["name"], package["version"])
                 if record is not None:
-                    _validate_registry_record(
-                        record,
-                        package["name"],
-                        package["version"],
-                        checksums[index],
+                    checksums[index] = _registry_checksum(
+                        record, package["name"], package["version"]
                     )
                     break
                 effects.wait_for_registry()

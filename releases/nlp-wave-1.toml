@@ -271,6 +271,7 @@ tag = "moenarch-text-model-runtime-server-v0.1.1"
 [[packages]]
 name = "moenarch-text-model-runtime-wasm"
 version = "0.1.1"
+published_checksum = "790e8556cf4ac7aef67b02622c0bffa5e8c966a9e66ad63acef1c8dfe217106a"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/bindings/text-model-runtime-wasm/Cargo.toml"
 dependencies = ["moenarch-text-model-runtime"]
