@@ -190,6 +190,7 @@ required_consumer_checks = [
 [[packages]]
 name = "moenarch-text-core"
 version = "0.1.1"
+published_checksum = "71c5789282ef323dd8905e54abe6b7ebacdb9b49362f9b38284f5eb14b1c27a4"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-core/Cargo.toml"
 dependencies = []
@@ -198,6 +199,7 @@ tag = "moenarch-text-core-v0.1.1"
 [[packages]]
 name = "moenarch-text-model-runtime"
 version = "0.1.1"
+published_checksum = "775331a30c53b67e5499c254dc04553b7ced0bee41ef0afe3eb25338a1e50d51"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-model-runtime/Cargo.toml"
 dependencies = []
@@ -206,6 +208,7 @@ tag = "moenarch-text-model-runtime-v0.1.1"
 [[packages]]
 name = "moenarch-text-core-cli"
 version = "0.1.1"
+published_checksum = "c7c9d7c367399f81c1117544b390edb9ba127689a1b5fe141646117126dac007"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-core-cli/Cargo.toml"
 dependencies = ["moenarch-text-core"]
@@ -214,6 +217,7 @@ tag = "moenarch-text-core-cli-v0.1.1"
 [[packages]]
 name = "moenarch-text-core-server"
 version = "0.1.1"
+published_checksum = "1c32329b13aa33e7958300c14a8f23726ef9e2755b35d8d81c57d19a9b25d2ef"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-core-server/Cargo.toml"
 dependencies = ["moenarch-text-core"]
@@ -222,6 +226,7 @@ tag = "moenarch-text-core-server-v0.1.1"
 [[packages]]
 name = "moenarch-text-core-wasm"
 version = "0.1.1"
+published_checksum = "ca59f589e89e6956dd603cba84a12a723d3b0cd58fc97e572ca9efed8bb94d78"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/bindings/text-core-wasm/Cargo.toml"
 dependencies = ["moenarch-text-core"]
@@ -230,6 +235,7 @@ tag = "moenarch-text-core-wasm-v0.1.1"
 [[packages]]
 name = "moenarch-text-generation"
 version = "0.1.1"
+published_checksum = "628f5ba88040d1b074f9cc624ff68b599582eefe3103f795a53c7a6898d85cd8"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-generation/Cargo.toml"
 dependencies = ["moenarch-text-core"]
@@ -238,6 +244,7 @@ tag = "moenarch-text-generation-v0.1.1"
 [[packages]]
 name = "moenarch-text-lexical"
 version = "0.1.1"
+published_checksum = "94fbe3d3fc6c8638420031bf6e8a0579e41436a55d4b07860c237f064420c18a"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-lexical/Cargo.toml"
 dependencies = ["moenarch-text-core"]
