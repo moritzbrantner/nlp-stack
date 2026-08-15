@@ -334,6 +334,7 @@ tag = "moenarch-text-generation-wasm-v0.1.1"
 [[packages]]
 name = "moenarch-text-lexical-cli"
 version = "0.1.1"
+published_checksum = "9d176c5c74bba1d07a4d05de7ca30133082ac92da622f08c98b128dd9ea08df5"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-lexical-cli/Cargo.toml"
 dependencies = ["moenarch-text-lexical"]
@@ -342,6 +343,7 @@ tag = "moenarch-text-lexical-cli-v0.1.1"
 [[packages]]
 name = "moenarch-text-lexical-server"
 version = "0.1.1"
+published_checksum = "c1de7006ffff4b6402d0d9f846541586c83be1b3768f9aba206a83f8c2e88279"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-lexical-server/Cargo.toml"
 dependencies = ["moenarch-text-lexical"]
