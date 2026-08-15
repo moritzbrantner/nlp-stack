@@ -12,13 +12,17 @@ manifest; a final manifest-only control commit binds that repair source. The
 open issue must identify the exact control SHA and manifest SHA-256 and must
 carry `release:approved` before the receipt-gated publisher can run.
 
-The Agent Loop master runs all ordered `required_checks` and validates their
-exact-head receipt before invoking the repository hook. The hook then replays
-the pinned `required_consumer_checks`, packages every candidate, publishes in
-manifest order, verifies crates.io, and creates immutable tags at the original
-source commit plus GitHub Releases. The postpublication
-`scripts/check_nlp_wave_1_registry_consumer.sh` must then resolve all 52 packages
-from registry sources with no local patch.
+The default repository hook replays the pinned `required_consumer_checks` and
+packages every candidate before publication. A restructuring-first maintainer
+directive may instead set the checked manifest flag `fast_continuation = true`
+and require the operator to pass `NLP_RELEASE_FAST_CONTINUATION=1`. That explicit
+two-part policy skips repository, unit, integration, consumer, and all-candidate
+archive suites. It retains the irreversible-operation safeguards: clean exact
+head, issue/manifest/approval authority, exact dependency/version/order
+validation, exact non-yanked registry-prefix checksums, immutable source/tag
+binding, and `cargo package` for only the next absent crate immediately before
+its publish attempt. Neither the fast flag nor a prior receipt alone authorizes
+publication.
 
 The downstream gate records exact source commits and never edits consumer
 product source. It compiles native-whisperx against the local candidate.
@@ -37,4 +41,4 @@ Credentials remain in their normal tool-specific stores and must never be
 printed or copied into repository files. Partial publication stops at the first
 failure. Published artifacts are never overwritten, deleted, silently skipped,
 automatically yanked, or inferred beyond a reviewed manifest. Source removal
-from `rust-packages` is a later gate after registry-only consumer evidence.
+from `rust-packages` remains separate restructuring work.

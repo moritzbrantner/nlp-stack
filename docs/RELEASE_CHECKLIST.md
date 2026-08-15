@@ -14,18 +14,20 @@ For the authorized Cargo wave:
    order, checks, consumers, and tags.
 3. Keep Cargo and npm/WASM authorization separate; re-check ownership against
    `platform-packages` before any browser wrapper publication.
-4. Require a clean immutable commit, full repository checks, every Cargo archive,
-   WASM pack/install smoke, the source-pure native-whisperx candidate gate, and
-   unchanged pinned baselines for migrations deferred to #124/#125/#127/#128.
-5. Run independent exact-head review and Agent Loop verification. The Agent
-   Loop master validates the exact receipt for every `required_check`; the
-   repository hook replays consumer and archive gates. Update the
+4. For restructuring-first continuation, set reviewed manifest flag
+   `fast_continuation = true` and invoke with
+   `NLP_RELEASE_FAST_CONTINUATION=1`. Keep only clean exact-head authority,
+   exact dependency/version/order validation, registry absence/checksum/yank
+   checks, immutable source/tag binding, and `cargo package` for the next absent
+   crate. Do not replay repository, unit, integration, consumer, WASM, or
+   all-candidate archive suites.
+5. Run independent exact-head review of the control-policy change. Update the
    open destination issue with exactly one control SHA and manifest digest line,
-   then apply `release:approved`.
+   then apply `release:approved` only for an active publication attempt.
 6. Publish topologically through the receipt-gated wrapper, verify immutable
    registry artifacts, then create tags and declared GitHub Releases.
-7. Run `scripts/check_nlp_wave_1_registry_consumer.sh` without any Cargo patch,
-   then open one downstream update PR per affected repository.
+7. Treat registry-only consumers and downstream update PRs as separate
+   restructuring work, not publication gates.
 8. Stop on partial failure and resume from the first unpublished artifact; never
    overwrite, delete, or automatically yank a published version.
 9. Keep `rust-packages` source until release, consumer, compatibility, and

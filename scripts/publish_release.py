@@ -28,6 +28,7 @@ from typing import Any, Mapping, Protocol
 EXPECTED_REPOSITORY = "moritzbrantner/nlp-stack"
 AUTHORIZATION_LABEL = "release:approved"
 REGISTRY = "crates.io"
+FAST_CONTINUATION_ENV = "NLP_RELEASE_FAST_CONTINUATION"
 OWNERSHIP_PATH = Path("docs/repository-split/package-ownership.json")
 ROOT_FIELDS = {
     "schema_version",
@@ -42,6 +43,7 @@ ROOT_FIELDS = {
     "github_releases",
     "required_checks",
     "required_consumer_checks",
+    "fast_continuation",
 }
 CONTROL_REPAIR_SCRIPT_PATHS = {
     ".harness/invariants.md",
@@ -493,6 +495,9 @@ def validate_manifest(
         not isinstance(command, str) or not command.strip() for command in consumer_checks
     ):
         raise ReleaseError("required_consumer_checks must be a string array")
+    fast_continuation = manifest.get("fast_continuation", False)
+    if not isinstance(fast_continuation, bool):
+        raise ReleaseError("fast_continuation must be a boolean")
 
     raw_packages = manifest.get("packages")
     if not isinstance(raw_packages, list) or not raw_packages:
@@ -903,6 +908,15 @@ def run_release(
     packages, releases, prerequisites = validate_manifest(
         root, manifest, effects.cargo_metadata()
     )
+    fast_flag = environment.get(FAST_CONTINUATION_ENV, "").strip()
+    if fast_flag not in ("", "0", "1"):
+        raise ReleaseError(f"{FAST_CONTINUATION_ENV} must be 1 when enabled")
+    fast_continuation = manifest.get("fast_continuation") is True
+    if fast_continuation != (fast_flag == "1"):
+        raise ReleaseError(
+            "fast continuation requires both manifest fast_continuation = true and "
+            f"{FAST_CONTINUATION_ENV}=1"
+        )
 
     for prerequisite in prerequisites:
         record = effects.registry_version(prerequisite["name"], prerequisite["version"])
@@ -965,14 +979,14 @@ def run_release(
                 raise ReleaseError(f"GitHub Release exists without its manifest tag: {tag}")
             _validate_existing_release(existing, release)
 
-    for command in manifest["required_consumer_checks"]:
-        effects.verify(command)
+    if not fast_continuation:
+        for command in manifest["required_consumer_checks"]:
+            effects.verify(command)
 
-    # Package every candidate before the first publishing side effect. These
-    # patched archives prove the complete candidate closure. A fresh registry
-    # checksum is bound only after the version was absent immediately before a
-    # successful Cargo publish; any later invocation requires that immutable
-    # checksum to be pinned in the manifest.
+    # The default policy packages the complete candidate closure before a side
+    # effect. Explicit fast continuation retains exact authority and registry
+    # safeguards but packages only each next-absent crate immediately before
+    # its publish attempt.
     patches = {
         package["name"]: str(
             _inside(root, package["manifest_path"], "package manifest").parent
@@ -985,8 +999,9 @@ def run_release(
             for prerequisite in prerequisites
         }
     )
-    for package in packages:
-        effects.package(package["name"], package["version"], patches)
+    if not fast_continuation:
+        for package in packages:
+            effects.package(package["name"], package["version"], patches)
     _revalidate_exact_checkout(
         root,
         effects,
@@ -1032,6 +1047,25 @@ def run_release(
                     f"{package['name']}: registry version appeared before publish; "
                     "pin its published_checksum in the release manifest and resume"
                 )
+            if fast_continuation:
+                effects.package(package["name"], package["version"], patches)
+                _revalidate_authority(
+                    root,
+                    effects,
+                    repository,
+                    issue_number,
+                    head,
+                    control_source_sha,
+                    manifest_path,
+                    manifest_digest,
+                )
+                record = effects.registry_version(package["name"], package["version"])
+                if record is not None:
+                    _validate_registry_record(record, package["name"], package["version"])
+                    raise ReleaseError(
+                        f"{package['name']}: registry version appeared during packaging; "
+                        "pin its published_checksum in the release manifest and resume"
+                    )
             _revalidate_authority(
                 root,
                 effects,
