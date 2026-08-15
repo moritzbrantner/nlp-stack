@@ -569,6 +569,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-retrieval-cli/Cargo.toml"
 dependencies = ["moenarch-text-retrieval"]
 tag = "moenarch-text-retrieval-cli-v0.1.1"
+published_checksum = "63399307bc1b54e4a679eda7309c74c2023183f6d02fa1a9fe4c3bb9bc027bff"
 
 [[packages]]
 name = "moenarch-text-retrieval-server"
@@ -577,6 +578,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-retrieval-server/Cargo.toml"
 dependencies = ["moenarch-text-retrieval"]
 tag = "moenarch-text-retrieval-server-v0.1.1"
+published_checksum = "539841c408f23f67ff8dea0ac7a5f761e969cc9b8823f433762ffe7f5b185c79"
 
 [[packages]]
 name = "moenarch-text-retrieval-wasm"
@@ -585,6 +587,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/bindings/text-retrieval-wasm/Cargo.toml"
 dependencies = ["moenarch-text-retrieval"]
 tag = "moenarch-text-retrieval-wasm-v0.1.1"
+published_checksum = "4db63e3f84900601b4ce5b7807a63dc570010ae62e1afb16a450f701db960ba8"
 
 [[packages]]
 name = "moenarch-text-analysis-cli"
@@ -593,6 +596,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-analysis-cli/Cargo.toml"
 dependencies = ["moenarch-text-analysis"]
 tag = "moenarch-text-analysis-cli-v0.1.1"
+published_checksum = "5bbe816a36f0cb4f103b2e3f57a10190fa59e4fb8fc3956518713548d1a1cb12"
 
 [[packages]]
 name = "moenarch-text-analysis-server"
@@ -601,6 +605,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-analysis-server/Cargo.toml"
 dependencies = ["moenarch-text-analysis", "moenarch-text-model-runtime"]
 tag = "moenarch-text-analysis-server-v0.1.1"
+published_checksum = "19696bfd01f7ad7dc0c6d6802e18341588da66a28090d09ca2b14bdee6ba0598"
 
 [[packages]]
 name = "moenarch-text-analysis-wasm"
