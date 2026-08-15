@@ -2,8 +2,9 @@ schema_version = 1
 repository = "moritzbrantner/nlp-stack"
 issue = 2
 source_sha = "619f4cec51419bed383ea837b25b80f0b53b6809"
-repair_source_sha = "4907841e03a90639e17bfa792d373cd5cff4648a"
+repair_source_sha = "159d49449c83eb4405425be01fb275793bf56e59"
 registry = "crates.io"
+fast_continuation = true
 dependency_order = [
   "moenarch-text-core",
   "moenarch-text-model-runtime",
