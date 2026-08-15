@@ -524,6 +524,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-index-server/Cargo.toml"
 dependencies = ["moenarch-text-index"]
 tag = "moenarch-text-index-server-v0.1.1"
+published_checksum = "c95888a7a0ddea446a5512536016d6322e4114b81d8e10aa7e4a0c0271980240"
 
 [[packages]]
 name = "moenarch-text-index-wasm"
@@ -532,6 +533,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/bindings/text-index-wasm/Cargo.toml"
 dependencies = ["moenarch-text-index"]
 tag = "moenarch-text-index-wasm-v0.1.1"
+published_checksum = "670efa8bac25c40a24733550adb9c7021826f07d96b9e95e8b758f8971e0fbdf"
 
 [[packages]]
 name = "moenarch-text-retrieval"
@@ -540,6 +542,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-retrieval/Cargo.toml"
 dependencies = ["moenarch-text-core", "moenarch-text-embeddings", "moenarch-text-index", "moenarch-text-lexical", "moenarch-text-model-runtime", "moenarch-text-transcripts"]
 tag = "moenarch-text-retrieval-v0.1.1"
+published_checksum = "db3a988d41b34e15b59adb22853407066f4aa502fe62570f46c067b8f265c575"
 
 [[packages]]
 name = "moenarch-text-analysis"
@@ -548,6 +551,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-analysis/Cargo.toml"
 dependencies = ["moenarch-text-classification", "moenarch-text-core", "moenarch-text-embeddings", "moenarch-text-index", "moenarch-text-lexical", "moenarch-text-linguistics", "moenarch-text-retrieval", "moenarch-text-transcripts"]
 tag = "moenarch-text-analysis-v0.1.1"
+published_checksum = "5feaa0c91ba5aff261f8004228b871af0b7094d8ffebfc0d9cf8d0acb3784d03"
 
 [[packages]]
 name = "moenarch-text-question-answering"
@@ -556,6 +560,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-question-answering/Cargo.toml"
 dependencies = ["moenarch-text-embeddings", "moenarch-text-index", "moenarch-text-lexical", "moenarch-text-model-runtime", "moenarch-text-retrieval"]
 tag = "moenarch-text-question-answering-v0.1.1"
+published_checksum = "1175b3bb956c0f4919fe33e4469e2f90cbd9457e791e62dabc57c37f807fb373"
 
 [[packages]]
 name = "moenarch-text-retrieval-cli"
