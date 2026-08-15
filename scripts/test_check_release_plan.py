@@ -4,9 +4,19 @@
 from __future__ import annotations
 
 import copy
+import re
+import tomllib
 import unittest
+from pathlib import Path
 
-from check_release_plan import validate
+from check_release_plan import (
+    NLP_WAVE_1,
+    NLP_WAVE_1_CONSUMER_CHECKS,
+    NLP_WAVE_1_VERSIONS,
+    validate,
+    validate_control_binding,
+    validate_release_manifest,
+)
 from repository_split import OWNERSHIP_PATH, RELEASE_PLAN_PATH, cargo_metadata, load_json
 
 
@@ -55,7 +65,9 @@ class ReleasePlanTests(unittest.TestCase):
         plan = copy.deepcopy(self.plan)
         plan["packages"][0]["old_version"] = "9.9.9"
         plan["packages"][0]["new_version"] = "9.9.9"
-        self.assertTrue(any("workspace version" in error for error in self.errors(plan)))
+        self.assertTrue(
+            any("ownership source_version" in error for error in self.errors(plan))
+        )
 
     def test_required_checks_cannot_be_deleted(self) -> None:
         plan = copy.deepcopy(self.plan)
@@ -116,6 +128,142 @@ class ReleasePlanTests(unittest.TestCase):
         plan = copy.deepcopy(self.plan)
         plan["platform_packages_ownership_checked"] = False
         self.assertTrue(any("platform-packages ownership" in error for error in self.errors(plan)))
+
+
+class CheckedReleaseManifestTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.plan = load_json(RELEASE_PLAN_PATH)
+        self.ownership = load_json(OWNERSHIP_PATH)
+        self.metadata = cargo_metadata()
+        ownership = {
+            package["current_package_name"]: package
+            for package in self.ownership["packages"]
+        }
+        metadata = {package["name"]: package for package in self.metadata["packages"]}
+        packages = []
+        for name, version in NLP_WAVE_1:
+            dependencies = sorted(
+                dependency["name"]
+                for dependency in metadata[name]["dependencies"]
+                if dependency["kind"] != "dev" and dependency["name"] in metadata
+            )
+            packages.append(
+                {
+                    "name": name,
+                    "version": version,
+                    "owner": "moritzbrantner/nlp-stack",
+                    "manifest_path": ownership[name]["manifest_path"],
+                    "dependencies": dependencies,
+                    "tag": f"{name}-v{version}",
+                }
+            )
+        checks = tomllib.loads(
+            (OWNERSHIP_PATH.parents[2] / ".agent-loop.toml").read_text(
+                encoding="utf-8"
+            )
+        )["verification"]["commands"]
+        self.manifest = {
+            "schema_version": 1,
+            "repository": "moritzbrantner/nlp-stack",
+            "issue": 2,
+            "source_sha": "a" * 40,
+            "registry": "crates.io",
+            "dependency_order": [name for name, _version in NLP_WAVE_1],
+            "expected_tags": [package["tag"] for package in packages],
+            "required_checks": checks,
+            "required_consumer_checks": list(NLP_WAVE_1_CONSUMER_CHECKS),
+            "packages": packages,
+            "github_releases": [],
+        }
+
+    def errors(self, manifest: dict) -> list[str]:
+        return validate_release_manifest(
+            manifest,
+            self.ownership,
+            self.metadata,
+            Path("releases/nlp-wave-1.toml"),
+        )
+
+    def test_exact_nlp_wave_is_valid(self) -> None:
+        self.assertEqual(self.errors(self.manifest), [])
+
+    def test_wrong_version_is_rejected(self) -> None:
+        self.manifest["packages"][0]["version"] = "0.9.9"
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("versions" in error for error in errors), errors)
+
+    def test_wrong_destination_issue_is_rejected(self) -> None:
+        self.manifest["issue"] = 3
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("destination issue 2" in error for error in errors), errors)
+
+    def test_wrong_order_is_rejected(self) -> None:
+        self.manifest["packages"][0], self.manifest["packages"][1] = (
+            self.manifest["packages"][1],
+            self.manifest["packages"][0],
+        )
+        self.manifest["dependency_order"] = [
+            package["name"] for package in self.manifest["packages"]
+        ]
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("package order" in error for error in errors), errors)
+
+    def test_missing_consumer_gate_is_rejected(self) -> None:
+        self.manifest["required_consumer_checks"].pop()
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("consumer checks" in error for error in errors), errors)
+
+    def test_downstream_consumer_gate_pins_every_known_repository(self) -> None:
+        script = (
+            OWNERSHIP_PATH.parents[2]
+            / "scripts/check_nlp_wave_1_downstream_consumers.sh"
+        ).read_text(encoding="utf-8")
+        repositories = (
+            "native-whisperx",
+            "media-similarity",
+            "youtube-corpus",
+            "document-search",
+            "philosophy-extractor",
+            "video-analysis-studio",
+            "stutter-tracker",
+            "rust-packages",
+        )
+        for repository in repositories:
+            self.assertRegex(
+                script,
+                rf'clone_pinned "{re.escape(repository)}" "[0-9a-f]{{40}}"',
+            )
+        self.assertNotRegex(script, r"clone_pinned .*\bmain\b")
+
+    def test_postpublication_consumer_is_registry_only(self) -> None:
+        script = (
+            OWNERSHIP_PATH.parents[2]
+            / "scripts/check_nlp_wave_1_registry_consumer.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn('startswith("registry+")', script)
+        self.assertNotIn("[patch.crates-io]", script)
+        self.assertNotIn("--config", script)
+
+    def test_source_and_control_binding_are_exact(self) -> None:
+        errors = validate_control_binding(
+            self.manifest,
+            Path("releases/nlp-wave-1.toml"),
+            "b" * 40,
+            False,
+            ["Cargo.toml", "releases/nlp-wave-1.toml"],
+        )
+        self.assertTrue(any("ancestor" in error for error in errors), errors)
+        self.assertTrue(any("only by its manifest" in error for error in errors), errors)
+
+    def test_workspace_versions_allow_only_the_exact_nlp_wave(self) -> None:
+        metadata = copy.deepcopy(self.metadata)
+        for package in metadata["packages"]:
+            package["version"] = NLP_WAVE_1_VERSIONS[package["name"]]
+        self.assertEqual(validate(self.plan, self.ownership, metadata), [])
+
+        metadata["packages"][0]["version"] = "9.9.9"
+        errors = validate(self.plan, self.ownership, metadata)
+        self.assertTrue(any("authorized source or wave version" in error for error in errors), errors)
 
 
 if __name__ == "__main__":

@@ -21,3 +21,7 @@ commands = [
   "bun run text-wasm:test:all",
   "python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json",
 ]
+
+[publication]
+command = "python3 scripts/publish_release.py"
+authorization_label = "release:approved"
