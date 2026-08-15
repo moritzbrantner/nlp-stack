@@ -108,7 +108,7 @@ fn downloads_default_ner_model_and_runs_local_entities() {
 
     let spec = options.entity_recognition.preset.spec();
     let bundle = ModelBundleStore::new(bundle_dir)
-        .load(&spec.name, &spec.revision)
+        .load(&spec.name, spec.revision_value().unwrap_or("main"))
         .expect("materialized default NER bundle");
     assert_nonempty_file(bundle.manifest_path());
     assert_nonempty_file(

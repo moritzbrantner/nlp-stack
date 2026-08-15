@@ -26,7 +26,7 @@ fn tokenizer_presets_have_honest_load_reports() {
             .required_setup("scripts/sync_model_bundles.sh text")
             .smoke_operation("runtime.tokenizeSummary"),
         );
-        assert_eq!(report.supported, true);
+        assert!(report.supported);
         assert_eq!(report.loadable, report.bundle_present());
     }
 }
