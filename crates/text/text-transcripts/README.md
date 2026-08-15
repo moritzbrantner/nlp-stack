@@ -23,7 +23,11 @@ the higher-layer `audio-analysis-transcription` adapter.
 ```rust,no_run
 use text_transcripts::{parse_whisper_json, TranscriptionContract};
 
-let parsed = parse_whisper_json(include_bytes!("../../../../tests/fixtures/whisper-sample.json"))?;
+let whisper_json = br#"{
+  "text": "hello from rust testing",
+  "segments": [{"id": 0, "start": 0.0, "end": 1.5, "text": "hello from rust testing"}]
+}"#;
+let parsed = parse_whisper_json(whisper_json)?;
 let transcript = TranscriptionContract::from(parsed).normalized()?;
 
 assert!(!transcript.text_or_joined().is_empty());

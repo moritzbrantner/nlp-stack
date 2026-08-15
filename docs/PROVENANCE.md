@@ -23,6 +23,10 @@ wrappers remain byte-identical. The 13 app trees differ only where their unpubli
 `@moritzbrantner/video-analysis-ui` workspace dependency and source aliases were
 retargeted to the private focused adapter.
 
+The `text-transcripts` README example is also self-contained in this repository:
+its inline Whisper JSON replaces a monolith-root fixture path that cannot exist
+in an independent checkout or packaged crate.
+
 `packages/nlp-app-ui` is destination-authored from the exact extraction
 commit's `packages/video-analysis-ui/src/package-surface/**` plus the shared
 primitive component seam. Stories and the 29 package-surface behavior tests are
