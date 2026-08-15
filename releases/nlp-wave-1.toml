@@ -280,6 +280,7 @@ tag = "moenarch-text-model-runtime-wasm-v0.1.1"
 [[packages]]
 name = "moenarch-text-transcripts"
 version = "0.1.3"
+published_checksum = "c988a2eaf97512d1ed334349347e80608e6101a5a32ccbb342f7154f1ae44d7a"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-transcripts/Cargo.toml"
 dependencies = ["moenarch-text-core"]
@@ -288,6 +289,7 @@ tag = "moenarch-text-transcripts-v0.1.3"
 [[packages]]
 name = "moenarch-text-classification"
 version = "0.1.1"
+published_checksum = "732687712545926aa134f9472f031953aa84d08f6517376032f404454fbf35c4"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-classification/Cargo.toml"
 dependencies = ["moenarch-text-core", "moenarch-text-lexical", "moenarch-text-model-runtime"]
@@ -296,6 +298,7 @@ tag = "moenarch-text-classification-v0.1.1"
 [[packages]]
 name = "moenarch-text-embeddings"
 version = "0.1.1"
+published_checksum = "77aaa1c92a75a646092794e5888078ac3fa51bd5f0ebcf9980ec4227c5e85f36"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-embeddings/Cargo.toml"
 dependencies = ["moenarch-text-core", "moenarch-text-lexical", "moenarch-text-model-runtime"]
@@ -304,6 +307,7 @@ tag = "moenarch-text-embeddings-v0.1.1"
 [[packages]]
 name = "moenarch-text-generation-cli"
 version = "0.1.1"
+published_checksum = "18067c2961e5ba1594650e137ddc142c86aa0dbb818f3798ae5bcb72405ec643"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-generation-cli/Cargo.toml"
 dependencies = ["moenarch-text-generation"]
@@ -312,6 +316,7 @@ tag = "moenarch-text-generation-cli-v0.1.1"
 [[packages]]
 name = "moenarch-text-generation-server"
 version = "0.1.1"
+published_checksum = "f45eba1fea53cb1ae8b5d5e58e8ef9dc73f509e367f71c76dff5d8b28bc3080d"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-generation-server/Cargo.toml"
 dependencies = ["moenarch-text-generation"]
@@ -320,6 +325,7 @@ tag = "moenarch-text-generation-server-v0.1.1"
 [[packages]]
 name = "moenarch-text-generation-wasm"
 version = "0.1.1"
+published_checksum = "06b0dab7fa05b319ce5a415facf94f0786e9fc184704643b0e4bcc7769539b3c"
 owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/bindings/text-generation-wasm/Cargo.toml"
 dependencies = ["moenarch-text-generation"]
