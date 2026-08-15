@@ -44,6 +44,7 @@ ROOT_FIELDS = {
     "required_consumer_checks",
 }
 CONTROL_REPAIR_SCRIPT_PATHS = {
+    "scripts/check_nlp_wave_1_downstream_consumers.sh",
     "scripts/check_release_plan.py",
     "scripts/publish_release.py",
     "scripts/test_check_release_plan.py",
@@ -877,8 +878,10 @@ def run_release(
         repair_paths = set(effects.changed_paths(source_sha, control_source_sha))
         expected_repair_paths = CONTROL_REPAIR_SCRIPT_PATHS | {manifest_path}
         if repair_paths != expected_repair_paths:
+            expected = ", ".join(sorted(expected_repair_paths))
             raise ReleaseError(
-                "release manifest control repair changed paths outside the fixed repair surface"
+                "release manifest control repair changed paths outside the fixed repair "
+                f"surface; expected exactly: {expected}"
             )
     if effects.changed_paths(control_source_sha, head) != [manifest_path]:
         raise ReleaseError(

@@ -3,7 +3,17 @@ set -euo pipefail
 
 repository_root=$(git rev-parse --show-toplevel)
 mkdir -p "$repository_root/target"
-scratch_parent=${NLP_WAVE_1_SCRATCH_PARENT:-"$(dirname "$repository_root")"}
+if [[ -n "${NLP_WAVE_1_SCRATCH_PARENT:-}" ]]; then
+  scratch_parent=$NLP_WAVE_1_SCRATCH_PARENT
+elif [[ -n "${CARGO_TARGET_DIR:-}" && "$CARGO_TARGET_DIR" = /* ]]; then
+  # The Agent Loop publisher runs from a small temporary filesystem but points
+  # CARGO_TARGET_DIR at durable build storage. Keep the eight cloned consumers
+  # on that same filesystem so a clean publication checkout cannot exhaust /tmp.
+  scratch_parent=$(dirname "$CARGO_TARGET_DIR")
+else
+  scratch_parent=$(dirname "$repository_root")
+fi
+mkdir -p "$scratch_parent"
 scratch_root=$(mktemp -d "$scratch_parent/nlp-wave-1-downstream.XXXXXX")
 
 cleanup() {
@@ -130,6 +140,10 @@ cargo check --manifest-path "$scratch_root/native-whisperx/Cargo.toml" -p native
 cargo check --manifest-path "$scratch_root/media-similarity/backend/Cargo.toml" --bin image-similarity-service --config "$patch_config"
 cargo check --manifest-path "$scratch_root/youtube-corpus/Cargo.toml" --config "$patch_config"
 cargo check --manifest-path "$scratch_root/philosophy-extractor/Cargo.toml" -p philosophy-extractor --config "$patch_config"
+# These packages intentionally ignore wasm-pack output. Generate the two JS/WASM
+# surfaces used by document-search inside every clean publication checkout.
+bun run --cwd "$repository_root/packages/text-core-wasm" build
+bun run --cwd "$repository_root/packages/text-index-wasm" build
 bun install --cwd "$scratch_root/document-search"
 bun test --cwd "$scratch_root/document-search"
 bun run --cwd "$scratch_root/document-search" build

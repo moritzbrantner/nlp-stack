@@ -244,6 +244,22 @@ class CheckedReleaseManifestTests(unittest.TestCase):
             )
         self.assertNotRegex(script, r"clone_pinned .*\bmain\b")
 
+    def test_downstream_consumer_gate_uses_durable_build_storage(self) -> None:
+        script = (
+            OWNERSHIP_PATH.parents[2]
+            / "scripts/check_nlp_wave_1_downstream_consumers.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn('"$CARGO_TARGET_DIR" = /*', script)
+        self.assertIn('scratch_parent=$(dirname "$CARGO_TARGET_DIR")', script)
+        self.assertIn(
+            'bun run --cwd "$repository_root/packages/text-core-wasm" build',
+            script,
+        )
+        self.assertIn(
+            'bun run --cwd "$repository_root/packages/text-index-wasm" build',
+            script,
+        )
+
     def test_postpublication_consumer_is_registry_only(self) -> None:
         script = (
             OWNERSHIP_PATH.parents[2]

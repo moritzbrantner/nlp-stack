@@ -382,7 +382,11 @@ def validate_control_binding(
         )
     expected_repair_paths = CONTROL_REPAIR_SCRIPT_PATHS | {manifest_path}
     if set(changed_paths) != expected_repair_paths:
-        errors.append("release manifest control repair changed outside its fixed surface")
+        expected = ", ".join(sorted(expected_repair_paths))
+        errors.append(
+            "release manifest control repair changed outside its fixed surface; "
+            f"expected exactly: {expected}"
+        )
     if repair_changed_paths != [manifest_path]:
         errors.append(
             "release control head must differ from repair_source_sha only by its manifest"

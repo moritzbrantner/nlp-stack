@@ -461,6 +461,7 @@ class PublishReleaseTests(unittest.TestCase):
             effects.changed_paths = lambda source, head: (
                 [
                     "releases/release.toml",
+                    "scripts/check_nlp_wave_1_downstream_consumers.sh",
                     "scripts/check_release_plan.py",
                     "scripts/publish_release.py",
                     "scripts/test_check_release_plan.py",
@@ -497,7 +498,10 @@ class PublishReleaseTests(unittest.TestCase):
                 else ["releases/release.toml"]
             )
 
-            with self.assertRaisesRegex(publish_release.ReleaseError, "control repair"):
+            with self.assertRaisesRegex(
+                publish_release.ReleaseError,
+                "scripts/check_nlp_wave_1_downstream_consumers.sh",
+            ):
                 publish_release.run_release(root, ENVIRONMENT, effects)
 
     def test_candidate_consumer_check_is_required(self) -> None:
