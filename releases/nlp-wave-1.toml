@@ -428,6 +428,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-embeddings-cli/Cargo.toml"
 dependencies = ["moenarch-text-embeddings"]
 tag = "moenarch-text-embeddings-cli-v0.1.1"
+published_checksum = "829b5585f297431d82f9d567bb76c8534bf06947c5e70bbd09e78142301e3a79"
 
 [[packages]]
 name = "moenarch-text-embeddings-server"
