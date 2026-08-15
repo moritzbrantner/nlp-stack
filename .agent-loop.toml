@@ -13,5 +13,5 @@ commands = [
 ]
 
 [publication]
-command = "NLP_RELEASE_FAST_CONTINUATION=1 python3 scripts/publish_release.py"
+command = "python3 scripts/publish_release.py"
 authorization_label = "release:approved"

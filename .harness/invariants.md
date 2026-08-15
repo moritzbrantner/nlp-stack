@@ -6,7 +6,6 @@
 - Forbidden behavior: omitted or extra packages, undeclared versions, wrong ownership, or dependency-order drift.
 - Authority/source: repo:docs/repository-split/package-ownership.json
 - Affected surfaces: Cargo.toml, Cargo.lock, crates/**
-- Linked tests: none; maintainer explicitly waived behavioral suites for restructuring-first publication
 - Compatibility promise: Public behavior is outside the publication gate and remains a separately accepted restructuring risk.
 - Required evidence: contract, static
 - Sensitivity: optional
@@ -18,7 +17,6 @@
 - Forbidden behavior: sibling paths, moving Git branches, audio/visual/spatial/application edges, or unpublished foundation sources.
 - Authority/source: repo:CONTEXT.md
 - Affected surfaces: Cargo.toml, Cargo.lock, crates/**/Cargo.toml, packages/*/package.json
-- Linked tests: none; cargo metadata and the exact manifest validator are the required structural checks
 - Compatibility promise: Consumers can build from a clean clone without a sibling repository.
 - Required evidence: contract
 - Sensitivity: optional
@@ -30,7 +28,6 @@
 - Forbidden behavior: implicit or npm publication, undeclared packages or versions, mutable dependency sources, tags before registry verification, republishing an existing version, automatic yanks, source removal, or product-logic changes in downstream consumers.
 - Authority/source: repo:releases/nlp-wave-1.toml
 - Affected surfaces: .agent-loop.toml, releases/**, scripts/publish_release.py, scripts/check_release_plan.py, docs/AGENT_DRIVEN_RELEASES.md, docs/RELEASE_CHECKLIST.md
-- Linked tests: none; the maintainer explicitly accepts the fast-continuation policy as statically reviewed and untested
 - Compatibility promise: npm packages and rust-packages source remain unchanged; a partial Cargo wave preserves its published prefix and resumes at the first absent package.
 - Required evidence: contract, static
 - Sensitivity: optional
@@ -42,7 +39,6 @@
 - Forbidden behavior: treating publication as authorization for npm release, source removal, or downstream product mutation.
 - Authority/source: repo:CONTEXT.md
 - Affected surfaces: package.json, bun.lock, packages/**, crates/bindings/**
-- Linked tests: none; behavioral and integration suites are explicitly waived as publication gates
 - Compatibility promise: Existing surfaces are not modified by the publication operation itself.
 - Required evidence: contract, static
 - Sensitivity: optional
