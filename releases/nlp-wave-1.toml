@@ -614,6 +614,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/bindings/text-analysis-wasm/Cargo.toml"
 dependencies = ["moenarch-text-analysis"]
 tag = "moenarch-text-analysis-wasm-v0.1.1"
+published_checksum = "6707458c8ac6995753e9eae20c97e22fe7ad35a55c9f84e01e8d11b2029e60e8"
 
 [[packages]]
 name = "moenarch-text-question-answering-cli"
@@ -622,6 +623,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-question-answering-cli/Cargo.toml"
 dependencies = ["moenarch-text-question-answering"]
 tag = "moenarch-text-question-answering-cli-v0.1.1"
+published_checksum = "4bca6801a8de18882bfcb176aa1643b3350ce65b9dda0146a3e822d4d4f0d702"
 
 [[packages]]
 name = "moenarch-text-question-answering-server"
@@ -630,6 +632,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-question-answering-server/Cargo.toml"
 dependencies = ["moenarch-text-question-answering"]
 tag = "moenarch-text-question-answering-server-v0.1.1"
+published_checksum = "24d31e9b51b337f8d96d4bcc0572dda5dd203f627f4ac1138253b2de54a6af88"
 
 [[packages]]
 name = "moenarch-text-question-answering-wasm"
@@ -638,6 +641,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/bindings/text-question-answering-wasm/Cargo.toml"
 dependencies = ["moenarch-text-question-answering"]
 tag = "moenarch-text-question-answering-wasm-v0.1.1"
+published_checksum = "593c5305b72d7af3fd7301d1b441921a71f7d45b810fd88130ca1d8b46d87a6a"
 
 [[github_releases]]
 tag = "moenarch-text-core-v0.1.1"
