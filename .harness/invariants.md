@@ -26,7 +26,7 @@
 
 ## INV-003 — Publication is exact, receipt-gated, and recoverable
 
-- Requirement: Cargo publication uses only destination issue #2, the checked `releases/nlp-wave-1.toml`, its exact source/control commits, a current independent review, a passing exact-head Agent Loop receipt, and `release:approved`.
+- Requirement: Cargo publication uses only destination issue #2, the checked `releases/nlp-wave-1.toml`, its original immutable package/tag source, an optional fixed-surface release-control repair source, a manifest-only exact control head, a current independent review, a passing exact-head Agent Loop receipt, and `release:approved`.
 - Forbidden behavior: implicit or npm publication, undeclared packages or versions, mutable dependency sources, tags before registry verification, republishing an existing version, automatic yanks, source removal, or product-logic changes in downstream consumers.
 - Authority/source: repo:releases/nlp-wave-1.toml
 - Affected surfaces: .agent-loop.toml, releases/**, scripts/publish_release.py, scripts/check_release_plan.py, docs/AGENT_DRIVEN_RELEASES.md, docs/RELEASE_CHECKLIST.md

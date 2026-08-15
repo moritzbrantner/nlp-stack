@@ -5,21 +5,29 @@ therefore remains a nonpublishing inventory. Issue #2 in this repository is the
 destination-local authorization surface for the issue #114 Cargo wave; only its
 exact checked TOML manifest may authorize those 52 package versions.
 
-The Cargo wave uses a source commit followed by a manifest-only control commit.
-The open issue must identify that exact control SHA and the manifest SHA-256 and
-must carry `release:approved` before the receipt-gated publisher can run. The
-publisher replays all ordered repository, package, WASM, and pinned downstream
-consumer checks before publishing in manifest order, verifying crates.io, and
-creating immutable tags and GitHub Releases. The postpublication
+The Cargo wave keeps the original tested source commit as immutable package and
+tag provenance. After a partial publication, a fixed release-control repair
+commit may update only release scripts, their tests, documentation, and the
+manifest; a final manifest-only control commit binds that repair source. The
+open issue must identify the exact control SHA and manifest SHA-256 and must
+carry `release:approved` before the receipt-gated publisher can run.
+
+The Agent Loop master runs all ordered `required_checks` and validates their
+exact-head receipt before invoking the repository hook. The hook then replays
+the pinned `required_consumer_checks`, packages every candidate, publishes in
+manifest order, verifies crates.io, and creates immutable tags at the original
+source commit plus GitHub Releases. The postpublication
 `scripts/check_nlp_wave_1_registry_consumer.sh` must then resolve all 52 packages
 from registry sources with no local patch.
 
-The downstream gate records exact source commits. It compiles native-whisperx,
-media-similarity, youtube-corpus, and philosophy-extractor against the local
-candidate, and runs document-search tests/build against the public WASM package
-exports. video-analysis-studio and stutter-tracker remain on pinned compatibility
-packages pending their repository-scoped migrations; the rust-packages ownership
-baseline is also pinned. Each eventual update is a separate downstream PR.
+The downstream gate records exact source commits and never edits consumer
+product source. It compiles native-whisperx against the local candidate.
+media-similarity, youtube-corpus, document-search, and philosophy-extractor run
+unchanged compatibility baselines; their candidate migrations remain deferred
+to rust-packages issues #124, #125, #127, and #128 until registry-only proof is
+available. video-analysis-studio and stutter-tracker remain on pinned
+compatibility packages, and the rust-packages ownership baseline is also pinned.
+Candidate compatibility and deferred baseline evidence are distinct outcomes.
 
 All 28 Bun packages remain nonpublishing. Any npm/WASM publication requires its
 own exact authorization after ownership is checked again against

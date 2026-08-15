@@ -6,15 +6,20 @@ checked `releases/nlp-wave-1.toml`; npm publication remains unauthorized.
 
 For the authorized Cargo wave:
 
-1. Create the tested source commit, then a control commit whose only difference
+1. Preserve the tested source commit as package/tag provenance. A recovery after
+   partial publication may add one fixed-surface release-control repair commit;
+   create a final control commit whose only difference from that repair source
    is the exact publishing manifest.
 2. Bind exact package names, versions, registry, source/base commits, dependency
    order, checks, consumers, and tags.
 3. Keep Cargo and npm/WASM authorization separate; re-check ownership against
    `platform-packages` before any browser wrapper publication.
 4. Require a clean immutable commit, full repository checks, every Cargo archive,
-   WASM pack/install smoke, and candidate consumer gates.
-5. Run independent exact-head review and Agent Loop verification. Update the
+   WASM pack/install smoke, the source-pure native-whisperx candidate gate, and
+   unchanged pinned baselines for migrations deferred to #124/#125/#127/#128.
+5. Run independent exact-head review and Agent Loop verification. The Agent
+   Loop master validates the exact receipt for every `required_check`; the
+   repository hook replays consumer and archive gates. Update the
    open destination issue with exactly one control SHA and manifest digest line,
    then apply `release:approved`.
 6. Publish topologically through the receipt-gated wrapper, verify immutable

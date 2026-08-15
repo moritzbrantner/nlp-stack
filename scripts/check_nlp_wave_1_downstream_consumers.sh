@@ -82,46 +82,18 @@ native="$scratch_root/native-whisperx/Cargo.toml"
 replace_exact "$native" 'text-model-runtime = { package = "moenarch-text-model-runtime", version = "0.1.0", default-features = false }' 'text-model-runtime = { package = "moenarch-text-model-runtime", version = "=0.1.1", default-features = false }'
 replace_exact "$native" 'text-transcripts = { package = "moenarch-text-transcripts", version = "0.1.1", default-features = false }' 'text-transcripts = { package = "moenarch-text-transcripts", version = "=0.1.3", default-features = false }'
 
-media="$scratch_root/media-similarity/backend/Cargo.toml"
-replace_exact "$media" 'text-transcripts = { package = "moenarch-text-transcripts", version = "0.1.2", features = ["native"] }' 'text-transcripts = { package = "moenarch-text-transcripts", version = "=0.1.3" }'
-replace_exact "$media" $'publish = false\n\n[lib]' $'publish = false\n\n[workspace]\n\n[lib]'
-media_models="$scratch_root/media-similarity/backend/src/workers/media/models.rs"
-replace_exact "$media_models" $'use text_transcripts::{WhisperCppModel, WhisperCppModelStore};\n' ''
-replace_exact "$media_models" $'pub fn parse_whisper_cpp_model(value: &str) -> Result<WhisperCppModel, String> {\n    let normalized = value.trim();\n    WhisperCppModel::ALL\n        .into_iter()\n        .find(|model| model.id().eq_ignore_ascii_case(normalized))\n        .ok_or_else(|| format!("Unknown whisper.cpp model `{normalized}`"))\n}\n\npub fn audio_transcription_model_store(settings: &Settings) -> WhisperCppModelStore {\n    settings\n        .audio_transcription_cache_dir\n        .clone()\n        .map(WhisperCppModelStore::new)\n        .unwrap_or_default()\n}\n\n' ''
+# native-whisperx is the source-pure candidate check. The next four consumers
+# retain their exact, unchanged compatibility baselines until their separately
+# reviewed postpublication migrations (#124, #125, #127, and #128). The pinned
+# rust-packages checkout already occupies the sibling path their manifests use.
+rg --fixed-strings 'text-transcripts = { package = "moenarch-text-transcripts", version = "0.1.2", features = ["native"] }' "$scratch_root/media-similarity/backend/Cargo.toml"
+rg --fixed-strings 'text-transcripts = { package = "moritzbrantner-text-transcripts", path = "../rust-packages/crates/text/text-transcripts" }' "$scratch_root/youtube-corpus/Cargo.toml"
+rg --fixed-strings '"@moritzbrantner/text-index-wasm": "file:../rust-packages/packages/text-index-wasm"' "$scratch_root/document-search/package.json"
+rg --fixed-strings 'text-retrieval = { path = "../rust-packages/crates/text/text-retrieval" }' "$scratch_root/philosophy-extractor/Cargo.toml"
 
-youtube="$scratch_root/youtube-corpus/Cargo.toml"
-replace_exact "$youtube" 'text-core = { package = "moritzbrantner-text-core", path = "../rust-packages/crates/text/text-core" }' 'text-core = { package = "moenarch-text-core", version = "=0.1.1" }'
-replace_exact "$youtube" 'text-embeddings = { package = "moritzbrantner-text-embeddings", path = "../rust-packages/crates/text/text-embeddings" }' 'text-embeddings = { package = "moenarch-text-embeddings", version = "=0.1.1" }'
-replace_exact "$youtube" 'text-lexical = { package = "moritzbrantner-text-lexical", path = "../rust-packages/crates/text/text-lexical" }' 'text-lexical = { package = "moenarch-text-lexical", version = "=0.1.1" }'
-replace_exact "$youtube" 'text-transcripts = { package = "moritzbrantner-text-transcripts", path = "../rust-packages/crates/text/text-transcripts" }' 'text-transcripts = { package = "moenarch-text-transcripts", version = "=0.1.3" }'
-replace_exact "$youtube" $'text-transcripts = { package = "moenarch-text-transcripts", version = "=0.1.3" }\n' $'text-transcripts = { package = "moenarch-text-transcripts", version = "=0.1.3" }\nlegacy-text-transcripts = { package = "moritzbrantner-text-transcripts", version = "=0.1.1" }\n'
-replace_exact "$youtube" 'runtime-core = { package = "moritzbrantner-runtime-core", path = "../rust-packages/crates/runtime/runtime-core" }' 'runtime-core = { package = "moenarch-runtime-core", version = "=0.2.1" }'
-replace_exact "$youtube" 'jobs-core = { package = "moritzbrantner-jobs-core", path = "../rust-packages/crates/jobs/jobs-core" }' 'jobs-core = { package = "moenarch-jobs-core", version = "=0.1.2" }'
-replace_exact "$youtube" 'video-analysis-ffmpeg = { package = "moritzbrantner-video-analysis-ffmpeg", path = "../rust-packages/crates/video/video-analysis-ffmpeg" }' 'video-analysis-ffmpeg = { package = "moenarch-video-analysis-ffmpeg", version = "=0.1.1" }'
-replace_exact "$youtube" 'video-analysis-ingest = { package = "moritzbrantner-video-analysis-ingest", path = "../rust-packages/crates/video/video-analysis-ingest" }' 'video-analysis-ingest = { package = "moenarch-video-analysis-ingest", version = "=0.1.0" }'
-replace_exact "$youtube" $'\n[dev-dependencies]\n' $'\n[workspace]\n\n[dev-dependencies]\n'
-sed -i 's/text_transcripts/legacy_text_transcripts/g' "$scratch_root/youtube-corpus/src/asr.rs"
-replace_exact "$scratch_root/youtube-corpus/src/asr.rs" 'parsed.segments.into_iter().map(Into::into).collect()' $'parsed\n            .segments\n            .into_iter()\n            .map(|segment| text_transcripts::TranscriptSegmentContract {\n                index: segment.index,\n                start_seconds: segment.start_seconds,\n                end_seconds: segment.end_seconds,\n                text: segment.text,\n                language: segment.language,\n                speaker: segment.speaker,\n                confidence: segment.confidence,\n                is_final: segment.is_final,\n                words: Vec::new(),\n                chars: Vec::new(),\n                attributes: Default::default(),\n            })\n            .collect()'
-
-document="$scratch_root/document-search/package.json"
-replace_exact "$document" '"@moritzbrantner/text-core-wasm": "file:../rust-packages/packages/text-core-wasm"' '"@moritzbrantner/text-core-wasm": "file:__NLP_STACK__/packages/text-core-wasm"'
-replace_exact "$document" '"@moritzbrantner/text-index-wasm": "file:../rust-packages/packages/text-index-wasm"' '"@moritzbrantner/text-index-wasm": "file:__NLP_STACK__/packages/text-index-wasm"'
-sed -i "s|__NLP_STACK__|$repository_root|g" "$document"
-document_index="$scratch_root/document-search/src/wasm/textIndex.ts"
-replace_exact "$document_index" $'import initWasm, {\n  runOperation,\n} from "@moritzbrantner/text-index-wasm/pkg/moritzbrantner_text_index_wasm.js";\nimport type { SurfaceResponse } from "@moritzbrantner/text-index-wasm";\n\nlet initPromise: Promise<unknown> | undefined;\n' $'import { runOperation } from "@moritzbrantner/text-index-wasm";\nimport type { SurfaceResponse } from "@moritzbrantner/text-index-wasm";\n'
-replace_exact "$document_index" $'  initPromise ??= initWasm();\n  await initPromise;\n  return fromWasm(runOperation(request)) as SurfaceResponse;\n' $'  return (await runOperation(request)) as SurfaceResponse;\n'
-replace_exact "$document_index" $'\nfunction fromWasm(value: unknown): unknown {\n  if (value instanceof Map) {\n    return Object.fromEntries(\n      Array.from(value.entries(), ([key, entry]) => [key, fromWasm(entry)]),\n    );\n  }\n  if (Array.isArray(value)) {\n    return value.map(fromWasm);\n  }\n  if (value && typeof value === "object") {\n    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, fromWasm(entry)]));\n  }\n  return value;\n}\n' $'\n'
-
-philosophy="$scratch_root/philosophy-extractor/Cargo.toml"
-replace_exact "$philosophy" 'text-core = { path = "../rust-packages/crates/text/text-core" }' 'text-core = { package = "moenarch-text-core", version = "=0.1.1" }'
-replace_exact "$philosophy" 'text-embeddings = { path = "../rust-packages/crates/text/text-embeddings" }' 'text-embeddings = { package = "moenarch-text-embeddings", version = "=0.1.1" }'
-replace_exact "$philosophy" 'text-linguistics = { path = "../rust-packages/crates/text/text-linguistics" }' 'text-linguistics = { package = "moenarch-text-linguistics", version = "=0.1.1" }'
-replace_exact "$philosophy" 'text-retrieval = { path = "../rust-packages/crates/text/text-retrieval" }' 'text-retrieval = { package = "moenarch-text-retrieval", version = "=0.1.1" }'
-replace_exact "$scratch_root/philosophy-extractor/packages/pipeline/src/pipeline/relate.rs" $'                    rerank_window: candidates.len().min(16).max(1),\n' $'                    rerank_window: candidates.len().min(16).max(1),\n                    rerank: false,\n'
-
-# These consumers still use compatibility packages that are intentionally not
-# part of this release wave. Pin and assert those baselines instead of silently
-# inventing a migration mapping inside a publication gate.
+# These consumers also remain on compatibility packages that are intentionally
+# not part of this release wave. Pin and assert those baselines instead of
+# silently inventing a migration mapping inside a publication gate.
 rg --fixed-strings 'text-analysis-features = { version = "0.1.0", path = "../rust-packages/crates/text/text-analysis-features" }' "$scratch_root/video-analysis-studio/Cargo.toml"
 rg --fixed-strings 'text-analysis-transcription = { version = "0.1.0", path = "../rust-packages/crates/text/text-analysis-transcription" }' "$scratch_root/video-analysis-studio/Cargo.toml"
 rg --fixed-strings 'rev = "78a9c6e9eb33730b60c9584ceffb9dc982f5b9da", package = "text-analysis-core"' "$scratch_root/stutter-tracker/apps/desktop/src-tauri/Cargo.toml"
@@ -137,15 +109,10 @@ jq -e '
 
 export CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-"$repository_root/target"}
 cargo check --manifest-path "$scratch_root/native-whisperx/Cargo.toml" -p native-whisperx --config "$patch_config"
-cargo check --manifest-path "$scratch_root/media-similarity/backend/Cargo.toml" --bin image-similarity-service --config "$patch_config"
-cargo check --manifest-path "$scratch_root/youtube-corpus/Cargo.toml" --config "$patch_config"
-cargo check --manifest-path "$scratch_root/philosophy-extractor/Cargo.toml" -p philosophy-extractor --config "$patch_config"
-# These packages intentionally ignore wasm-pack output. Generate the two JS/WASM
-# surfaces used by document-search inside every clean publication checkout.
-bun run --cwd "$repository_root/packages/text-core-wasm" build
-bun run --cwd "$repository_root/packages/text-index-wasm" build
-bun install --cwd "$scratch_root/document-search"
-bun test --cwd "$scratch_root/document-search"
-bun run --cwd "$scratch_root/document-search" build
+cargo check --manifest-path "$scratch_root/media-similarity/backend/Cargo.toml" --bin image-similarity-service
+echo "media-similarity baseline pinned; candidate migration deferred to rust-packages#124"
+echo "youtube-corpus baseline pinned; candidate migration deferred to rust-packages#125"
+echo "document-search baseline pinned; WASM migration deferred to rust-packages#127"
+echo "philosophy-extractor baseline pinned; candidate migration deferred to rust-packages#128"
 
 echo "NLP wave 1 downstream consumer gate passed"

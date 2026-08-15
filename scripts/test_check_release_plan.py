@@ -244,7 +244,7 @@ class CheckedReleaseManifestTests(unittest.TestCase):
             )
         self.assertNotRegex(script, r"clone_pinned .*\bmain\b")
 
-    def test_downstream_consumer_gate_uses_durable_build_storage(self) -> None:
+    def test_downstream_consumer_gate_separates_candidate_and_baselines(self) -> None:
         script = (
             OWNERSHIP_PATH.parents[2]
             / "scripts/check_nlp_wave_1_downstream_consumers.sh"
@@ -252,13 +252,25 @@ class CheckedReleaseManifestTests(unittest.TestCase):
         self.assertIn('"$CARGO_TARGET_DIR" = /*', script)
         self.assertIn('scratch_parent=$(dirname "$CARGO_TARGET_DIR")', script)
         self.assertIn(
-            'bun run --cwd "$repository_root/packages/text-core-wasm" build',
+            'cargo check --manifest-path "$scratch_root/native-whisperx/Cargo.toml" '
+            '-p native-whisperx --config "$patch_config"',
             script,
         )
         self.assertIn(
-            'bun run --cwd "$repository_root/packages/text-index-wasm" build',
+            'cargo check --manifest-path '
+            '"$scratch_root/media-similarity/backend/Cargo.toml" '
+            '--bin image-similarity-service',
             script,
         )
+        for issue in (124, 125, 127, 128):
+            self.assertIn(f"rust-packages#{issue}", script)
+        for product_source in (
+            "backend/src/workers/media/models.rs",
+            "youtube-corpus/src/asr.rs",
+            "document-search/src/wasm/textIndex.ts",
+            "packages/pipeline/src/pipeline/relate.rs",
+        ):
+            self.assertNotIn(product_source, script)
 
     def test_postpublication_consumer_is_registry_only(self) -> None:
         script = (
