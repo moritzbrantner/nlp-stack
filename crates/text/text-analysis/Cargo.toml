@@ -1,0 +1,48 @@
+[package]
+name = "moenarch-text-analysis"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Unified text analysis orchestration for video-analysis."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "text_analysis"
+
+[dependencies]
+runtime-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+text-core.workspace = true
+text-classification.workspace = true
+text-lexical.workspace = true
+text-linguistics.workspace = true
+text-embeddings.workspace = true
+text-index.workspace = true
+text-retrieval.workspace = true
+text-transcripts = { workspace = true, optional = true }
+model-runtime = { workspace = true, optional = true }
+[features]
+default = []
+candle = ["text-linguistics/candle", "text-embeddings/candle", "text-classification/candle"]
+cuda = ["candle", "text-embeddings/cuda", "text-linguistics/cuda"]
+model-bundles = ["dep:model-runtime", "model-runtime/jobs", "text-linguistics/model-bundles", "text-embeddings/model-bundles", "text-classification/model-bundles"]
+onnx = ["text-embeddings/onnx", "text-classification/onnx", "dep:model-runtime"]
+tokenizers = ["text-embeddings/tokenizers", "text-linguistics/tokenizers"]
+local-models = ["text-classification/local-models", "candle", "onnx", "model-bundles"]
+external-tests = ["local-models"]
+sqlite = ["text-index/sqlite"]
+transcripts = ["dep:text-transcripts"]
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "document_and_corpus"
+harness = false

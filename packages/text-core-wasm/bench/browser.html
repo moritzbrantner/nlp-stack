@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>text-core-wasm benchmark</title>
+  </head>
+  <body>
+    <script type="module">
+      import init, {
+        extractWordTexts,
+        segmentTextDocument,
+        splitSentences,
+      } from "../index.js";
+
+      const corpus = [
+        "Rust analyzes transcripts, captions, scene notes, and search snippets.",
+        "The tokenizer keeps urls like https://example.test/path, emails like team@example.test, hashtags such as #video, and mentions such as @operator useful for downstream retrieval.",
+        "",
+        "Browser clients call the same segmentation logic through WASM, so this corpus exercises sentence splitting, paragraph splitting, word normalization, punctuation handling, and span construction across repeated production-like text.",
+      ].join("\n").repeat(32);
+
+      await init();
+
+      function measure(name, iterations, task) {
+        for (let index = 0; index < 10; index += 1) {
+          task();
+        }
+
+        let outputCount = 0;
+        const start = performance.now();
+        for (let index = 0; index < iterations; index += 1) {
+          outputCount += task();
+        }
+        const totalMs = performance.now() - start;
+
+        return {
+          name,
+          iterations,
+          totalMs,
+          averageMs: totalMs / iterations,
+          opsPerSecond: (iterations / totalMs) * 1000,
+          outputCount,
+        };
+      }
+
+      globalThis.runTextCoreWasmBench = () => ({
+        corpusBytes: new TextEncoder().encode(corpus).byteLength,
+        userAgent: navigator.userAgent,
+        results: [
+          measure("extract_word_texts_15kb", 50, () => extractWordTexts(corpus).length),
+          measure("split_sentences_15kb", 50, () => splitSentences(corpus).length),
+          measure("segment_text_document_15kb", 20, () => {
+            const document = segmentTextDocument(corpus, true, false, true);
+            return document.paragraphs.length + document.sentences.length + document.tokens.length;
+          }),
+        ],
+      });
+    </script>
+  </body>
+</html>

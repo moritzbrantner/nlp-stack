@@ -1,0 +1,34 @@
+[package]
+name = "moenarch-text-index"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Durable local text indexing and hybrid search for video-analysis."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "text_index"
+
+[dependencies]
+runtime-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+text-core.workspace = true
+text-embeddings.workspace = true
+text-lexical.workspace = true
+thiserror.workspace = true
+vector-analysis-index.workspace = true
+rusqlite = { workspace = true, optional = true, features = ["bundled"] }
+
+[features]
+default = []
+sqlite = ["dep:rusqlite"]
+
+[dev-dependencies]
+tempfile.workspace = true

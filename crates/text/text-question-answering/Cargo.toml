@@ -1,0 +1,36 @@
+[package]
+name = "moenarch-text-question-answering"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Concrete extractive question-answering contracts and fallback postprocessing."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "text_question_answering"
+
+[dependencies]
+media-core.workspace = true
+runtime-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+text-embeddings.workspace = true
+text-index.workspace = true
+text-lexical.workspace = true
+text-model-runtime.workspace = true
+text-retrieval.workspace = true
+model-runtime = { workspace = true, optional = true }
+
+[features]
+default = []
+local-onnx = ["text-model-runtime/local-onnx", "dep:model-runtime"]
+external-tests = ["local-onnx"]
+
+[dev-dependencies]
+runtime-onnx.workspace = true

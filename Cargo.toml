@@ -1,0 +1,58 @@
+[workspace]
+members = [
+    "crates/text/*",
+    "crates/bindings/text-*-wasm",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+rust-version = "1.95"
+repository = "https://github.com/moritzbrantner/nlp-stack"
+homepage = "https://github.com/moritzbrantner/nlp-stack"
+documentation = "https://docs.rs/moenarch-nlp-stack"
+keywords = ["text", "nlp", "language", "analysis", "retrieval"]
+categories = ["text-processing", "science", "algorithms"]
+
+[workspace.dependencies]
+candle-core = "0.10.2"
+candle-nn = "0.10.2"
+candle-transformers = "0.10.2"
+clap = { version = "4.5.51", features = ["derive"] }
+criterion = "0.5.1"
+rusqlite = "0.32.1"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+tempfile = "3.23.0"
+thiserror = "2.0.17"
+tokenizers = { version = "0.22.2", default-features = false, features = ["unstable_wasm"] }
+unicode-normalization = "0.1.24"
+unicode-segmentation = "1.12.0"
+
+# Published foundation dependencies. Local co-development uses uncommitted
+# Cargo patches; committed manifests resolve only immutable registry versions.
+data-inversion-core = { package = "moenarch-data-inversion-core", version = "=0.1.1" }
+jobs-core = { package = "moenarch-jobs-core", version = "=0.1.2" }
+math-sparse-data = { package = "moenarch-math-sparse-data", version = "=0.1.1" }
+media-core = { package = "moenarch-media-core", version = "=0.1.0" }
+model-runtime = { package = "moenarch-model-runtime", version = "=0.1.1" }
+runtime-core = { package = "moenarch-runtime-core", version = "=0.2.1" }
+runtime-onnx = { package = "moenarch-runtime-onnx", version = "=0.1.1" }
+vector-analysis-core = { package = "moenarch-vector-analysis-core", version = "=0.1.1" }
+vector-analysis-index = { package = "moenarch-vector-analysis-index", version = "=0.1.1" }
+
+text-analysis = { package = "moenarch-text-analysis", version = "0.1.0", path = "crates/text/text-analysis" }
+text-classification = { package = "moenarch-text-classification", version = "0.1.0", path = "crates/text/text-classification" }
+text-core = { package = "moenarch-text-core", version = "0.1.0", path = "crates/text/text-core" }
+text-embeddings = { package = "moenarch-text-embeddings", version = "0.1.0", path = "crates/text/text-embeddings" }
+text-generation = { package = "moenarch-text-generation", version = "0.1.0", path = "crates/text/text-generation" }
+text-generation-linguistics = { package = "moenarch-text-generation-linguistics", version = "0.1.0", path = "crates/text/text-generation-linguistics" }
+text-index = { package = "moenarch-text-index", version = "0.1.0", path = "crates/text/text-index" }
+text-lexical = { package = "moenarch-text-lexical", version = "0.1.0", path = "crates/text/text-lexical" }
+text-linguistics = { package = "moenarch-text-linguistics", version = "0.1.0", path = "crates/text/text-linguistics" }
+text-model-runtime = { package = "moenarch-text-model-runtime", version = "0.1.0", path = "crates/text/text-model-runtime" }
+text-question-answering = { package = "moenarch-text-question-answering", version = "0.1.0", path = "crates/text/text-question-answering" }
+text-retrieval = { package = "moenarch-text-retrieval", version = "0.1.0", path = "crates/text/text-retrieval" }
+text-transcripts = { package = "moenarch-text-transcripts", version = "0.1.1", path = "crates/text/text-transcripts" }

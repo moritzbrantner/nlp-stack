@@ -1,0 +1,13 @@
+{
+  "name": "@moritzbrantner/text-index-wasm",
+  "version": "0.1.0",
+  "description": "WASM package for moritzbrantner-text-index.",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "private": true,
+  "scripts": {
+    "build": "bash scripts/build-wasm.sh",
+    "test": "bun run build && bun test tests"
+  }
+}

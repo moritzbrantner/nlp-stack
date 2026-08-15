@@ -1,0 +1,26 @@
+[package]
+name = "moenarch-text-generation-linguistics-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "HTTP API adapter for the text-generation-linguistics library crate."
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+default-run = "text-generation-linguistics-server"
+
+[lib]
+name = "text_generation_linguistics_server"
+
+[[bin]]
+name = "text-generation-linguistics-server"
+path = "src/main.rs"
+
+[dependencies]
+runtime-core.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+text-generation-linguistics = { package = "moenarch-text-generation-linguistics", version = "0.1.0", path = "../text-generation-linguistics" }

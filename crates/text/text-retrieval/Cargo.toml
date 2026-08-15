@@ -1,0 +1,43 @@
+[package]
+name = "moenarch-text-retrieval"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Library-first semantic and hybrid retrieval for video-analysis."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "text_retrieval"
+
+[dependencies]
+runtime-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+text-core.workspace = true
+text-embeddings.workspace = true
+text-index.workspace = true
+text-lexical.workspace = true
+text-model-runtime.workspace = true
+text-transcripts = { workspace = true, optional = true }
+thiserror.workspace = true
+vector-analysis-index.workspace = true
+
+[features]
+default = []
+sqlite = ["text-index/sqlite"]
+transcripts = ["dep:text-transcripts"]
+
+[dev-dependencies]
+criterion.workspace = true
+tempfile.workspace = true
+text-embeddings.workspace = true
+
+[[bench]]
+name = "retrieval_index"
+harness = false

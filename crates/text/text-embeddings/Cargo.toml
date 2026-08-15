@@ -1,0 +1,48 @@
+[package]
+name = "moenarch-text-embeddings"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Lightweight semantic text embeddings and search for video-analysis."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "text_embeddings"
+
+[dependencies]
+runtime-core.workspace = true
+candle-core = { workspace = true, optional = true }
+candle-nn = { workspace = true, optional = true }
+candle-transformers = { workspace = true, optional = true }
+math-sparse-data.workspace = true
+runtime-onnx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+text-core.workspace = true
+text-lexical.workspace = true
+text-model-runtime.workspace = true
+tokenizers = { workspace = true, optional = true }
+vector-analysis-core.workspace = true
+vector-analysis-index.workspace = true
+model-runtime = { workspace = true, optional = true }
+[features]
+default = []
+model-bundles = ["dep:model-runtime", "tokenizers", "text-model-runtime/model-bundles"]
+tokenizers = ["dep:tokenizers", "text-model-runtime/tokenizers"]
+onnx = ["tokenizers", "model-bundles", "runtime-onnx/onnxruntime", "text-model-runtime/onnx"]
+candle = ["tokenizers", "dep:candle-core", "dep:candle-nn", "dep:candle-transformers", "text-model-runtime/candle"]
+cuda = ["candle", "text-model-runtime/cuda", "candle-core/cuda"]
+external-tests = ["onnx", "candle", "model-bundles"]
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "semantic_index"
+harness = false

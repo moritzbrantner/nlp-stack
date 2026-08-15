@@ -1,0 +1,29 @@
+[package]
+name = "moenarch-text-model-runtime-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "HTTP API adapter for the text-model-runtime library crate."
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+default-run = "text-model-runtime-server"
+
+[lib]
+name = "text_model_runtime_server"
+
+[[bin]]
+name = "text-model-runtime-server"
+path = "src/main.rs"
+
+[dependencies]
+runtime-core.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+text-model-runtime = { package = "moenarch-text-model-runtime", version = "0.1.0", path = "../text-model-runtime", features = ["candle"] }
+[features]
+default = []
+cuda = ["text-model-runtime/cuda"]

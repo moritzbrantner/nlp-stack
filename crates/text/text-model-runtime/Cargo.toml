@@ -1,0 +1,38 @@
+[package]
+name = "moenarch-text-model-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Shared tokenizer and native text model runtime traits for video-analysis."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "text_model_runtime"
+
+[dependencies]
+media-core.workspace = true
+runtime-core.workspace = true
+candle-core = { workspace = true, optional = true }
+candle-nn = { workspace = true, optional = true }
+candle-transformers = { workspace = true, optional = true }
+runtime-onnx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokenizers = { workspace = true, optional = true }
+jobs-core = { workspace = true, optional = true }
+model-runtime = { workspace = true, optional = true, features = ["jobs"] }
+[features]
+default = []
+model-bundles = ["dep:jobs-core", "dep:model-runtime"]
+tokenizers = ["dep:tokenizers"]
+onnx = ["tokenizers", "runtime-onnx/onnxruntime"]
+local-onnx = ["onnx", "model-bundles"]
+candle = ["tokenizers", "dep:candle-core", "dep:candle-nn", "dep:candle-transformers"]
+cuda = ["candle", "candle-core/cuda"]
+external-tests = ["onnx", "candle", "model-bundles"]
