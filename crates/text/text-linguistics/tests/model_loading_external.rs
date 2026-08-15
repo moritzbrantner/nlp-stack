@@ -21,6 +21,6 @@ fn bert_base_ner_reports_loadability() {
         .smoke_operation("linguistics.entities"),
     );
 
-    assert_eq!(report.supported, true);
+    assert!(report.supported);
     assert_eq!(report.loadable, report.bundle_present());
 }

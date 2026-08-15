@@ -1643,7 +1643,7 @@ fn f32s_to_le_blob(values: &[f32]) -> Vec<u8> {
 
 #[cfg(feature = "sqlite")]
 fn f32s_from_le_blob(blob: &[u8]) -> Result<Vec<f32>> {
-    if blob.len() % 4 != 0 {
+    if !blob.len().is_multiple_of(4) {
         return Err(TextIndexError::InvalidState(
             "vector blob length is not a multiple of four".to_string(),
         ));

@@ -14,11 +14,12 @@ rewritten or filtered.
 
 The 52 Cargo directories and 27 Bun package directories named by the source
 records in `docs/repository-split/package-ownership.json` were copied from the
-exact extraction commit. Rust crate trees remain byte-identical except for two
-verification-only test repairs required by strict Rust 1.95 Clippy: one boolean
-assertion uses `assert!`, and one model-bundle test reads the supported revision
-accessor instead of its deprecated compatibility field. The npm/WASM wrappers
-remain byte-identical. The 13 app trees differ only where their unpublished
+exact extraction commit. Rust crate trees remain byte-identical except for four
+strict Rust 1.95 Clippy repairs: two boolean test assertions use `assert!`, one
+model-bundle test reads the supported revision accessor instead of its
+deprecated compatibility field, and one length divisibility guard uses
+`is_multiple_of`. These preserve behavior and public APIs. The npm/WASM
+wrappers remain byte-identical. The 13 app trees differ only where their unpublished
 `@moritzbrantner/video-analysis-ui` workspace dependency and source aliases were
 retargeted to the private focused adapter.
 
