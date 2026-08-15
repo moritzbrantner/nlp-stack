@@ -383,6 +383,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-transcripts-server/Cargo.toml"
 dependencies = ["moenarch-text-transcripts"]
 tag = "moenarch-text-transcripts-server-v0.1.1"
+published_checksum = "d01936772bc7f0778a0e6961e7e53f7a5e49f01d661341f544308498332b82a4"
 
 [[packages]]
 name = "moenarch-text-transcripts-wasm"
@@ -391,6 +392,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/bindings/text-transcripts-wasm/Cargo.toml"
 dependencies = ["moenarch-text-transcripts"]
 tag = "moenarch-text-transcripts-wasm-v0.1.1"
+published_checksum = "9a3261e70f5326e0d485429ff193a72738b4a1279aa81aa238df6fdc69b87b9f"
 
 [[packages]]
 name = "moenarch-text-classification-cli"
@@ -399,6 +401,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-classification-cli/Cargo.toml"
 dependencies = ["moenarch-text-classification"]
 tag = "moenarch-text-classification-cli-v0.1.1"
+published_checksum = "32991eeb9390863a74307e3ab5e0f4d18e0f6e715a5e117c22ed4a99eea1dc2f"
 
 [[packages]]
 name = "moenarch-text-classification-server"
@@ -407,6 +410,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/text/text-classification-server/Cargo.toml"
 dependencies = ["moenarch-text-classification"]
 tag = "moenarch-text-classification-server-v0.1.1"
+published_checksum = "f7f77e1d922134aa5caa44a68b9331bfce122353592b71035545adfff6f6412e"
 
 [[packages]]
 name = "moenarch-text-classification-wasm"
@@ -415,6 +419,7 @@ owner = "moritzbrantner/nlp-stack"
 manifest_path = "crates/bindings/text-classification-wasm/Cargo.toml"
 dependencies = ["moenarch-text-classification"]
 tag = "moenarch-text-classification-wasm-v0.1.1"
+published_checksum = "1bcae9278a6cc50a765500c1ddcff4fc355fa19d3854f744b47a0ca7409f4a28"
 
 [[packages]]
 name = "moenarch-text-embeddings-cli"
