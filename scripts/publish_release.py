@@ -84,7 +84,7 @@ class Effects(Protocol):
     def registry_version(self, name: str, version: str) -> dict[str, Any] | None: ...
     def verify(self, command: str) -> None: ...
     def package(self, name: str, version: str, patches: Mapping[str, str]) -> str: ...
-    def upload_checksum(self, name: str, version: str) -> str: ...
+    def published_archive_checksum(self, name: str, version: str) -> str: ...
     def publish(self, name: str) -> None: ...
     def wait_for_registry(self) -> None: ...
     def local_tag_target(self, tag: str) -> str | None: ...
@@ -253,11 +253,9 @@ class CommandEffects:
         except OSError as error:
             raise ReleaseError(f"cannot checksum packaged archive {archive}: {error}") from error
 
-    def upload_checksum(self, name: str, version: str) -> str:
-        self._run(
-            ["cargo", "package", "-p", name, "--locked", "--registry", "crates-io"],
-            capture=False,
-        )
+    def published_archive_checksum(self, name: str, version: str) -> str:
+        """Checksum the exact archive left behind by the completed Cargo publish."""
+
         configured_target = Path(os.environ.get("CARGO_TARGET_DIR", "target"))
         target = (
             configured_target
@@ -268,7 +266,9 @@ class CommandEffects:
         try:
             return hashlib.sha256(archive.read_bytes()).hexdigest()
         except OSError as error:
-            raise ReleaseError(f"cannot checksum upload archive {archive}: {error}") from error
+            raise ReleaseError(
+                f"cannot checksum published archive {archive}: {error}"
+            ) from error
 
     def publish(self, name: str) -> None:
         self._run(
@@ -973,9 +973,10 @@ def run_release(
     for command in manifest["required_consumer_checks"]:
         effects.verify(command)
 
-    # Package and checksum every candidate before the first publishing side effect.
-    # These patched archives prove the complete candidate closure. Cargo's upload
-    # archive is checksummed separately, after its registry dependencies exist.
+    # Package every candidate before the first publishing side effect. These
+    # patched archives prove the complete candidate closure. Cargo creates the
+    # exact upload archive during `cargo publish`; checksum that resulting file,
+    # never a separately generated package archive.
     patches = {
         package["name"]: str(
             _inside(root, package["manifest_path"], "package manifest").parent
@@ -988,11 +989,8 @@ def run_release(
             for prerequisite in prerequisites
         }
     )
-    candidate_checksums: list[str] = []
     for package in packages:
-        candidate_checksums.append(
-            effects.package(package["name"], package["version"], patches)
-        )
+        effects.package(package["name"], package["version"], patches)
     _revalidate_exact_checkout(
         root,
         effects,
@@ -1007,21 +1005,17 @@ def run_release(
         if record is None:
             continue
         pinned = package.get("published_checksum")
-        checksums[index] = (
-            pinned
-            if isinstance(pinned, str)
-            else effects.upload_checksum(package["name"], package["version"])
-        )
+        if not isinstance(pinned, str):
+            raise ReleaseError(
+                f"{package['name']}: registry-visible version requires "
+                "published_checksum in the release manifest"
+            )
+        checksums[index] = pinned
     present = _registry_prefix(effects, packages, checksums)
 
     package_results: list[dict[str, str]] = []
     for index, package in enumerate(packages):
         status = "registry-verified"
-        if present[index] and not checksums[index]:
-            checksums[index] = effects.upload_checksum(
-                package["name"], package["version"]
-            )
-            present = _registry_prefix(effects, packages, checksums)
         if not present[index]:
             _revalidate_authority(
                 root,
@@ -1033,36 +1027,15 @@ def run_release(
                 manifest_path,
                 manifest_digest,
             )
-            # Close the authority-refresh window before the one-shot publish.
-            present = _registry_prefix(effects, packages, checksums)
-            if present[index]:
-                checksums[index] = effects.upload_checksum(
-                    package["name"], package["version"]
+            record = effects.registry_version(package["name"], package["version"])
+            if record is not None:
+                _validate_registry_record(
+                    record, package["name"], package["version"]
                 )
-                _registry_prefix(effects, packages, checksums)
-                package_results.append(
-                    {"name": package["name"], "status": "registry-verified"}
+                raise ReleaseError(
+                    f"{package['name']}: registry version appeared before publish; "
+                    "pin its published_checksum in the release manifest and resume"
                 )
-                continue
-            _revalidate_authority(
-                root,
-                effects,
-                repository,
-                issue_number,
-                head,
-                control_source_sha,
-                manifest_path,
-                manifest_digest,
-            )
-            checksums[index] = effects.upload_checksum(
-                package["name"], package["version"]
-            )
-            present = _registry_prefix(effects, packages, checksums)
-            if present[index]:
-                package_results.append(
-                    {"name": package["name"], "status": "registry-verified"}
-                )
-                continue
             _revalidate_authority(
                 root,
                 effects,
@@ -1086,13 +1059,22 @@ def run_release(
                     manifest_path,
                     manifest_digest,
                 )
-                if _registry_prefix(effects, packages, checksums)[index]:
-                    present[index] = True
-                    package_results.append(
-                        {"name": package["name"], "status": "registry-verified"}
+                record = effects.registry_version(
+                    package["name"], package["version"]
+                )
+                if record is not None:
+                    _validate_registry_record(
+                        record, package["name"], package["version"]
                     )
-                    continue
+                    raise ReleaseError(
+                        f"{package['name']}: registry version appeared after an "
+                        "ambiguous publish failure; pin its published_checksum in "
+                        "the release manifest and resume"
+                    ) from error
                 raise _effect_failure(f"publish {package['name']}", error) from error
+            checksums[index] = effects.published_archive_checksum(
+                package["name"], package["version"]
+            )
             record = None
             for _ in range(12):
                 record = effects.registry_version(package["name"], package["version"])
@@ -1101,7 +1083,7 @@ def run_release(
                         record,
                         package["name"],
                         package["version"],
-                        _expected_checksum(package, checksums[index]),
+                        checksums[index],
                     )
                     break
                 effects.wait_for_registry()
