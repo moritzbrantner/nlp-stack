@@ -1,0 +1,36 @@
+[package]
+name = "moenarch-text-classification"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Concrete text classification, sentiment, and zero-shot classification contracts."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "text_classification"
+
+[dependencies]
+runtime-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+text-core.workspace = true
+text-lexical.workspace = true
+text-model-runtime.workspace = true
+model-runtime = { workspace = true, optional = true }
+
+[features]
+default = []
+model-bundles = ["dep:model-runtime", "text-model-runtime/model-bundles"]
+candle = ["model-bundles", "text-model-runtime/candle"]
+onnx = ["model-bundles", "text-model-runtime/onnx"]
+local-models = ["candle", "onnx"]
+external-tests = ["local-models"]
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -1,0 +1,30 @@
+[package]
+name = "moenarch-text-lexical"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Lexical text features, corpus statistics, TF-IDF, and BM25 for video-analysis."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "text_lexical"
+
+[dependencies]
+runtime-core.workspace = true
+serde_json.workspace = true
+math-sparse-data.workspace = true
+serde.workspace = true
+text-core.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "lexical_corpus"
+harness = false

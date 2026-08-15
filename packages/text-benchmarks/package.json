@@ -1,0 +1,12 @@
+{
+  "name": "@moritzbrantner/text-benchmarks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench:browser": "bun bench/browser.mjs"
+  },
+  "devDependencies": {
+    "playwright": "latest"
+  }
+}

@@ -1,0 +1,47 @@
+[package]
+name = "moenarch-text-linguistics"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Local model-backed linguistic analysis pipeline for video-analysis."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "text_linguistics"
+
+[dependencies]
+runtime-core.workspace = true
+candle-core = { workspace = true, optional = true }
+candle-nn = { workspace = true, optional = true }
+candle-transformers = { workspace = true, optional = true }
+jobs-core = { workspace = true, optional = true }
+serde.workspace = true
+serde_json.workspace = true
+text-core.workspace = true
+text-lexical.workspace = true
+text-model-runtime.workspace = true
+text-transcripts = { workspace = true, optional = true }
+tokenizers = { workspace = true, optional = true }
+model-runtime = { workspace = true, optional = true, features = ["jobs"] }
+[features]
+default = []
+tokenizers = ["dep:tokenizers", "text-model-runtime/tokenizers"]
+transcripts = ["dep:text-transcripts"]
+model-bundles = ["dep:jobs-core", "dep:model-runtime", "text-model-runtime/model-bundles"]
+candle = ["tokenizers", "dep:candle-core", "dep:candle-nn", "dep:candle-transformers", "text-model-runtime/candle"]
+cuda = ["candle", "text-model-runtime/cuda", "candle-core/cuda"]
+external-tests = ["candle", "model-bundles"]
+
+[dev-dependencies]
+criterion.workspace = true
+tempfile.workspace = true
+
+[[bench]]
+name = "pipeline"
+harness = false

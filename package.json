@@ -1,0 +1,25 @@
+{
+  "name": "@moritzbrantner/nlp-stack-workspace",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.14",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "cargo test --workspace --all-features && bun run nlp-app-ui:test && bun run text-wasm:test:all",
+    "lint": "cargo clippy --workspace --all-targets --all-features -- -D warnings && bun run nlp-app-ui:typecheck && bun run text-app:typecheck",
+    "format": "cargo fmt --all",
+    "format:check": "cargo fmt --all --check",
+    "build": "cargo build --workspace --all-features && bun run nlp-app-ui:build && bun run text-app:build",
+    "check": "scripts/check.sh",
+    "preflight": "scripts/check-preflight.sh",
+    "nlp-app-ui:build": "bun run --cwd packages/nlp-app-ui build",
+    "nlp-app-ui:typecheck": "bun run --cwd packages/nlp-app-ui typecheck",
+    "nlp-app-ui:test": "bun run --cwd packages/nlp-app-ui test",
+    "text-app:build": "bash -lc 'set -euo pipefail; bun run nlp-app-ui:build; bun run text-wasm:build:all; for package in packages/text-*-app; do bun run --cwd \"$package\" build; done'",
+    "text-app:typecheck": "bash -lc 'set -euo pipefail; for package in packages/text-*-app; do bun run --cwd \"$package\" typecheck; done'",
+    "text-wasm:build:all": "bash -lc 'set -euo pipefail; for package in packages/text-*-wasm; do bun run --cwd \"$package\" build; done'",
+    "text-wasm:test:all": "bash -lc 'set -euo pipefail; for package in packages/text-*-wasm; do bun run --cwd \"$package\" test; done'"
+  }
+}

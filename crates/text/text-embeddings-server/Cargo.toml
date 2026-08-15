@@ -1,0 +1,30 @@
+[package]
+name = "moenarch-text-embeddings-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "HTTP API adapter for the text-embeddings library crate."
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+default-run = "text-embeddings-server"
+
+[lib]
+name = "text_embeddings_server"
+
+[[bin]]
+name = "text-embeddings-server"
+path = "src/main.rs"
+
+[dependencies]
+runtime-core.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+text-embeddings = { package = "moenarch-text-embeddings", version = "0.1.0", path = "../text-embeddings" }
+text-model-runtime = { package = "moenarch-text-model-runtime", version = "0.1.0", path = "../text-model-runtime", features = ["candle"] }
+[features]
+default = []
+cuda = ["text-embeddings/cuda", "text-model-runtime/cuda"]

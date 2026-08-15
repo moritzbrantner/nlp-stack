@@ -1,0 +1,18 @@
+[package]
+name = "text-generation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Deterministic text synthesis from terms and events for video-analysis."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+data-inversion-core.workspace = true
+text-core.workspace = true
+text-linguistics.workspace = true

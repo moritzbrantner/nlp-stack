@@ -1,0 +1,25 @@
+[package]
+name = "moenarch-text-generation-linguistics"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Adapters from text-linguistics analysis outputs into text-generation."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "text_generation_linguistics"
+
+[dependencies]
+runtime-core.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+data-inversion-core.workspace = true
+text-core.workspace = true
+text-generation.workspace = true
+text-linguistics.workspace = true

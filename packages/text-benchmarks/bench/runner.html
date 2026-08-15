@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>text wasm benchmarks</title>
+  </head>
+  <body>
+    <script type="module">
+      function countAtPath(value, path) {
+        let cursor = value;
+        for (const segment of path ?? []) {
+          if (!cursor || typeof cursor !== "object") return null;
+          cursor = cursor[segment];
+        }
+        if (Array.isArray(cursor)) return cursor.length;
+        if (cursor && typeof cursor === "object") return Object.keys(cursor).length;
+        if (typeof cursor === "string") return cursor.length;
+        return null;
+      }
+
+      async function runScenario(scenario) {
+        try {
+          const module = await import(`/${scenario.packageDir}/index.js`);
+          if (typeof module.init === "function") {
+            await module.init();
+          }
+          for (let index = 0; index < 3; index += 1) {
+            await module.runOperation({ operation: scenario.operation, input: scenario.input });
+          }
+          let lastValue = null;
+          const start = performance.now();
+          for (let index = 0; index < scenario.iterations; index += 1) {
+            const response = await module.runOperation({ operation: scenario.operation, input: scenario.input });
+            lastValue = response.value;
+          }
+          const totalMs = performance.now() - start;
+          return {
+            ...scenario,
+            totalMs,
+            averageMs: totalMs / scenario.iterations,
+            opsPerSecond: (scenario.iterations / totalMs) * 1000,
+            outputCount: countAtPath(lastValue, scenario.outputCountPath),
+            status: "ok",
+          };
+        } catch (error) {
+          return {
+            ...scenario,
+            status: "error",
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
+      }
+
+      globalThis.runTextWasmBench = async (scenarios) => ({
+        userAgent: navigator.userAgent,
+        entries: await Promise.all(scenarios.map(runScenario)),
+      });
+    </script>
+  </body>
+</html>

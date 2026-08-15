@@ -1,0 +1,26 @@
+[package]
+name = "moenarch-text-classification-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Command-line adapter for the text-classification library crate."
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+default-run = "text-classification-cli"
+
+[lib]
+name = "text_classification_cli"
+
+[[bin]]
+name = "text-classification-cli"
+path = "src/main.rs"
+
+[dependencies]
+runtime-core.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+text-classification = { package = "moenarch-text-classification", version = "0.1.0", path = "../text-classification" }
