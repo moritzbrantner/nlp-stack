@@ -44,6 +44,9 @@ ROOT_FIELDS = {
     "required_consumer_checks",
 }
 CONTROL_REPAIR_SCRIPT_PATHS = {
+    ".harness/invariants.md",
+    "docs/AGENT_DRIVEN_RELEASES.md",
+    "docs/RELEASE_CHECKLIST.md",
     "scripts/check_nlp_wave_1_downstream_consumers.sh",
     "scripts/check_release_plan.py",
     "scripts/publish_release.py",

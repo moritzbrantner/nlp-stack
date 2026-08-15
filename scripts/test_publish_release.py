@@ -480,6 +480,9 @@ class PublishReleaseTests(unittest.TestCase):
             }
             effects.changed_paths = lambda source, head: (
                 [
+                    ".harness/invariants.md",
+                    "docs/AGENT_DRIVEN_RELEASES.md",
+                    "docs/RELEASE_CHECKLIST.md",
                     "releases/release.toml",
                     "scripts/check_nlp_wave_1_downstream_consumers.sh",
                     "scripts/check_release_plan.py",
