@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import io
 import json
 import subprocess
 import tempfile
@@ -1268,6 +1269,63 @@ class PublishReleaseTests(unittest.TestCase):
                 if command[:3] == ["gh", "release", "create"]
             )
             self.assertIn("--verify-tag", release_command)
+
+    def test_registry_query_honors_rate_limit_retry_after(self) -> None:
+        response = io.BytesIO(
+            json.dumps(
+                {"version": registry_record("foundation-a", "1.0.0")}
+            ).encode()
+        )
+        rate_limited = publish_release.urllib.error.HTTPError(
+            "https://crates.io/api/v1/crates/foundation-a/1.0.0",
+            429,
+            "rate limited",
+            {"Retry-After": "3"},
+            None,
+        )
+        with (
+            tempfile.TemporaryDirectory() as temp,
+            mock.patch.object(
+                publish_release.urllib.request,
+                "urlopen",
+                side_effect=[rate_limited, response],
+            ),
+            mock.patch.object(publish_release.time, "sleep") as sleep,
+        ):
+            record = publish_release.CommandEffects(Path(temp)).registry_version(
+                "foundation-a", "1.0.0"
+            )
+
+        self.assertEqual(record, registry_record("foundation-a", "1.0.0"))
+        sleep.assert_called_once_with(3.0)
+
+    def test_registry_query_uses_bounded_backoff_without_retry_after(self) -> None:
+        rate_limited = publish_release.urllib.error.HTTPError(
+            "https://crates.io/api/v1/crates/foundation-a/1.0.0",
+            429,
+            "rate limited",
+            {},
+            None,
+        )
+        response = io.BytesIO(
+            json.dumps(
+                {"version": registry_record("foundation-a", "1.0.0")}
+            ).encode()
+        )
+        with (
+            tempfile.TemporaryDirectory() as temp,
+            mock.patch.object(
+                publish_release.urllib.request,
+                "urlopen",
+                side_effect=[rate_limited, response],
+            ),
+            mock.patch.object(publish_release.time, "sleep") as sleep,
+        ):
+            publish_release.CommandEffects(Path(temp)).registry_version(
+                "foundation-a", "1.0.0"
+            )
+
+        sleep.assert_called_once_with(1)
 
     def test_cargo_effects_pin_package_and_publish_to_crates_io(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

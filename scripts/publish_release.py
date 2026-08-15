@@ -50,6 +50,8 @@ CONTROL_REPAIR_SCRIPT_PATHS = {
     "scripts/test_check_release_plan.py",
     "scripts/test_publish_release.py",
 }
+REGISTRY_QUERY_ATTEMPTS = 8
+REGISTRY_QUERY_MAX_BACKOFF_SECONDS = 60.0
 PACKAGE_FIELDS = {
     "name",
     "version",
@@ -186,15 +188,28 @@ class CommandEffects:
             f"https://crates.io/api/v1/crates/{encoded_name}/{encoded_version}",
             headers={"User-Agent": "moenarch-nlp-stack-release-control/1"},
         )
-        try:
-            with urllib.request.urlopen(request, timeout=30) as response:
-                payload = json.load(response)
-        except urllib.error.HTTPError as error:
-            if error.code == 404:
-                return None
-            raise ReleaseError(f"crates.io query failed with HTTP {error.code}") from error
-        except (OSError, ValueError) as error:
-            raise ReleaseError(f"crates.io query failed: {error}") from error
+        for attempt in range(REGISTRY_QUERY_ATTEMPTS):
+            try:
+                with urllib.request.urlopen(request, timeout=30) as response:
+                    payload = json.load(response)
+                break
+            except urllib.error.HTTPError as error:
+                if error.code == 404:
+                    return None
+                if error.code != 429 or attempt == REGISTRY_QUERY_ATTEMPTS - 1:
+                    raise ReleaseError(
+                        f"crates.io query failed with HTTP {error.code}"
+                    ) from error
+                retry_after = error.headers.get("Retry-After")
+                try:
+                    delay = float(retry_after) if retry_after is not None else 0.0
+                except ValueError:
+                    delay = 0.0
+                if delay <= 0:
+                    delay = min(2**attempt, REGISTRY_QUERY_MAX_BACKOFF_SECONDS)
+                time.sleep(min(delay, REGISTRY_QUERY_MAX_BACKOFF_SECONDS))
+            except (OSError, ValueError) as error:
+                raise ReleaseError(f"crates.io query failed: {error}") from error
         record = payload.get("version")
         if not isinstance(record, dict):
             raise ReleaseError("crates.io returned an invalid version record")
