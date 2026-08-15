@@ -78,6 +78,15 @@ class ReleasePlanTests(unittest.TestCase):
         self.assertIn("bun install --frozen-lockfile", self.plan["required_checks"])
         self.assertIn("bun run text-wasm:test:all", self.plan["required_checks"])
         self.assertIn("bun run text-app:build", self.plan["required_checks"])
+        agent_checks = tomllib.loads(
+            (OWNERSHIP_PATH.parents[2] / ".agent-loop.toml").read_text(
+                encoding="utf-8"
+            )
+        )["verification"]["commands"]
+        self.assertIn(
+            "python3 scripts/check_release_plan.py --check releases/nlp-wave-1.toml",
+            agent_checks,
+        )
 
     def test_real_internal_dependency_cannot_be_deleted(self) -> None:
         plan = copy.deepcopy(self.plan)

@@ -2,7 +2,7 @@
 
 ## INV-001 — The reviewed Rust surface remains independently usable
 
-- Requirement: Exactly 52 reviewed Cargo packages build, test, document, and package from this checkout at their source names and versions.
+- Requirement: Exactly 52 reviewed Cargo packages build, test, document, and package from this checkout at their source names and exact release-manifest versions.
 - Forbidden behavior: omitted packages, unreviewed packages, broken public behavior, or dependence on another checkout.
 - Authority/source: repo:docs/repository-split/package-ownership.json
 - Affected surfaces: Cargo.toml, Cargo.lock, crates/**
@@ -24,16 +24,16 @@
 - Sensitivity: optional
 - Risk dimensions: security=covered:INV-002; recovery=covered:INV-003; persistence=not-applicable:no-storage-migration; concurrency=not-applicable:no-concurrency-contract-change; migration=covered:INV-002; partial-failure=covered:INV-003; operational=covered:INV-004
 
-## INV-003 — Bootstrap cannot authorize Cargo, npm, or source removal
+## INV-003 — Publication is exact, receipt-gated, and recoverable
 
-- Requirement: Every package remains at its source version with publish=false, no tags, and no release issue; npm/WASM ownership remains separately gated.
-- Forbidden behavior: implicit publication, version bump, tag, release, consumer migration, or source removal.
-- Authority/source: repo:docs/repository-split/release-plan.json
-- Affected surfaces: docs/repository-split/**, docs/AGENT_DRIVEN_RELEASES.md, docs/RELEASE_CHECKLIST.md
-- Linked tests: repo:scripts/test_check_release_plan.py
-- Compatibility promise: rust-packages remains active source/release owner until later gates complete.
-- Required evidence: contract
-- Sensitivity: optional
+- Requirement: Cargo publication uses only destination issue #2, the checked `releases/nlp-wave-1.toml`, its exact source/control commits, a current independent review, a passing exact-head Agent Loop receipt, and `release:approved`.
+- Forbidden behavior: implicit or npm publication, undeclared packages or versions, mutable dependency sources, tags before registry verification, republishing an existing version, automatic yanks, source removal, or product-logic changes in downstream consumers.
+- Authority/source: repo:releases/nlp-wave-1.toml
+- Affected surfaces: .agent-loop.toml, releases/**, scripts/publish_release.py, scripts/check_release_plan.py, docs/AGENT_DRIVEN_RELEASES.md, docs/RELEASE_CHECKLIST.md
+- Linked tests: repo:scripts/test_publish_release.py, repo:scripts/test_check_release_plan.py
+- Compatibility promise: npm packages and rust-packages source remain unchanged; a partial Cargo wave preserves its published prefix and resumes at the first absent package.
+- Required evidence: contract, behavioral, integration
+- Sensitivity: required
 - Risk dimensions: security=covered:INV-002; recovery=covered:INV-003; persistence=not-applicable:no-state-migration; concurrency=not-applicable:no-concurrent-release; migration=covered:INV-003; partial-failure=covered:INV-003; operational=covered:INV-003
 
 ## INV-004 — Focused app and WASM package surfaces remain compatible
