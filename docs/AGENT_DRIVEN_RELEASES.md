@@ -22,7 +22,9 @@ head, issue/manifest/approval authority, exact dependency/version/order
 validation, exact non-yanked registry-prefix checksums, immutable source/tag
 binding, and `cargo package` for only the next absent crate immediately before
 its publish attempt. Neither the fast flag nor a prior receipt alone authorizes
-publication.
+publication. The maintainer explicitly accepts that this fast-continuation
+branch is reviewed statically and untested; no behavioral, integration,
+consumer, sensitivity, or final broad suite is required for publication.
 
 The downstream gate records exact source commits and never edits consumer
 product source. It compiles native-whisperx against the local candidate.

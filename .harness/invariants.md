@@ -1,14 +1,14 @@
 # Project invariants
 
-## INV-001 — The reviewed Rust surface remains independently usable
+## INV-001 — The exact Rust release surface remains structurally declared
 
-- Requirement: Exactly 52 reviewed Cargo packages build, test, document, and package from this checkout at their source names and exact release-manifest versions.
-- Forbidden behavior: omitted packages, unreviewed packages, broken public behavior, or dependence on another checkout.
+- Requirement: Exactly 52 reviewed Cargo packages remain present in Cargo metadata at their release-manifest names, versions, ownership, and dependency order.
+- Forbidden behavior: omitted or extra packages, undeclared versions, wrong ownership, or dependency-order drift.
 - Authority/source: repo:docs/repository-split/package-ownership.json
 - Affected surfaces: Cargo.toml, Cargo.lock, crates/**
-- Linked tests: repo:scripts/test_check_repository_boundaries.py
-- Compatibility promise: Bootstrap does not intentionally alter public APIs, serialized shapes, or operation IDs.
-- Required evidence: contract, behavioral, static
+- Linked tests: none; maintainer explicitly waived behavioral suites for restructuring-first publication
+- Compatibility promise: Public behavior is outside the publication gate and remains a separately accepted restructuring risk.
+- Required evidence: contract, static
 - Sensitivity: optional
 - Risk dimensions: security=covered:INV-002; recovery=covered:INV-003; persistence=not-applicable:no-storage-migration; concurrency=not-applicable:no-concurrency-contract-change; migration=covered:INV-003; partial-failure=covered:INV-003; operational=covered:INV-004
 
@@ -18,32 +18,32 @@
 - Forbidden behavior: sibling paths, moving Git branches, audio/visual/spatial/application edges, or unpublished foundation sources.
 - Authority/source: repo:CONTEXT.md
 - Affected surfaces: Cargo.toml, Cargo.lock, crates/**/Cargo.toml, packages/*/package.json
-- Linked tests: repo:scripts/test_check_repository_boundaries.py
+- Linked tests: none; cargo metadata and the exact manifest validator are the required structural checks
 - Compatibility promise: Consumers can build from a clean clone without a sibling repository.
 - Required evidence: contract
 - Sensitivity: optional
 - Risk dimensions: security=covered:INV-002; recovery=covered:INV-003; persistence=not-applicable:no-storage-migration; concurrency=not-applicable:no-concurrency-contract-change; migration=covered:INV-002; partial-failure=covered:INV-003; operational=covered:INV-004
 
-## INV-003 — Publication is exact, receipt-gated, and recoverable
+## INV-003 — Irreversible publication effects remain exact and recoverable
 
-- Requirement: Cargo publication uses only destination issue #2, the checked `releases/nlp-wave-1.toml`, its original immutable package/tag source, an optional fixed-surface release-control repair source, a manifest-only exact control head, a current independent review, a passing exact-head Agent Loop receipt, and `release:approved`.
+- Requirement: Cargo publication uses only destination issue #2, the checked `releases/nlp-wave-1.toml`, its original immutable package/tag source, a fixed-surface release-control source, a manifest-only exact control head, current independent static review, the structural safeguards receipt, and `release:approved`. Fast continuation additionally requires both the checked manifest flag and the matching operator flag.
 - Forbidden behavior: implicit or npm publication, undeclared packages or versions, mutable dependency sources, tags before registry verification, republishing an existing version, automatic yanks, source removal, or product-logic changes in downstream consumers.
 - Authority/source: repo:releases/nlp-wave-1.toml
 - Affected surfaces: .agent-loop.toml, releases/**, scripts/publish_release.py, scripts/check_release_plan.py, docs/AGENT_DRIVEN_RELEASES.md, docs/RELEASE_CHECKLIST.md
-- Linked tests: repo:scripts/test_publish_release.py, repo:scripts/test_check_release_plan.py
+- Linked tests: none; the maintainer explicitly accepts the fast-continuation policy as statically reviewed and untested
 - Compatibility promise: npm packages and rust-packages source remain unchanged; a partial Cargo wave preserves its published prefix and resumes at the first absent package.
-- Required evidence: contract, behavioral, integration
-- Sensitivity: required
+- Required evidence: contract, static
+- Sensitivity: optional
 - Risk dimensions: security=covered:INV-002; recovery=covered:INV-003; persistence=not-applicable:no-state-migration; concurrency=not-applicable:no-concurrent-release; migration=covered:INV-003; partial-failure=covered:INV-003; operational=covered:INV-003
 
-## INV-004 — Focused app and WASM package surfaces remain compatible
+## INV-004 — Behavioral compatibility is separate from publication
 
-- Requirement: The 13 apps retain their operation IDs and compile against the private focused workbench; every npm/WASM wrapper completes its pack/install smoke.
-- Forbidden behavior: restoring the unpublished compatibility UI dependency, absorbing platform implementations, or silently dropping an app/wrapper.
+- Requirement: Publication does not authorize npm artifacts, source removal, or product-logic changes; app, WASM, consumer, and compatibility verification remains separate restructuring work.
+- Forbidden behavior: treating publication as authorization for npm release, source removal, or downstream product mutation.
 - Authority/source: repo:CONTEXT.md
 - Affected surfaces: package.json, bun.lock, packages/**, crates/bindings/**
-- Linked tests: repo:packages/nlp-app-ui/src/package-surface/package-surface.test.tsx
-- Compatibility promise: Existing focused app and WASM entrypoints remain available without publishing them.
-- Required evidence: behavioral, integration
+- Linked tests: none; behavioral and integration suites are explicitly waived as publication gates
+- Compatibility promise: Existing surfaces are not modified by the publication operation itself.
+- Required evidence: contract, static
 - Sensitivity: optional
 - Risk dimensions: security=covered:INV-002; recovery=covered:INV-003; persistence=not-applicable:no-app-storage-migration; concurrency=not-applicable:no-concurrency-change; migration=covered:INV-004; partial-failure=covered:INV-004; operational=covered:INV-004

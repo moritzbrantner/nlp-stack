@@ -9,6 +9,7 @@ replace only network and process boundaries.
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
@@ -29,6 +30,7 @@ EXPECTED_REPOSITORY = "moritzbrantner/nlp-stack"
 AUTHORIZATION_LABEL = "release:approved"
 REGISTRY = "crates.io"
 FAST_CONTINUATION_ENV = "NLP_RELEASE_FAST_CONTINUATION"
+SAFEGUARDS_ONLY_ENV = "NLP_RELEASE_SAFEGUARDS_ONLY"
 OWNERSHIP_PATH = Path("docs/repository-split/package-ownership.json")
 ROOT_FIELDS = {
     "schema_version",
@@ -46,6 +48,7 @@ ROOT_FIELDS = {
     "fast_continuation",
 }
 CONTROL_REPAIR_SCRIPT_PATHS = {
+    ".agent-loop.toml",
     ".harness/invariants.md",
     "docs/AGENT_DRIVEN_RELEASES.md",
     "docs/RELEASE_CHECKLIST.md",
@@ -402,6 +405,8 @@ def _validate_issue(
     number: int,
     head: str,
     manifest_sha256: str,
+    *,
+    require_approval: bool = True,
 ) -> None:
     expected_url = f"https://github.com/{repository}/issues/{number}"
     labels = {
@@ -411,7 +416,7 @@ def _validate_issue(
         raise ReleaseError("GitHub issue does not match the destination-local authorization")
     if issue.get("state") != "OPEN":
         raise ReleaseError("destination-local release issue must be open")
-    if AUTHORIZATION_LABEL not in labels:
+    if require_approval and AUTHORIZATION_LABEL not in labels:
         raise ReleaseError(f"destination-local release issue lacks {AUTHORIZATION_LABEL}")
     body_lines = str(issue.get("body") or "").splitlines()
     head_authorization = f"Release control head SHA: {head}"
@@ -712,6 +717,8 @@ def _revalidate_authority(
     control_source_sha: str,
     manifest_path: str,
     manifest_digest: str,
+    *,
+    require_approval: bool = True,
 ) -> None:
     """Refresh checkout and destination-local issue authority before an effect."""
 
@@ -730,6 +737,7 @@ def _revalidate_authority(
         issue_number,
         head,
         manifest_digest,
+        require_approval=require_approval,
     )
 
 
@@ -903,8 +911,19 @@ def run_release(
             "exact head differs from its control source by more than its release manifest"
         )
     manifest_digest = hashlib.sha256((root / manifest_path).read_bytes()).hexdigest()
+    safeguards_flag = environment.get(SAFEGUARDS_ONLY_ENV, "").strip()
+    if safeguards_flag not in ("", "0", "1"):
+        raise ReleaseError(f"{SAFEGUARDS_ONLY_ENV} must be 1 when enabled")
+    safeguards_only = safeguards_flag == "1"
     issue = effects.issue(repository, issue_number)
-    _validate_issue(issue, repository, issue_number, head, manifest_digest)
+    _validate_issue(
+        issue,
+        repository,
+        issue_number,
+        head,
+        manifest_digest,
+        require_approval=not safeguards_only,
+    )
     packages, releases, prerequisites = validate_manifest(
         root, manifest, effects.cargo_metadata()
     )
@@ -917,6 +936,8 @@ def run_release(
             "fast continuation requires both manifest fast_continuation = true and "
             f"{FAST_CONTINUATION_ENV}=1"
         )
+    if safeguards_only and not fast_continuation:
+        raise ReleaseError("safeguards-only audit requires fast continuation")
 
     for prerequisite in prerequisites:
         record = effects.registry_version(prerequisite["name"], prerequisite["version"])
@@ -1023,6 +1044,58 @@ def run_release(
             )
         checksums[index] = pinned
     present = _registry_prefix(effects, packages, checksums)
+
+    if safeguards_only:
+        next_index = next(
+            (index for index, is_present in enumerate(present) if not is_present),
+            len(packages),
+        )
+        next_package: dict[str, str] | None = None
+        if next_index < len(packages):
+            package = packages[next_index]
+            _revalidate_authority(
+                root,
+                effects,
+                repository,
+                issue_number,
+                head,
+                control_source_sha,
+                manifest_path,
+                manifest_digest,
+                require_approval=False,
+            )
+            if effects.registry_version(package["name"], package["version"]) is not None:
+                raise ReleaseError(
+                    f"{package['name']}: registry version appeared before safeguards package"
+                )
+            effects.package(package["name"], package["version"], patches)
+            _revalidate_authority(
+                root,
+                effects,
+                repository,
+                issue_number,
+                head,
+                control_source_sha,
+                manifest_path,
+                manifest_digest,
+                require_approval=False,
+            )
+            if effects.registry_version(package["name"], package["version"]) is not None:
+                raise ReleaseError(
+                    f"{package['name']}: registry version appeared during safeguards package"
+                )
+            next_package = {"name": package["name"], "version": package["version"]}
+        return {
+            "schemaVersion": 1,
+            "repository": repository,
+            "issue": issue_number,
+            "head": head,
+            "manifest": manifest_path,
+            "mode": "safeguards-only",
+            "registryPrefixLength": next_index,
+            "nextPackage": next_package,
+            "approvalRequiredForPublication": True,
+        }
 
     package_results: list[dict[str, str]] = []
     for index, package in enumerate(packages):
@@ -1346,8 +1419,23 @@ def run_release(
 
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--check-safeguards", action="store_true")
+    args = parser.parse_args()
+    effects = CommandEffects(root)
+    environment = dict(os.environ)
+    if args.check_safeguards:
+        environment.update(
+            {
+                "AGENT_LOOP_REPOSITORY": EXPECTED_REPOSITORY,
+                "AGENT_LOOP_ISSUE": "2",
+                "AGENT_LOOP_HEAD_SHA": effects.head(),
+                FAST_CONTINUATION_ENV: "1",
+                SAFEGUARDS_ONLY_ENV: "1",
+            }
+        )
     try:
-        payload = run_release(root, os.environ, CommandEffects(root))
+        payload = run_release(root, environment, effects)
     except ReleaseError as error:
         print(f"release refused: {error}", file=sys.stderr)
         return 1
