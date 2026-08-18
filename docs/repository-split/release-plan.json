@@ -77,7 +77,11 @@
     "moenarch-text-analysis-wasm",
     "moenarch-text-question-answering-cli",
     "moenarch-text-question-answering-server",
-    "moenarch-text-question-answering-wasm"
+    "moenarch-text-question-answering-wasm",
+    "moenarch-nlp-package-registry",
+    "moenarch-nlp-package-registry-cli",
+    "moenarch-nlp-package-registry-server",
+    "moenarch-nlp-package-registry-wasm"
   ],
   "expected_tags": [],
   "packages": [
@@ -730,6 +734,60 @@
       "release_dependencies": [
         "moenarch-text-question-answering"
       ]
+    },
+    {
+      "name": "moenarch-nlp-package-registry",
+      "manifest_path": "crates/text/nlp-package-registry/Cargo.toml",
+      "old_version": "0.1.0",
+      "new_version": "0.1.0",
+      "publish": false,
+      "expected_tag": null,
+      "intended_next_release_owner": "moritzbrantner/nlp-stack",
+      "release_dependencies": [
+        "moenarch-text-analysis",
+        "moenarch-text-classification",
+        "moenarch-text-core",
+        "moenarch-text-embeddings",
+        "moenarch-text-generation",
+        "moenarch-text-generation-linguistics",
+        "moenarch-text-index",
+        "moenarch-text-lexical",
+        "moenarch-text-linguistics",
+        "moenarch-text-model-runtime",
+        "moenarch-text-question-answering",
+        "moenarch-text-retrieval",
+        "moenarch-text-transcripts"
+      ]
+    },
+    {
+      "name": "moenarch-nlp-package-registry-cli",
+      "manifest_path": "crates/text/nlp-package-registry-cli/Cargo.toml",
+      "old_version": "0.1.0",
+      "new_version": "0.1.0",
+      "publish": false,
+      "expected_tag": null,
+      "intended_next_release_owner": "moritzbrantner/nlp-stack",
+      "release_dependencies": ["moenarch-nlp-package-registry"]
+    },
+    {
+      "name": "moenarch-nlp-package-registry-server",
+      "manifest_path": "crates/text/nlp-package-registry-server/Cargo.toml",
+      "old_version": "0.1.0",
+      "new_version": "0.1.0",
+      "publish": false,
+      "expected_tag": null,
+      "intended_next_release_owner": "moritzbrantner/nlp-stack",
+      "release_dependencies": ["moenarch-nlp-package-registry"]
+    },
+    {
+      "name": "moenarch-nlp-package-registry-wasm",
+      "manifest_path": "crates/bindings/nlp-package-registry-wasm/Cargo.toml",
+      "old_version": "0.1.0",
+      "new_version": "0.1.0",
+      "publish": false,
+      "expected_tag": null,
+      "intended_next_release_owner": "moritzbrantner/nlp-stack",
+      "release_dependencies": ["moenarch-nlp-package-registry"]
     }
   ],
   "npm_packages": [

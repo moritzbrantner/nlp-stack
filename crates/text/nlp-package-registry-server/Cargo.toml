@@ -1,0 +1,26 @@
+[package]
+name = "moenarch-nlp-package-registry-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "HTTP API adapter for the additive NLP package registry."
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+default-run = "nlp-package-registry-server"
+
+[lib]
+name = "nlp_package_registry_server"
+
+[[bin]]
+name = "nlp-package-registry-server"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+nlp-package-registry.workspace = true
+runtime-core.workspace = true
+serde_json.workspace = true

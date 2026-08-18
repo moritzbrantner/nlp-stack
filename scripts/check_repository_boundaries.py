@@ -226,7 +226,7 @@ def main() -> int:
             print(f"error: {error}", file=sys.stderr)
         return 1
     print(
-        "repository boundaries pass: 52 Cargo and 28 Bun packages; "
+        "repository boundaries pass: 56 Cargo and 28 Bun packages; "
         "NLP depends only on exact registry foundation versions"
     )
     return 0

@@ -6,7 +6,8 @@ versions declared in the root workspace. It must not depend on audio-analysis,
 visual-analysis, spatial-analysis, application repositories, another checkout,
 or moving Git branches.
 
-The workspace owns 52 Cargo packages. The accompanying Bun inventory contains
+The workspace owns 56 Cargo packages: 52 clean-copied source packages and four
+destination-authored aggregate-registry packages. The accompanying Bun inventory contains
 13 apps, 13 npm/WASM wrappers, one benchmark package, and the private
 `@moritzbrantner/nlp-app-ui` workbench adapter. The adapter is a focused copy of
 the package-surface seam; the broader compatibility UI remains in
