@@ -2,8 +2,8 @@
 
 ## INV-001 — The reviewed Rust surface remains independently usable
 
-- Requirement: Exactly 52 reviewed Cargo packages build, test, document, and package from this checkout at their source names and versions.
-- Forbidden behavior: omitted packages, unreviewed packages, broken public behavior, or dependence on another checkout.
+- Requirement: Exactly 52 reviewed source Cargo packages plus four destination-authored aggregate-registry packages build, test, document, and package from this checkout at their declared versions.
+- Forbidden behavior: omitted packages, unreviewed destination additions, broken public behavior, or dependence on another checkout.
 - Authority/source: repo:docs/repository-split/package-ownership.json
 - Affected surfaces: Cargo.toml, Cargo.lock, crates/**
 - Linked tests: repo:scripts/test_check_repository_boundaries.py
