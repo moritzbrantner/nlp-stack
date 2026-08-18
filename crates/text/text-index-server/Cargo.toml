@@ -1,6 +1,6 @@
 [package]
 name = "moenarch-text-index-server"
-version.workspace = true
+version = "0.1.1"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
@@ -21,4 +21,4 @@ path = "src/main.rs"
 
 [dependencies]
 runtime-core.workspace = true
-text-index = { package = "moenarch-text-index", version = "0.1.0", path = "../text-index" }
+text-index = { package = "moenarch-text-index", version = "=0.1.1", path = "../text-index" }

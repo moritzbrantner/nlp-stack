@@ -1,6 +1,6 @@
 [package]
 name = "moenarch-text-question-answering-server"
-version.workspace = true
+version = "0.1.1"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
@@ -23,4 +23,4 @@ path = "src/main.rs"
 runtime-core.workspace = true
 clap.workspace = true
 serde_json.workspace = true
-text-question-answering = { package = "moenarch-text-question-answering", version = "0.1.0", path = "../text-question-answering" }
+text-question-answering = { package = "moenarch-text-question-answering", version = "=0.1.1", path = "../text-question-answering" }

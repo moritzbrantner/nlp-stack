@@ -1,6 +1,6 @@
 [package]
 name = "moenarch-text-embeddings-server"
-version.workspace = true
+version = "0.1.1"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
@@ -23,8 +23,8 @@ path = "src/main.rs"
 runtime-core.workspace = true
 clap.workspace = true
 serde_json.workspace = true
-text-embeddings = { package = "moenarch-text-embeddings", version = "0.1.0", path = "../text-embeddings" }
-text-model-runtime = { package = "moenarch-text-model-runtime", version = "0.1.0", path = "../text-model-runtime", features = ["candle"] }
+text-embeddings = { package = "moenarch-text-embeddings", version = "=0.1.1", path = "../text-embeddings" }
+text-model-runtime = { package = "moenarch-text-model-runtime", version = "=0.1.1", path = "../text-model-runtime", features = ["candle"] }
 [features]
 default = []
 cuda = ["text-embeddings/cuda", "text-model-runtime/cuda"]
