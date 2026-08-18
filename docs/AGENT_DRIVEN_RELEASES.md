@@ -1,9 +1,14 @@
 # Agent-driven releases
 
-Issue #113 authorized extraction but no publication. The historical JSON plan
-therefore remains a nonpublishing inventory. Issue #2 in this repository is the
-destination-local authorization surface for the issue #114 Cargo wave; only its
-exact checked TOML manifest may authorize those 52 package versions.
+Issue #113 authorizes no publication. The checked-in JSON plan remains a
+nonpublishing inventory of all 56 Cargo and 28 Bun surfaces. Issue #2 in this
+repository is the destination-local authorization surface for the issue #114
+Cargo wave; only its exact checked TOML manifest may authorize its 52 package
+versions.
+
+The standard mainline verification profile remains the normal full repository
+gate. The wave's safeguards apply only from its immutable control head, not an
+integration commit that also carries later non-wave work.
 
 The Cargo wave keeps the original tested source commit as immutable package and
 tag provenance. After a partial publication, a fixed release-control repair
@@ -38,6 +43,10 @@ Candidate compatibility and deferred baseline evidence are distinct outcomes.
 All 28 Bun packages remain nonpublishing. Any npm/WASM publication requires its
 own exact authorization after ownership is checked again against
 `platform-packages`.
+
+The aggregate-registry pilot does not propose removing any focused adapter.
+Any later removal proposal must first record usage, size, install, and
+deployment evidence.
 
 Credentials remain in their normal tool-specific stores and must never be
 printed or copied into repository files. Partial publication stops at the first

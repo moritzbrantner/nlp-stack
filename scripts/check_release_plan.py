@@ -501,14 +501,14 @@ def main() -> int:
         if failures:
             print("error: packaging failed: " + ", ".join(failures), file=sys.stderr)
             return 1
-        print("package verification passes: 52 Cargo packages; tracked manifest hashes unchanged")
+        print("package verification passes: 56 Cargo packages; tracked manifest hashes unchanged")
     elif args.plan.suffix == ".toml":
         print(
             f"checked release manifest passes: {len(plan['packages'])} packages; "
             "source/control binding verified"
         )
     else:
-        print("release plan passes: 52 Cargo and 28 Bun packages retained; publication is not authorized")
+        print("release plan passes: 56 Cargo and 28 Bun packages retained; publication is not authorized")
     return 0
 
 

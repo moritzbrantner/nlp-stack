@@ -17,7 +17,13 @@ from check_release_plan import (
     validate_control_binding,
     validate_release_manifest,
 )
-from repository_split import OWNERSHIP_PATH, RELEASE_PLAN_PATH, cargo_metadata, load_json
+from repository_split import (
+    CARGO_PACKAGE_COUNT,
+    OWNERSHIP_PATH,
+    RELEASE_PLAN_PATH,
+    cargo_metadata,
+    load_json,
+)
 
 
 class ReleasePlanTests(unittest.TestCase):
@@ -116,7 +122,7 @@ class ReleasePlanTests(unittest.TestCase):
         plan["packages"][0]["intended_next_release_owner"] = "moritzbrantner/rust-packages"
         plan["packages"].pop()
         errors = self.errors(plan)
-        self.assertTrue(any("52 Cargo packages" in error for error in errors), errors)
+        self.assertTrue(any(f"{CARGO_PACKAGE_COUNT} Cargo packages" in error for error in errors), errors)
         self.assertTrue(any("wrong intended next release owner" in error for error in errors), errors)
 
     def test_wrong_dependency_order_is_rejected(self) -> None:

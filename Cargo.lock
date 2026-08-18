@@ -1718,6 +1718,58 @@ dependencies = [
 ]
 
 [[package]]
+name = "moenarch-nlp-package-registry"
+version = "0.1.0"
+dependencies = [
+ "moenarch-runtime-core",
+ "moenarch-text-analysis",
+ "moenarch-text-classification",
+ "moenarch-text-core",
+ "moenarch-text-embeddings",
+ "moenarch-text-generation",
+ "moenarch-text-generation-linguistics",
+ "moenarch-text-index",
+ "moenarch-text-lexical",
+ "moenarch-text-linguistics",
+ "moenarch-text-model-runtime",
+ "moenarch-text-question-answering",
+ "moenarch-text-retrieval",
+ "moenarch-text-transcripts",
+ "serde_json",
+]
+
+[[package]]
+name = "moenarch-nlp-package-registry-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "moenarch-nlp-package-registry",
+ "moenarch-runtime-core",
+ "serde_json",
+]
+
+[[package]]
+name = "moenarch-nlp-package-registry-server"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "moenarch-nlp-package-registry",
+ "moenarch-runtime-core",
+ "serde_json",
+]
+
+[[package]]
+name = "moenarch-nlp-package-registry-wasm"
+version = "0.1.0"
+dependencies = [
+ "js-sys",
+ "moenarch-nlp-package-registry",
+ "moenarch-runtime-core",
+ "serde-wasm-bindgen",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "moenarch-numbers-core"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

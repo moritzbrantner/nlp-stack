@@ -1,0 +1,32 @@
+[package]
+name = "moenarch-nlp-package-registry"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Additive registry and namespaced dispatcher for NLP package surfaces."
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "nlp_package_registry"
+
+[dependencies]
+runtime-core.workspace = true
+serde_json.workspace = true
+text-analysis.workspace = true
+text-classification.workspace = true
+text-core.workspace = true
+text-embeddings.workspace = true
+text-generation.workspace = true
+text-generation-linguistics.workspace = true
+text-index.workspace = true
+text-lexical.workspace = true
+text-linguistics.workspace = true
+text-model-runtime.workspace = true
+text-question-answering.workspace = true
+text-retrieval.workspace = true
+text-transcripts.workspace = true

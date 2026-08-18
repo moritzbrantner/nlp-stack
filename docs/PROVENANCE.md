@@ -12,7 +12,7 @@ rewritten or filtered.
 - History note: original per-file history remains in the source repository; this
   destination begins with one attributed bootstrap change.
 
-The 52 Cargo directories and 27 Bun package directories named by the source
+The 52 source-derived Cargo directories and 27 Bun package directories named by the source
 records in `docs/repository-split/package-ownership.json` were copied from the
 exact extraction commit. Rust crate trees remain byte-identical except for four
 strict Rust 1.95 Clippy repairs: two boolean test assertions use `assert!`, one
@@ -43,7 +43,8 @@ Destination-authored or materially adapted support includes the root Cargo and
 Bun manifests, regenerated lockfiles, repository docs, CI, draft Harness,
 ownership/release inventories, validators, and local check scripts. The
 ownership validator binds the canonical digest of all 79 reviewed source
-records and separately validates the one destination-authored private adapter.
+records and separately validates the destination-authored private adapter plus
+the four additive aggregate-registry Cargo packages introduced by issue #122.
 
 Generated `pkg`, `dist`, `target`, and `node_modules` output was not copied.
 Dual-licensed material retains the source MIT OR Apache-2.0 terms. No Cargo or

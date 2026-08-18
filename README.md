@@ -1,7 +1,12 @@
 # nlp-stack
 
+This workspace includes an additive `moenarch-nlp-package-registry` Rust
+surface. It namespaces and dispatches existing library-owned operations without
+replacing any focused CLI, server, or WASM adapter.
+
 `nlp-stack` is the text and natural-language capability repository for the
-Moenarch ecosystem. It owns 52 Rust crates for text documents, lexical and
+Moenarch ecosystem. It owns 52 source-derived Rust crates plus four
+destination-authored aggregate-registry crates for text documents, lexical and
 linguistic analysis, classification, embeddings, indexing, retrieval,
 question answering, generation, and purified transcript contracts. It also
 retains 27 focused Bun app/WASM surfaces and one private NLP workbench adapter.
