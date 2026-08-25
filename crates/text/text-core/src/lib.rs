@@ -13,6 +13,7 @@ pub use media_core::{AnalysisEvent, DetectError, Result, Timebase, Timestamp};
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
+use unicode_casefold::UnicodeCaseFold;
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -1358,18 +1359,30 @@ fn is_sentence_terminator(ch: char) -> bool {
 }
 
 fn is_abbreviation_boundary(text: &str, period_byte_index: usize, abbreviations: &[&str]) -> bool {
-    let prefix = &text[..period_byte_index];
-    let word_start = prefix
+    let token_start = text[..period_byte_index]
         .char_indices()
         .rev()
-        .find_map(|(index, ch)| (!ch.is_alphabetic()).then_some(index + ch.len_utf8()))
+        .find_map(|(index, ch)| {
+            (!(ch.is_alphabetic() || ch == '.')).then_some(index + ch.len_utf8())
+        })
         .unwrap_or(0);
-    let word = &text[word_start..period_byte_index];
-    if word.is_empty() {
+    let token_end = text[period_byte_index..]
+        .char_indices()
+        .find_map(|(offset, ch)| {
+            (!(ch.is_alphabetic() || ch == '.')).then_some(period_byte_index + offset)
+        })
+        .unwrap_or(text.len());
+    let token = &text[token_start..token_end];
+    let normalized = normalize_abbreviation(token);
+    if normalized.is_empty() {
         return false;
     }
-    let normalized = word.to_ascii_lowercase();
-    matches!(
+
+    let configured = abbreviations.iter().any(|abbreviation| {
+        let abbreviation = normalize_abbreviation(abbreviation);
+        !abbreviation.is_empty() && abbreviation == normalized
+    });
+    let built_in = matches!(
         normalized.as_str(),
         "mr" | "mrs"
             | "ms"
@@ -1384,13 +1397,24 @@ fn is_abbreviation_boundary(text: &str, period_byte_index: usize, abbreviations:
             | "i.e"
             | "u.s"
             | "u.k"
-    ) || abbreviations.iter().any(|abbreviation| {
-        normalized.eq_ignore_ascii_case(abbreviation.trim().trim_end_matches('.'))
-    }) || (word.chars().count() == 1
-        && word
-            .chars()
-            .next()
-            .is_some_and(|ch| ch.is_ascii_uppercase()))
+    );
+    let word = token.trim_end_matches('.');
+    built_in
+        || configured
+        || (word.chars().count() == 1
+            && word
+                .chars()
+                .next()
+                .is_some_and(|ch| ch.is_ascii_uppercase()))
+}
+
+fn normalize_abbreviation(value: &str) -> String {
+    let normalized = value
+        .trim()
+        .trim_end_matches('.')
+        .nfkc()
+        .collect::<String>();
+    normalized.as_str().case_fold().collect()
 }
 
 fn script_name(ch: char) -> Option<&'static str> {
@@ -1555,6 +1579,46 @@ mod tests {
                 sentence.text
             );
         }
+    }
+
+    #[test]
+    fn caller_abbreviations_match_internal_periods() {
+        let text = "She earned a Ph.D. in ethics. E.G. this degree matters. Next.";
+        let options = TextProcessingOptions::default();
+        let sentences =
+            split_sentence_spans_with_abbreviations(text, &options, &["Ph.D.", "e.g."]);
+
+        assert_eq!(
+            sentences
+                .iter()
+                .map(|sentence| sentence.text.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "She earned a Ph.D. in ethics.",
+                "E.G. this degree matters.",
+                "Next.",
+            ]
+        );
+    }
+
+    #[test]
+    fn caller_abbreviations_use_unicode_case_folding() {
+        let text = "Ул. Ленина is cited. STRASSE. is equivalent here. Next.";
+        let options = TextProcessingOptions::default();
+        let sentences =
+            split_sentence_spans_with_abbreviations(text, &options, &["ул.", "straße."]);
+
+        assert_eq!(
+            sentences
+                .iter()
+                .map(|sentence| sentence.text.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "Ул. Ленина is cited.",
+                "STRASSE. is equivalent here.",
+                "Next.",
+            ]
+        );
     }
 
     #[test]
