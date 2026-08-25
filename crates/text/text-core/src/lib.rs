@@ -963,8 +963,20 @@ pub fn tokenize(text: &str, options: &TextProcessingOptions) -> Vec<Token> {
     tokens
 }
 
-/// Returns split sentence spans.
+/// Returns sentence spans using the built-in abbreviation rules.
 pub fn split_sentence_spans(text: &str, options: &TextProcessingOptions) -> Vec<Sentence> {
+    split_sentence_spans_with_abbreviations(text, options, &[])
+}
+
+/// Returns sentence spans using the built-in rules plus caller-supplied abbreviations.
+///
+/// Abbreviations are compared case-insensitively and may be provided with or
+/// without a trailing period.
+pub fn split_sentence_spans_with_abbreviations(
+    text: &str,
+    options: &TextProcessingOptions,
+    abbreviations: &[&str],
+) -> Vec<Sentence> {
     let mut sentences = Vec::new();
     let mut start = 0;
     let chars = text.char_indices().collect::<Vec<_>>();
@@ -973,7 +985,7 @@ pub fn split_sentence_spans(text: &str, options: &TextProcessingOptions) -> Vec<
         if !is_sentence_terminator(ch) {
             continue;
         }
-        if ch == '.' && is_abbreviation_boundary(text, byte_index) {
+        if ch == '.' && is_abbreviation_boundary(text, byte_index, abbreviations) {
             continue;
         }
         if ch == '.'
@@ -1345,7 +1357,11 @@ fn is_sentence_terminator(ch: char) -> bool {
     matches!(ch, '.' | '?' | '!' | '…' | '。' | '！' | '？')
 }
 
-fn is_abbreviation_boundary(text: &str, period_byte_index: usize) -> bool {
+fn is_abbreviation_boundary(
+    text: &str,
+    period_byte_index: usize,
+    abbreviations: &[&str],
+) -> bool {
     let prefix = &text[..period_byte_index];
     let word_start = prefix
         .char_indices()
@@ -1372,7 +1388,9 @@ fn is_abbreviation_boundary(text: &str, period_byte_index: usize) -> bool {
             | "i.e"
             | "u.s"
             | "u.k"
-    ) || (word.chars().count() == 1
+    ) || abbreviations.iter().any(|abbreviation| {
+        normalized.eq_ignore_ascii_case(abbreviation.trim().trim_end_matches('.'))
+    }) || (word.chars().count() == 1
         && word
             .chars()
             .next()
@@ -1516,6 +1534,31 @@ mod tests {
             sentences,
             vec!["Dr. Smith wrote pi is 3.14.", "Wait...", "Really？", "Yes!"]
         );
+    }
+
+    #[test]
+    fn caller_abbreviations_preserve_sentence_boundaries_and_offsets() {
+        let text = "Aristotle argues in Phys. III that change is actuality. Knowledge concerns truth.";
+        let options = TextProcessingOptions::default();
+        let sentences =
+            split_sentence_spans_with_abbreviations(text, &options, &["Phys."]);
+
+        assert_eq!(
+            sentences
+                .iter()
+                .map(|sentence| sentence.text.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "Aristotle argues in Phys. III that change is actuality.",
+                "Knowledge concerns truth.",
+            ]
+        );
+        for sentence in sentences {
+            assert_eq!(
+                &text[sentence.span.byte_start..sentence.span.byte_end],
+                sentence.text
+            );
+        }
     }
 
     #[test]

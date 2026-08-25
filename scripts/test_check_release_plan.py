@@ -84,14 +84,14 @@ class ReleasePlanTests(unittest.TestCase):
         self.assertIn("bun install --frozen-lockfile", self.plan["required_checks"])
         self.assertIn("bun run text-wasm:test:all", self.plan["required_checks"])
         self.assertIn("bun run text-app:build", self.plan["required_checks"])
-        agent_checks = tomllib.loads(
-            (OWNERSHIP_PATH.parents[2] / ".agent-loop.toml").read_text(
+        release_checks = tomllib.loads(
+            (OWNERSHIP_PATH.parents[2] / "releases/nlp-wave-1.toml").read_text(
                 encoding="utf-8"
             )
-        )["verification"]["commands"]
+        )["required_checks"]
         self.assertIn(
             "python3 scripts/check_release_plan.py --check releases/nlp-wave-1.toml",
-            agent_checks,
+            release_checks,
         )
 
     def test_real_internal_dependency_cannot_be_deleted(self) -> None:
@@ -300,8 +300,15 @@ class CheckedReleaseManifestTests(unittest.TestCase):
 
     def test_workspace_versions_allow_only_the_exact_nlp_wave(self) -> None:
         metadata = copy.deepcopy(self.metadata)
+        source_versions = {
+            package["current_package_name"]: package["source_version"]
+            for package in self.ownership["packages"]
+            if package["ecosystem"] == "cargo"
+        }
         for package in metadata["packages"]:
-            package["version"] = NLP_WAVE_1_VERSIONS[package["name"]]
+            package["version"] = NLP_WAVE_1_VERSIONS.get(
+                package["name"], source_versions[package["name"]]
+            )
         self.assertEqual(validate(self.plan, self.ownership, metadata), [])
 
         metadata["packages"][0]["version"] = "9.9.9"
