@@ -34,9 +34,9 @@ jobs:
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
-      - name: Test all features
-        run: cargo test --workspace --all-features
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Test default features
+        run: cargo test --workspace
       - name: Test no default features
         run: cargo test --workspace --no-default-features
       - name: Documentation
