@@ -5,55 +5,55 @@
       {
         "package": "moenarch-data-inversion-core",
         "git": "https://github.com/moritzbrantner/moenarch-foundation",
-        "rev": "302329b9fd9a309d7376ce2c69ce99e2276d4348",
+        "rev": "648e3ef18dc5d32d5fcbb211ed7a118b2731a387",
         "localPath": "../moenarch-foundation/crates/data/data-inversion-core"
       },
       {
         "package": "moenarch-jobs-core",
         "git": "https://github.com/moritzbrantner/moenarch-foundation",
-        "rev": "302329b9fd9a309d7376ce2c69ce99e2276d4348",
+        "rev": "648e3ef18dc5d32d5fcbb211ed7a118b2731a387",
         "localPath": "../moenarch-foundation/crates/jobs/jobs-core"
       },
       {
         "package": "moenarch-math-sparse-data",
         "git": "https://github.com/moritzbrantner/moenarch-foundation",
-        "rev": "302329b9fd9a309d7376ce2c69ce99e2276d4348",
+        "rev": "648e3ef18dc5d32d5fcbb211ed7a118b2731a387",
         "localPath": "../moenarch-foundation/crates/math/math-sparse-data"
       },
       {
         "package": "moenarch-media-core",
         "git": "https://github.com/moritzbrantner/moenarch-foundation",
-        "rev": "302329b9fd9a309d7376ce2c69ce99e2276d4348",
+        "rev": "648e3ef18dc5d32d5fcbb211ed7a118b2731a387",
         "localPath": "../moenarch-foundation/crates/media/media-core"
       },
       {
         "package": "moenarch-model-runtime",
         "git": "https://github.com/moritzbrantner/moenarch-foundation",
-        "rev": "302329b9fd9a309d7376ce2c69ce99e2276d4348",
+        "rev": "648e3ef18dc5d32d5fcbb211ed7a118b2731a387",
         "localPath": "../moenarch-foundation/crates/runtime/model-runtime"
       },
       {
         "package": "moenarch-runtime-core",
         "git": "https://github.com/moritzbrantner/moenarch-foundation",
-        "rev": "302329b9fd9a309d7376ce2c69ce99e2276d4348",
+        "rev": "648e3ef18dc5d32d5fcbb211ed7a118b2731a387",
         "localPath": "../moenarch-foundation/crates/runtime/runtime-core"
       },
       {
         "package": "moenarch-runtime-onnx",
         "git": "https://github.com/moritzbrantner/moenarch-foundation",
-        "rev": "302329b9fd9a309d7376ce2c69ce99e2276d4348",
+        "rev": "648e3ef18dc5d32d5fcbb211ed7a118b2731a387",
         "localPath": "../moenarch-foundation/crates/runtime/runtime-onnx"
       },
       {
         "package": "moenarch-vector-analysis-core",
         "git": "https://github.com/moritzbrantner/moenarch-foundation",
-        "rev": "302329b9fd9a309d7376ce2c69ce99e2276d4348",
+        "rev": "648e3ef18dc5d32d5fcbb211ed7a118b2731a387",
         "localPath": "../moenarch-foundation/crates/vector/vector-analysis-core"
       },
       {
         "package": "moenarch-vector-analysis-index",
         "git": "https://github.com/moritzbrantner/moenarch-foundation",
-        "rev": "302329b9fd9a309d7376ce2c69ce99e2276d4348",
+        "rev": "648e3ef18dc5d32d5fcbb211ed7a118b2731a387",
         "localPath": "../moenarch-foundation/crates/vector/vector-analysis-index"
       }
     ]
