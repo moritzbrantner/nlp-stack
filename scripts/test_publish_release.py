@@ -480,6 +480,7 @@ class PublishReleaseTests(unittest.TestCase):
             }
             effects.changed_paths = lambda source, head: (
                 [
+                    ".agent-loop.toml",
                     ".harness/invariants.md",
                     "docs/AGENT_DRIVEN_RELEASES.md",
                     "docs/RELEASE_CHECKLIST.md",

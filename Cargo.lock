@@ -1925,6 +1925,7 @@ dependencies = [
  "moenarch-runtime-core",
  "serde",
  "serde_json",
+ "unicode-casefold",
  "unicode-normalization",
  "unicode-segmentation",
 ]
@@ -3518,6 +3519,12 @@ dependencies = [
  "thiserror 1.0.69",
  "ug",
 ]
+
+[[package]]
+name = "unicode-casefold"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7f66b1c8f8caa2ab31dc6d3f35386f16efdab89668f93411e565ac368908e8f"
 
 [[package]]
 name = "unicode-ident"

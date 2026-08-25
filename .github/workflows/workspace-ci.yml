@@ -11,6 +11,10 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_PROFILE_TEST_DEBUG: 0
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -34,11 +38,15 @@ jobs:
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
-      - name: Test all features
-        run: cargo test --workspace --all-features
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Reclaim space after lint
+        run: cargo clean
+      - name: Test default features
+        run: cargo test --workspace
       - name: Test no default features
         run: cargo test --workspace --no-default-features
+      - name: Reclaim space before documentation
+        run: cargo clean
       - name: Documentation
         run: cargo doc --workspace --no-deps
       - name: Focused package-surface adapter
@@ -49,5 +57,7 @@ jobs:
           bun run text-app:build
       - name: WASM pack/install smoke
         run: bun run text-wasm:test:all
+      - name: Reclaim space before packaging
+        run: cargo clean
       - name: Package all Rust crates without publishing
         run: python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json

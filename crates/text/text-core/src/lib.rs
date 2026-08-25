@@ -13,6 +13,7 @@ pub use media_core::{AnalysisEvent, DetectError, Result, Timebase, Timestamp};
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
+use unicode_casefold::UnicodeCaseFold;
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -963,8 +964,20 @@ pub fn tokenize(text: &str, options: &TextProcessingOptions) -> Vec<Token> {
     tokens
 }
 
-/// Returns split sentence spans.
+/// Returns sentence spans using the built-in abbreviation rules.
 pub fn split_sentence_spans(text: &str, options: &TextProcessingOptions) -> Vec<Sentence> {
+    split_sentence_spans_with_abbreviations(text, options, &[])
+}
+
+/// Returns sentence spans using the built-in rules plus caller-supplied abbreviations.
+///
+/// Abbreviations are compared case-insensitively and may be provided with or
+/// without a trailing period.
+pub fn split_sentence_spans_with_abbreviations(
+    text: &str,
+    options: &TextProcessingOptions,
+    abbreviations: &[&str],
+) -> Vec<Sentence> {
     let mut sentences = Vec::new();
     let mut start = 0;
     let chars = text.char_indices().collect::<Vec<_>>();
@@ -973,7 +986,7 @@ pub fn split_sentence_spans(text: &str, options: &TextProcessingOptions) -> Vec<
         if !is_sentence_terminator(ch) {
             continue;
         }
-        if ch == '.' && is_abbreviation_boundary(text, byte_index) {
+        if ch == '.' && is_abbreviation_boundary(text, byte_index, abbreviations) {
             continue;
         }
         if ch == '.'
@@ -1345,19 +1358,31 @@ fn is_sentence_terminator(ch: char) -> bool {
     matches!(ch, '.' | '?' | '!' | '…' | '。' | '！' | '？')
 }
 
-fn is_abbreviation_boundary(text: &str, period_byte_index: usize) -> bool {
-    let prefix = &text[..period_byte_index];
-    let word_start = prefix
+fn is_abbreviation_boundary(text: &str, period_byte_index: usize, abbreviations: &[&str]) -> bool {
+    let token_start = text[..period_byte_index]
         .char_indices()
         .rev()
-        .find_map(|(index, ch)| (!ch.is_alphabetic()).then_some(index + ch.len_utf8()))
+        .find_map(|(index, ch)| {
+            (!(ch.is_alphabetic() || ch == '.')).then_some(index + ch.len_utf8())
+        })
         .unwrap_or(0);
-    let word = &text[word_start..period_byte_index];
-    if word.is_empty() {
+    let token_end = text[period_byte_index..]
+        .char_indices()
+        .find_map(|(offset, ch)| {
+            (!(ch.is_alphabetic() || ch == '.')).then_some(period_byte_index + offset)
+        })
+        .unwrap_or(text.len());
+    let token = &text[token_start..token_end];
+    let normalized = normalize_abbreviation(token);
+    if normalized.is_empty() {
         return false;
     }
-    let normalized = word.to_ascii_lowercase();
-    matches!(
+
+    let configured = abbreviations.iter().any(|abbreviation| {
+        let abbreviation = normalize_abbreviation(abbreviation);
+        !abbreviation.is_empty() && abbreviation == normalized
+    });
+    let built_in = matches!(
         normalized.as_str(),
         "mr" | "mrs"
             | "ms"
@@ -1372,11 +1397,24 @@ fn is_abbreviation_boundary(text: &str, period_byte_index: usize) -> bool {
             | "i.e"
             | "u.s"
             | "u.k"
-    ) || (word.chars().count() == 1
-        && word
-            .chars()
-            .next()
-            .is_some_and(|ch| ch.is_ascii_uppercase()))
+    );
+    let word = token.trim_end_matches('.');
+    built_in
+        || configured
+        || (word.chars().count() == 1
+            && word
+                .chars()
+                .next()
+                .is_some_and(|ch| ch.is_ascii_uppercase()))
+}
+
+fn normalize_abbreviation(value: &str) -> String {
+    let normalized = value
+        .trim()
+        .trim_end_matches('.')
+        .nfkc()
+        .collect::<String>();
+    normalized.as_str().case_fold().collect()
 }
 
 fn script_name(ch: char) -> Option<&'static str> {
@@ -1515,6 +1553,70 @@ mod tests {
         assert_eq!(
             sentences,
             vec!["Dr. Smith wrote pi is 3.14.", "Wait...", "Really？", "Yes!"]
+        );
+    }
+
+    #[test]
+    fn caller_abbreviations_preserve_sentence_boundaries_and_offsets() {
+        let text =
+            "Aristotle argues in Phys. III that change is actuality. Knowledge concerns truth.";
+        let options = TextProcessingOptions::default();
+        let sentences = split_sentence_spans_with_abbreviations(text, &options, &["Phys."]);
+
+        assert_eq!(
+            sentences
+                .iter()
+                .map(|sentence| sentence.text.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "Aristotle argues in Phys. III that change is actuality.",
+                "Knowledge concerns truth.",
+            ]
+        );
+        for sentence in sentences {
+            assert_eq!(
+                &text[sentence.span.byte_start..sentence.span.byte_end],
+                sentence.text
+            );
+        }
+    }
+
+    #[test]
+    fn caller_abbreviations_match_internal_periods() {
+        let text = "She earned a Ph.D. in ethics. E.G. this degree matters. Next.";
+        let options = TextProcessingOptions::default();
+        let sentences = split_sentence_spans_with_abbreviations(text, &options, &["Ph.D.", "e.g."]);
+
+        assert_eq!(
+            sentences
+                .iter()
+                .map(|sentence| sentence.text.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "She earned a Ph.D. in ethics.",
+                "E.G. this degree matters.",
+                "Next.",
+            ]
+        );
+    }
+
+    #[test]
+    fn caller_abbreviations_use_unicode_case_folding() {
+        let text = "Ул. Ленина is cited. STRASSE. is equivalent here. Next.";
+        let options = TextProcessingOptions::default();
+        let sentences =
+            split_sentence_spans_with_abbreviations(text, &options, &["ул.", "straße."]);
+
+        assert_eq!(
+            sentences
+                .iter()
+                .map(|sentence| sentence.text.as_str())
+                .collect::<Vec<_>>(),
+            vec![
+                "Ул. Ленина is cited.",
+                "STRASSE. is equivalent here.",
+                "Next.",
+            ]
         );
     }
 
