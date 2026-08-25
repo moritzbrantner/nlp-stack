@@ -17,6 +17,12 @@ The source repository remains the active release owner. This bootstrap does not
 authorize Cargo or npm publication, tags, releases, consumer migration, or
 source removal.
 
+## Source development
+
+Normal feature work may use the exact `moenarch-foundation` revision declared in `.coding-tooling.source-deps.json` without publishing intermediate crates. Run `bash scripts/source-deps activate` before cross-repository work and `bash scripts/source-deps deactivate` before registry-only release verification.
+
+See [docs/SOURCE_DEVELOPMENT.md](docs/SOURCE_DEVELOPMENT.md).
+
 ## Local verification
 
 ```bash

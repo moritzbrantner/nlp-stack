@@ -1,10 +1,6 @@
 # Repository context
 
-This repository is the NLP layer of the Moenarch capability graph. Production
-Rust code may depend on crates owned here and on the exact released foundation
-versions declared in the root workspace. It must not depend on audio-analysis,
-visual-analysis, spatial-analysis, application repositories, another checkout,
-or moving Git branches.
+This repository is the NLP layer of the Moenarch capability graph. Production Rust code may depend on crates owned here and on foundation crates. During normal development, the committed source-dependency declaration may replace the registry packages with one exact `moenarch-foundation` revision; distributed builds use the exact released versions declared in the root workspace. Committed package manifests must not depend on audio-analysis, visual-analysis, spatial-analysis, application repositories, another checkout, or moving Git branches.
 
 The workspace owns 56 Cargo packages: 52 clean-copied source packages and four
 destination-authored aggregate-registry packages. The accompanying Bun inventory contains

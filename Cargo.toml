@@ -32,8 +32,9 @@ tokenizers = { version = "0.22.2", default-features = false, features = ["unstab
 unicode-normalization = "0.1.24"
 unicode-segmentation = "1.12.0"
 
-# Published foundation dependencies. Local co-development uses uncommitted
-# Cargo patches; committed manifests resolve only immutable registry versions.
+# Registry coordinates remain the distribution contract. Normal development may
+# activate the exact foundation source revision declared in
+# .coding-tooling.source-deps.json; committed manifests stay registry-based.
 data-inversion-core = { package = "moenarch-data-inversion-core", version = "=0.1.1" }
 jobs-core = { package = "moenarch-jobs-core", version = "=0.1.2" }
 math-sparse-data = { package = "moenarch-math-sparse-data", version = "=0.1.1" }

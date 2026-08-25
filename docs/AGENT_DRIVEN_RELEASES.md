@@ -1,5 +1,9 @@
 # Agent-driven releases
 
+This guide applies only to explicitly assigned release or distribution work. Ordinary implementation is source-first: a missing registry version is not an implementation blocker when the NLP workspace or a consumer can validate an exact source revision. Do not invoke this procedure merely to unblock feature work or turn a consumer change into a publication wave.
+
+Version bumps, publication, tags, and registry-only consumer proof begin in a dedicated release task after the source graph has been validated. Release verification must deactivate managed source overrides; source-mode evidence does not weaken any authorization, packaging, provenance, or registry-only gate below.
+
 Issue #113 authorizes no publication. The checked-in JSON plan remains a
 nonpublishing inventory of all 56 Cargo and 28 Bun surfaces. Issue #2 in this
 repository is the destination-local authorization surface for the issue #114
