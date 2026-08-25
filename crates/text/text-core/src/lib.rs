@@ -1357,11 +1357,7 @@ fn is_sentence_terminator(ch: char) -> bool {
     matches!(ch, '.' | '?' | '!' | '…' | '。' | '！' | '？')
 }
 
-fn is_abbreviation_boundary(
-    text: &str,
-    period_byte_index: usize,
-    abbreviations: &[&str],
-) -> bool {
+fn is_abbreviation_boundary(text: &str, period_byte_index: usize, abbreviations: &[&str]) -> bool {
     let prefix = &text[..period_byte_index];
     let word_start = prefix
         .char_indices()
@@ -1538,10 +1534,10 @@ mod tests {
 
     #[test]
     fn caller_abbreviations_preserve_sentence_boundaries_and_offsets() {
-        let text = "Aristotle argues in Phys. III that change is actuality. Knowledge concerns truth.";
+        let text =
+            "Aristotle argues in Phys. III that change is actuality. Knowledge concerns truth.";
         let options = TextProcessingOptions::default();
-        let sentences =
-            split_sentence_spans_with_abbreviations(text, &options, &["Phys."]);
+        let sentences = split_sentence_spans_with_abbreviations(text, &options, &["Phys."]);
 
         assert_eq!(
             sentences
