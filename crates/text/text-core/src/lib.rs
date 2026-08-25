@@ -1585,8 +1585,7 @@ mod tests {
     fn caller_abbreviations_match_internal_periods() {
         let text = "She earned a Ph.D. in ethics. E.G. this degree matters. Next.";
         let options = TextProcessingOptions::default();
-        let sentences =
-            split_sentence_spans_with_abbreviations(text, &options, &["Ph.D.", "e.g."]);
+        let sentences = split_sentence_spans_with_abbreviations(text, &options, &["Ph.D.", "e.g."]);
 
         assert_eq!(
             sentences
