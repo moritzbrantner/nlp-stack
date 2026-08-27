@@ -88,8 +88,8 @@ if [[ "$mode" == "--with-source" ]]; then
   }
   trap cleanup EXIT
 
+  run_tooling source-deps activate --config "$root/.coding-tooling.source-deps.json" --json
   if [[ "$was_active" != "true" ]]; then
-    run_tooling source-deps activate --config "$root/.coding-tooling.source-deps.json" --json
     activated_here=true
   fi
 
