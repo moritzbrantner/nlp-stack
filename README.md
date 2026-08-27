@@ -13,9 +13,14 @@ retains 27 focused Bun app/WASM surfaces and one private NLP workbench adapter.
 
 This repository was bootstrapped as a clean copy from
 `moritzbrantner/rust-packages`; see [docs/PROVENANCE.md](docs/PROVENANCE.md).
-The source repository remains the active release owner. This bootstrap does not
-authorize Cargo or npm publication, tags, releases, consumer migration, or
-source removal.
+For the Rust packages assigned to `nlp-stack`, this repository is now the
+canonical source, test, issue, version, and release authority. Historical copies
+in `rust-packages` are compatibility/provenance material and must not receive
+new NLP behavior or publish migrated NLP crates.
+
+Ownership does not itself authorize publication, tags, releases, consumer
+migration, or source removal. Those remain explicit destination-local release
+or migration tasks.
 
 ## Source development
 
