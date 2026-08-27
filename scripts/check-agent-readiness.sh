@@ -29,39 +29,56 @@ run_tooling() {
   exit 2
 }
 
+registered_component_path() {
+  local registry="$1"
+  local component="$2"
+  python3 - "$registry" "$component" <<'PY'
+import json
+from pathlib import Path
+import re
+import sys
+
+path = Path(sys.argv[1])
+header = f"[components.{sys.argv[2]}]"
+active = False
+for raw in path.read_text(encoding="utf-8").splitlines():
+    line = raw.strip()
+    if line.startswith("[") and line.endswith("]"):
+        active = line == header
+        continue
+    if not active:
+        continue
+    match = re.match(r'^path\s*=\s*("(?:[^"\\]|\\.)*")\s*$', line)
+    if match:
+        try:
+            value = json.loads(match.group(1))
+        except json.JSONDecodeError:
+            break
+        if isinstance(value, str):
+            print(value)
+        break
+PY
+}
+
 resolve_skills_root() {
   if [[ -n "${CODING_AGENT_SKILLS_ROOT:-}" && -d "$CODING_AGENT_SKILLS_ROOT" ]]; then
     printf '%s\n' "$CODING_AGENT_SKILLS_ROOT"
-    return
-  fi
-  if [[ -d "$root/../coding-agent-skills" ]]; then
-    printf '%s\n' "$root/../coding-agent-skills"
     return
   fi
 
   local registry="${MOENARCH_ENVIRONMENT_REGISTRY:-${XDG_CONFIG_HOME:-$HOME/.config}/moenarch/environment.toml}"
   if [[ -f "$registry" ]]; then
     local registered
-    registered="$(python3 - "$registry" <<'PY'
-from pathlib import Path
-import sys
-import tomllib
-
-path = Path(sys.argv[1])
-try:
-    data = tomllib.loads(path.read_text(encoding="utf-8"))
-except Exception:
-    print("")
-    raise SystemExit(0)
-entry = data.get("components", {}).get("coding-agent-skills", {})
-value = entry.get("path", "") if isinstance(entry, dict) else ""
-print(value if isinstance(value, str) else "")
-PY
-)"
+    registered="$(registered_component_path "$registry" "coding-agent-skills")"
     if [[ -n "$registered" && -d "$registered" ]]; then
       printf '%s\n' "$registered"
       return
     fi
+  fi
+
+  if [[ -d "$root/../coding-agent-skills" ]]; then
+    printf '%s\n' "$root/../coding-agent-skills"
+    return
   fi
 
   printf '%s\n' "coding-agent-skills is required. Set CODING_AGENT_SKILLS_ROOT, register it in the Moenarch environment, or keep it as a sibling checkout." >&2
