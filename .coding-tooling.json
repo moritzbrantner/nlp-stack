@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "conventionRefs": [
+    "AGENT-001",
+    "AGENT-002",
+    "AGENT-003",
+    "AGENT-007",
+    "AGENT-008",
+    "AGENT-009",
+    "TEST-002",
+    "TEST-005",
+    "TEST-006",
+    "TEST-007",
+    "RUST-001",
+    "RUST-002",
+    "RUST-003"
+  ]
+}
