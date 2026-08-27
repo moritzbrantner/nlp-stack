@@ -3,6 +3,12 @@
 Read `CONTEXT.md`, `docs/PROVENANCE.md`, `docs/SOURCE_DEVELOPMENT.md`, the ADR, ownership map, and release plan
 before changing package boundaries, cross-repository dependencies, or release metadata.
 
+## Agent startup
+
+- Before an implementation run, execute `bash scripts/check-agent-readiness.sh`. It resolves the live `coding-agent-conventions` policy for this repository and validates the current `coding-agent-skills` catalog plus the `standard` profile.
+- Before work that activates the local foundation source graph, execute `bash scripts/check-agent-readiness.sh --with-source`. The outer workspace must provide the exact sibling `moenarch-foundation` revision; the canary verifies activation and Cargo metadata without turning private Git authentication into repository configuration.
+- Shared engineering policy remains live in `coding-agent-conventions`; do not copy shared rule text into this repository. `.coding-tooling.json` only names stable convention IDs whose continued availability is part of this repository's agent contract.
+
 ## Boundaries
 
 - Keep NLP dependent only on `moenarch-foundation` crates. Normal development uses the exact local foundation source revision declared in `.coding-tooling.source-deps.json`; distribution remains registry-only.
