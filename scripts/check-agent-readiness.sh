@@ -86,7 +86,7 @@ resolve_skills_root() {
 }
 
 python3 scripts/check_agent_readiness_contract.py --check
-run_tooling conventions resolve --root "$root" --config "$root/.coding-tooling.json" --json
+run_tooling conventions resolve --root "$root" --json
 
 skills_root="$(resolve_skills_root)"
 run_tooling agent-capabilities validate --root "$skills_root" --json
