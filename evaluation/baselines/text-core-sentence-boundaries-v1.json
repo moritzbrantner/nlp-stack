@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "sourceRevision": "ee84ef9c3ed8e731092a83b2c8a5ee8b0baad4af",
+  "suite": {
+    "caseCount": 6,
+    "id": "sentence-boundaries-v1",
+    "task": "sentence-boundaries"
+  },
+  "system": "text-core/builtin-sentence-boundaries",
+  "metrics": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "truePositives": 16,
+    "falsePositives": 0,
+    "falseNegatives": 0
+  }
+}
