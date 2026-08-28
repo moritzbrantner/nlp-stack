@@ -7,6 +7,6 @@
     "bench:browser": "bun bench/browser.mjs"
   },
   "devDependencies": {
-    "playwright": "latest"
+    "playwright": "^1.62.1"
   }
 }

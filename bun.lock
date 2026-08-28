@@ -51,7 +51,7 @@
       "name": "@moritzbrantner/text-benchmarks",
       "version": "0.1.0",
       "devDependencies": {
-        "playwright": "latest",
+        "playwright": "^1.62.1",
       },
     },
     "packages/text-classification-app": {
