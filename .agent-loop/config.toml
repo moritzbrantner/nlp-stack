@@ -1,0 +1,56 @@
+version = 1
+
+[project]
+id = "nlp-stack"
+
+[agent]
+provider = "codex"
+max_duration_seconds = 7200
+
+[providers.codex]
+executable = "codex"
+reasoning_effort = "high"
+sandbox = "workspace-write"
+approval_policy = "never"
+
+[providers.claude]
+executable = "claude"
+effort = "high"
+permission_mode = "dontAsk"
+allowed_tools = [
+  "Bash",
+  "Edit",
+  "Read",
+  "Write",
+]
+
+[execution]
+coding_tooling_executable = "coding-tooling"
+check_tier = "full"
+target_branch = "main"
+
+[skills]
+profile = "standard"
+
+[publication]
+mode = "pull-request"
+remote = "origin"
+
+[queue]
+backend = "github"
+provider = "codex"
+
+# Finish open, non-draft pull requests before starting new issues.
+prioritize_pull_requests = true
+
+# Only explicitly implementation-ready issues may enter the queue.
+ready_issue_label = "agent-ready"
+
+# Publication is opt-in, and integration remains behind coding-tooling's gate.
+publish_pull_requests = true
+merge_via_coding_tooling = true
+
+max_repair_attempts = 2
+max_items_per_run = 20
+merge_method = "squash"
+trusted_authors = ["moritzbrantner"]

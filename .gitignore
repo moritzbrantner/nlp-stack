@@ -11,7 +11,8 @@ audio-tools/
 test-corpora/
 .video-analysis-models/
 .model-runtime/
-.agent-loop/
+/.agent-loop/*
+!/.agent-loop/config.toml
 /.agent-loop/verification/
 .env
 .env.*
