@@ -123,11 +123,13 @@ def ndcg_at_k(ranking: Sequence[T], relevant: Iterable[T], k: int) -> float:
     if not relevant_set:
         return 1.0
 
-    dcg = sum(
-        1.0 / log2(index + 2)
-        for index, item in enumerate(ranking[:k])
-        if item in relevant_set
-    )
+    seen: set[T] = set()
+    dcg = 0.0
+    for index, item in enumerate(ranking[:k]):
+        if item not in relevant_set or item in seen:
+            continue
+        seen.add(item)
+        dcg += 1.0 / log2(index + 2)
     ideal_hits = min(len(relevant_set), k)
     if ideal_hits == 0:
         return 0.0

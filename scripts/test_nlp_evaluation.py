@@ -45,6 +45,9 @@ class NlpEvaluationTests(unittest.TestCase):
             ndcg_at_k(["x", "a"], {"a", "b"}, 2),
         )
 
+    def test_ndcg_does_not_reward_duplicate_results(self) -> None:
+        self.assertEqual(ndcg_at_k(["a", "a"], {"a"}, 2), 1.0)
+
     def test_spearman_correlation_handles_direction(self) -> None:
         self.assertAlmostEqual(
             spearman_correlation([1.0, 2.0, 3.0], [1.0, 2.0, 3.0]),
