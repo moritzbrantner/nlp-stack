@@ -1,0 +1,6 @@
+{"id":"basic-en","text":"Hello world. Again.","language":"en","abbreviations":[],"boundaryByteEnds":[12,19]}
+{"id":"builtin-abbreviations","text":"Dr. Smith wrote pi is 3.14. Wait... Really？ Yes!","language":"en","abbreviations":[],"boundaryByteEnds":[27,35,45,50]}
+{"id":"configured-citation","text":"Aristotle argues in Phys. III that change is actuality. Knowledge concerns truth.","language":"en","abbreviations":["Phys."],"boundaryByteEnds":[55,81]}
+{"id":"configured-internal-periods","text":"She earned a Ph.D. in ethics. E.G. this degree matters. Next.","language":"en","abbreviations":["Ph.D.","e.g."],"boundaryByteEnds":[29,55,61]}
+{"id":"unicode-casefold","text":"Ул. Ленина is cited. STRASSE. is equivalent here. Next.","language":"mixed","abbreviations":["ул.","straße."],"boundaryByteEnds":[28,57,63]}
+{"id":"cjk-terminators","text":"你好世界。再见！","language":"zh","abbreviations":[],"boundaryByteEnds":[15,24]}

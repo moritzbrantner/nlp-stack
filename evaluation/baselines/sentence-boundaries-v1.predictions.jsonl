@@ -1,0 +1,6 @@
+{"id":"basic-en","boundaryByteEnds":[12,19]}
+{"id":"builtin-abbreviations","boundaryByteEnds":[27,35,45,50]}
+{"id":"configured-citation","boundaryByteEnds":[55,81]}
+{"id":"configured-internal-periods","boundaryByteEnds":[29,55,61]}
+{"id":"unicode-casefold","boundaryByteEnds":[28,57,63]}
+{"id":"cjk-terminators","boundaryByteEnds":[15,24]}
