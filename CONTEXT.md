@@ -1,18 +1,22 @@
 # Repository context
 
-This repository is the NLP layer of the Moenarch capability graph. Production Rust code may depend on crates owned here and on foundation crates. During normal development, the committed source-dependency declaration may replace the registry packages with one exact `moenarch-foundation` revision; distributed builds use the exact released versions declared in the root workspace. Committed package manifests must not depend on audio-analysis, visual-analysis, spatial-analysis, application repositories, another checkout, or moving Git branches.
+This repository is the canonical NLP layer of the Moenarch capability graph. Production Rust code may depend on capabilities owned here and on lower-level `moenarch-foundation` crates. Historical NLP copies in `rust-packages` are compatibility/provenance material only.
 
-The workspace owns 56 Cargo packages: 52 clean-copied source packages and four
-destination-authored aggregate-registry packages. The accompanying Bun inventory contains
-13 apps, 13 npm/WASM wrappers, one benchmark package, and the private
-`@moritzbrantner/nlp-app-ui` workbench adapter. The adapter is a focused copy of
-the package-surface seam; the broader compatibility UI remains in
-`rust-packages`, while browser/application implementations remain owned by
-`platform-packages`. No Bun surface is publication-eligible without a separate
-exact npm/WASM ownership and release decision.
+During normal development, the committed source-dependency declaration may replace registry packages with one exact `moenarch-foundation` revision. Distributed builds use released dependency coordinates. Committed package manifests must not depend on audio-analysis, visual-analysis, spatial-analysis, application repositories, another checkout, or moving Git branches.
 
-Public Rust APIs, serialized transcript shapes, package names, and operation IDs
-are retained from extraction commit
-`b8b29cf8db0b86ed1b133a18155adf24992f9483`. Repository movement is additive:
-`rust-packages` remains the active source and release owner until a later exact
-release issue, registry proof, and consumer gates transfer that responsibility.
+The current workspace is an extraction-era inventory rather than the target package graph. It still contains focused CLI/server/WASM packages, pairwise bridges, model-runtime glue, and per-capability Bun applications that the target architecture does not require. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) is authoritative for durable capability boundaries and the bottom-up simplification order.
+
+Important repository-level rules:
+
+- semantic capability libraries are the durable center of the workspace;
+- typed Rust APIs and typed data are the source of truth;
+- generic JSON/operation/transport surfaces belong at outer adapters, not inside domain crates;
+- adapters, backend crates, contract crates, compatibility layers, and shared recipes are created only when real use proves the need;
+- `text-core` is a small media/runtime-agnostic text kernel;
+- neutral timed text belongs below NLP in `moenarch-foundation::media-core` for now;
+- publication is a separate decision from repository ownership;
+- compatibility work is driven by real consumers, not by preserving every extracted 0.1.x seam.
+
+Browser/product implementations remain application concerns. This repository may own one NLP workbench/showcase and narrow browser smoke fixtures; a dedicated app for every capability is not an invariant.
+
+For source-development mechanics see `docs/SOURCE_DEVELOPMENT.md`. For extraction history see `docs/PROVENANCE.md`. For architectural decisions and target boundaries see `docs/ARCHITECTURE.md`.

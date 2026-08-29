@@ -1,21 +1,12 @@
 # nlp-stack
 
-This workspace includes an additive `moenarch-nlp-package-registry` Rust
-surface. It namespaces and dispatches existing library-owned operations without
-replacing any focused CLI, server, or WASM adapter.
+`nlp-stack` is the canonical text and natural-language capability repository for the Moenarch ecosystem. It owns NLP source, architecture, tests, issues, versions, and releases for capabilities assigned to this domain.
 
-`nlp-stack` is the text and natural-language capability repository for the
-Moenarch ecosystem. It owns 52 source-derived Rust crates plus four
-destination-authored aggregate-registry crates for text documents, lexical and
-linguistic analysis, classification, embeddings, indexing, retrieval,
-question answering, generation, and purified transcript contracts. It also
-retains 27 focused Bun app/WASM surfaces and one private NLP workbench adapter.
+The repository was extracted from `moritzbrantner/rust-packages`; see [docs/PROVENANCE.md](docs/PROVENANCE.md). Historical copies in `rust-packages` are compatibility/provenance material rather than a second source of truth.
 
-This repository was bootstrapped as a clean copy from
-`moritzbrantner/rust-packages`; see [docs/PROVENANCE.md](docs/PROVENANCE.md).
-The source repository remains the active release owner. This bootstrap does not
-authorize Cargo or npm publication, tags, releases, consumer migration, or
-source removal.
+The current workspace still contains the broad extraction-era package, adapter, WASM, and demo inventory. That inventory is transitional. The target architecture intentionally reduces it to semantic capability libraries, earned adapters, a thin aggregate registry boundary, and one default NLP workbench. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before treating an existing package boundary as durable.
+
+Ownership does not itself authorize publication, tags, releases, consumer migration, or source removal. Those remain explicit release or migration tasks.
 
 ## Source development
 
@@ -40,5 +31,4 @@ bun run text-app:build
 bun run text-wasm:test:all
 ```
 
-`scripts/check-preflight.sh` runs the normal clean-checkout gate.
-`scripts/check.sh` adds archive verification for every Rust package.
+`scripts/check-preflight.sh` runs the normal clean-checkout gate. `scripts/check.sh` adds archive verification for every Rust package.
