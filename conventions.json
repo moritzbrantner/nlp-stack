@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "registry": "coding-agent-conventions",
+  "modules": [
+    "react",
+    "rust",
+    "testing-library",
+    "tooling",
+    "typescript",
+    "vite",
+    "vitest"
+  ]
+}
