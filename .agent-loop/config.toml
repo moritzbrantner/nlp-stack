@@ -1,0 +1,44 @@
+version = 1
+
+[project]
+id = "nlp-stack"
+
+[agent]
+provider = "codex"
+max_duration_seconds = 7200
+
+[providers.codex]
+executable = "codex"
+reasoning_effort = "high"
+sandbox = "danger-full-access"
+approval_policy = "never"
+
+[providers.claude]
+executable = "claude"
+effort = "high"
+permission_mode = "dontAsk"
+allowed_tools = [
+    "Bash",
+    "Edit",
+    "Read",
+    "Write",
+]
+
+[execution]
+coding_tooling_executable = "coding-tooling"
+check_tier = "fast"
+target_branch = "main"
+
+[skills]
+profile = "standard"
+
+[publication]
+mode = "pull-request"
+remote = "origin"
+
+[queue]
+max_repair_attempts = 2
+max_items_per_run = 20
+merge_method = "squash"
+provider = "codex"
+trusted_authors = ["moritzbrantner"]
