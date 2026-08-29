@@ -31,7 +31,7 @@
 - Authority/source: repo:docs/repository-split/release-plan.json
 - Affected surfaces: docs/repository-split/**, docs/AGENT_DRIVEN_RELEASES.md, docs/RELEASE_CHECKLIST.md
 - Linked tests: repo:scripts/test_check_release_plan.py
-- Compatibility promise: rust-packages remains active source/release owner until later gates complete.
+- Compatibility promise: nlp-stack is the active source/release owner while publication and historical-source removal remain separately gated.
 - Required evidence: contract
 - Sensitivity: optional
 - Risk dimensions: security=covered:INV-002; recovery=covered:INV-003; persistence=not-applicable:no-state-migration; concurrency=not-applicable:no-concurrent-release; migration=covered:INV-003; partial-failure=covered:INV-003; operational=covered:INV-003

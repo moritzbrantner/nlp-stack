@@ -38,8 +38,8 @@ class ReleasePlanTests(unittest.TestCase):
     def test_live_nonpublishing_plan_is_valid(self) -> None:
         self.assertEqual(self.errors(self.plan), [])
 
-    def test_nonpublishing_plan_names_current_and_next_release_owners(self) -> None:
-        self.assertEqual(self.plan["active_release_owner"], "moritzbrantner/rust-packages")
+    def test_nonpublishing_plan_names_canonical_release_owner(self) -> None:
+        self.assertEqual(self.plan["active_release_owner"], "moritzbrantner/nlp-stack")
         self.assertTrue(
             all(
                 package["intended_next_release_owner"] == "moritzbrantner/nlp-stack"
@@ -47,9 +47,9 @@ class ReleasePlanTests(unittest.TestCase):
             )
         )
 
-    def test_active_release_owner_cannot_move_during_bootstrap(self) -> None:
+    def test_historical_source_cannot_remain_the_active_release_owner(self) -> None:
         plan = copy.deepcopy(self.plan)
-        plan["active_release_owner"] = "moritzbrantner/nlp-stack"
+        plan["active_release_owner"] = "moritzbrantner/rust-packages"
         self.assertTrue(any("wrong active release owner" in error for error in self.errors(plan)))
 
     def test_cargo_publication_cannot_be_smuggled_into_bootstrap(self) -> None:

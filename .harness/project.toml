@@ -19,6 +19,7 @@ verification_surface_globs = [
   "docs/repository-split/**",
 ]
 required_external_sources = [
+  { id = "issue:#12", canonical_url = "https://github.com/moritzbrantner/nlp-stack/issues/12", minimum_updated_at = "2026-08-29T22:03:30Z" },
   { id = "issue:#113", canonical_url = "https://github.com/moritzbrantner/rust-packages/issues/113", minimum_updated_at = "2026-08-15T10:41:50Z" },
   { id = "issue:#106", canonical_url = "https://github.com/moritzbrantner/rust-packages/issues/106", minimum_updated_at = "2026-07-30T01:21:45Z" },
 ]
