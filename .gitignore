@@ -46,3 +46,6 @@ use-case-output/**/*.wav
 use-case-output/**/*.flac
 use-case-output/**/*.ogg
 use-case-output/**/*.mp3
+
+# Local agent-loop run evidence
+.agent-loop/runs/
