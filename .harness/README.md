@@ -1,6 +1,6 @@
 # Optional verification profile
 
-This `draft` profile describes optional independent verification for
+This `active` profile describes optional independent verification for
 `moritzbrantner/nlp-stack`. It supplements the repository's normal verification
 contract and does not add a worker-scheduling gate.
 

@@ -1,5 +1,5 @@
 schema_version = 1
-profile_status = "draft"
+profile_status = "active"
 project_id = "moritzbrantner/nlp-stack"
 default_base_ref = "origin/main"
 maturity = "growing"
