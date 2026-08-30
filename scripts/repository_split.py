@@ -3,12 +3,9 @@
 
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
-import os
 import subprocess
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -80,48 +77,3 @@ def ownership_records_sha256(document: dict) -> str:
     )
     encoded = json.dumps(records, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(encoded).hexdigest()
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--harness-audit", action="store_true")
-    parser.add_argument("--base-ref", required=True)
-    args = parser.parse_args()
-    if not args.harness_audit:
-        parser.error("--harness-audit is required")
-    resolved_base = subprocess.run(
-        ["git", "rev-parse", "--verify", f"{args.base_ref}^{{commit}}"],
-        cwd=ROOT,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if resolved_base.returncode != 0:
-        parser.error(f"--base-ref does not resolve to a commit: {args.base_ref}")
-    base_sha = resolved_base.stdout.strip()
-    codex_home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
-    harness = (
-        codex_home
-        / "skills/moenarch-verification-harness/scripts/verification_harness.py"
-    )
-    requirements = ROOT / ".agent-loop/verification/requirements.json"
-    return subprocess.run(
-        [
-            sys.executable,
-            str(harness),
-            "audit",
-            "--repo-root",
-            str(ROOT),
-            "--base-ref",
-            base_sha,
-            "--requirements-bundle",
-            str(requirements),
-            "--json",
-        ],
-        cwd=ROOT,
-        check=False,
-    ).returncode
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

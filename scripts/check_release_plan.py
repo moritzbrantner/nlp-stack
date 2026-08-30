@@ -48,7 +48,7 @@ REQUIRED_CHECKS = {
     "bun run text-app:typecheck",
     "bun run text-app:build",
     "bun run text-wasm:test:all",
-    "python3 scripts/repository_split.py --harness-audit --base-ref <reviewed-base-sha>",
+    "coding-tooling run --tier full --strict --json",
 }
 
 NLP_WAVE_1 = [

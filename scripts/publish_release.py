@@ -49,7 +49,6 @@ ROOT_FIELDS = {
 }
 CONTROL_REPAIR_SCRIPT_PATHS = {
     ".agent-loop.toml",
-    ".harness/invariants.md",
     "docs/AGENT_DRIVEN_RELEASES.md",
     "docs/RELEASE_CHECKLIST.md",
     "scripts/check_nlp_wave_1_downstream_consumers.sh",
