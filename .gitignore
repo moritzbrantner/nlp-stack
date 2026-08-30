@@ -21,6 +21,7 @@ test-corpora/
 __pycache__/
 coverage/
 .nyc_output/
+/.artifacts/nlp-eval/
 node_modules/
 packages/*/node_modules/
 packages/*/.vite/
