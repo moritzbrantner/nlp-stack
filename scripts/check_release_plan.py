@@ -48,7 +48,7 @@ REQUIRED_CHECKS = {
     "bun run text-app:typecheck",
     "bun run text-app:build",
     "bun run text-wasm:test:all",
-    "coding-tooling run --tier full --strict --json",
+    "bun run check",
 }
 
 NLP_WAVE_1 = [

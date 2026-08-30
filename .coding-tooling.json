@@ -1,32 +1,5 @@
 {
   "schemaVersion": 1,
-  "tiers": {
-    "fast": [
-      "format:check",
-      "test:integration"
-    ],
-    "full": [
-      "repository:verify"
-    ]
-  },
-  "repositoryCommands": {
-    "format:check": [
-      "cargo",
-      "fmt",
-      "--all",
-      "--",
-      "--check"
-    ],
-    "test:integration": [
-      "bash",
-      "-lc",
-      "python3 scripts/check_repository_boundaries.py --check && python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json && python3 -m unittest discover -s scripts -p 'test_*.py'"
-    ],
-    "repository:verify": [
-      "bash",
-      "scripts/check.sh"
-    ]
-  },
   "conventionRefs": [
     "AGENT-001",
     "AGENT-002",
