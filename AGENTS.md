@@ -47,9 +47,3 @@ python3 -m unittest discover -s scripts -p 'test_*.py'
 ```
 
 Use `scripts/check-preflight.sh` before handoff and `scripts/check.sh` when archive verification is required. Never weaken checks or report unrun evidence as passing.
-
-<!-- verification-harness:start -->
-## Verification harness
-Run the installed `moenarch-verification-harness` skill's `audit` command before changing verification surfaces.
-Early selection is advisory; `full` remains the handoff gate. See `.harness/README.md`.
-<!-- verification-harness:end -->

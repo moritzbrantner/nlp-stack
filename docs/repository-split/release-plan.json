@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "repository": "moritzbrantner/nlp-stack",
-  "active_release_owner": "moritzbrantner/rust-packages",
+  "active_release_owner": "moritzbrantner/nlp-stack",
   "source_sha": "b8b29cf8db0b86ed1b133a18155adf24992f9483",
   "publication_authorized": false,
   "npm_publication_authorized": false,
@@ -23,7 +23,7 @@
     "bun run text-app:typecheck",
     "bun run text-app:build",
     "bun run text-wasm:test:all",
-    "python3 scripts/repository_split.py --harness-audit --base-ref <reviewed-base-sha>"
+    "bun run check"
   ],
   "dependency_order": [
     "moenarch-text-core",
