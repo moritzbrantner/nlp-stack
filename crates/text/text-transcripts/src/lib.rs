@@ -8,16 +8,15 @@ use std::path::Path;
 
 use serde::Deserialize;
 use serde_json::Value;
+use media_core::{AnalysisEvent, DetectError, Timebase, Timestamp};
 use text_core::{
-    tokenize, tokenize_words, AnalysisEvent, OwnedTextSegment, TextAnalyzer, TextProcessingOptions,
-    TextSegment, Timestamp, TokenKind,
+    tokenize, tokenize_words, OwnedTextSegment, TextProcessingOptions, TokenKind,
 };
 
 use thiserror::Error;
 pub mod contracts;
 pub use contracts::{
-    text_segment_contract_with_source, TranscriptCharContract, TranscriptSegmentContract,
-    TranscriptWordContract, TranscriptionContract,
+    TranscriptCharContract, TranscriptSegmentContract, TranscriptWordContract, TranscriptionContract,
 };
 
 #[derive(Debug, Error)]
@@ -34,7 +33,7 @@ pub enum TranscriptionError {
     InvalidTranscript(String),
     #[error("{0}")]
     /// The detect variant.
-    Detect(#[from] text_core::DetectError),
+    Detect(#[from] DetectError),
 }
 
 /// Type alias for result.
@@ -184,34 +183,30 @@ pub fn normalize_subtitle_text(text: &str, options: SubtitleNormalizationOptions
 /// Transcript-specific deterministic analyzer.
 pub struct TranscriptHeuristicAnalyzer;
 
-impl TextAnalyzer for TranscriptHeuristicAnalyzer {
-    fn name(&self) -> &str {
+impl TranscriptHeuristicAnalyzer {
+    /// Returns the capability-local analyzer name.
+    pub const fn name(&self) -> &str {
         "transcript_heuristics"
     }
 
-    fn process_segment(
-        &mut self,
-        segment: &TextSegment<'_>,
-    ) -> text_core::Result<Vec<AnalysisEvent>> {
+    /// Emits transcript-specific annotations for one timed transcript segment.
+    pub fn analyze_segment(&self, segment: &TranscriptSegment) -> Vec<AnalysisEvent> {
         let mut events = Vec::new();
         let text = segment.text.trim();
+        let timestamp = segment.start_seconds.map(seconds_to_timestamp);
         if text.ends_with(['?', '؟', '？']) {
-            events.push(event_at(self.name(), "speech:question", segment.timestamp));
+            events.push(event_at(self.name(), "speech:question", timestamp));
         }
         if has_token_kind(text, TokenKind::Url) {
-            events.push(event_at(self.name(), "speech:url", segment.timestamp));
+            events.push(event_at(self.name(), "speech:url", timestamp));
         }
         if has_token_kind(text, TokenKind::Number) {
-            events.push(event_at(self.name(), "speech:number", segment.timestamp));
+            events.push(event_at(self.name(), "speech:number", timestamp));
         }
         if tokenize_words(text).len() >= 30 {
-            events.push(event_at(
-                self.name(),
-                "speech:long_segment",
-                segment.timestamp,
-            ));
+            events.push(event_at(self.name(), "speech:long_segment", timestamp));
         }
-        Ok(events)
+        events
     }
 }
 
@@ -452,8 +447,12 @@ fn format_webvtt_timestamp(seconds: f64) -> String {
 
 /// Returns segment to owned text segment.
 pub fn segment_to_owned_text_segment(segment: &TranscriptSegment) -> OwnedTextSegment {
-    text_core::TextSegmentContract::from(TranscriptSegmentContract::from(segment))
-        .to_owned_text_segment()
+    let mut text_segment =
+        OwnedTextSegment::new(segment.index, segment.text.clone()).finality(segment.is_final);
+    if let Some(language) = &segment.language {
+        text_segment = text_segment.language(language.clone());
+    }
+    text_segment
 }
 
 /// Parses a transcript file by inferring the format from its extension.
@@ -1007,6 +1006,10 @@ fn event_at(analyzer: &str, label: &str, timestamp: Option<Timestamp>) -> Analys
     }
 }
 
+fn seconds_to_timestamp(seconds: f64) -> Timestamp {
+    Timestamp::new((seconds * 1_000.0).round() as i64, Timebase::new(1, 1_000))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1166,7 +1169,6 @@ mod tests {
         };
         let owned = segment_to_owned_text_segment(&segment);
         assert_eq!(owned.segment_index, 2);
-        assert_eq!(owned.timestamp.unwrap().seconds(), 1.25);
         assert_eq!(owned.language.as_deref(), Some("en"));
     }
 
@@ -1195,18 +1197,20 @@ mod tests {
 
     #[test]
     fn transcript_heuristic_analyzer_emits_speech_events() {
-        let segment = TextSegment {
-            segment_index: 0,
-            timestamp: None,
-            text: "Visit https://example.com at 3?",
+        let segment = TranscriptSegment {
+            index: 0,
+            start_seconds: None,
+            end_seconds: None,
+            text: "Visit https://example.com at 3?".to_string(),
             language: None,
+            speaker: None,
+            confidence: None,
             is_final: true,
         };
-        let mut analyzer = TranscriptHeuristicAnalyzer;
+        let analyzer = TranscriptHeuristicAnalyzer;
 
         let labels = analyzer
-            .process_segment(&segment)
-            .unwrap()
+            .analyze_segment(&segment)
             .into_iter()
             .map(|event| event.label)
             .collect::<Vec<_>>();
@@ -1275,31 +1279,6 @@ mod tests {
         assert_eq!(parsed.source.as_deref(), Some(path.to_str().unwrap()));
         assert_eq!(parsed.text.as_deref(), Some("Hello file"));
         assert_eq!(parsed.segments[0].text, "Hello file");
-    }
-
-    #[test]
-    fn builds_text_segment_contract_with_source() {
-        let mut segment = TranscriptSegmentContract::new(7, "hello source");
-        segment.start_seconds = Some(1.25);
-        segment.end_seconds = Some(2.5);
-        segment.language = Some("en".to_string());
-
-        let contract = text_segment_contract_with_source(
-            &segment,
-            "stream-1",
-            "caption_manual",
-            "https://example.test/video",
-        );
-
-        assert_eq!(contract.stream_id.as_deref(), Some("stream-1"));
-        assert_eq!(contract.segment_index, 7);
-        assert_eq!(contract.language.as_deref(), Some("en"));
-        assert_eq!(contract.duration_seconds, Some(1.25));
-        let source = contract.source.unwrap();
-        assert_eq!(source.source_id.as_deref(), Some("stream-1"));
-        assert_eq!(source.source_kind.as_deref(), Some("caption_manual"));
-        assert_eq!(source.uri.as_deref(), Some("https://example.test/video"));
-        assert_eq!(source.duration_seconds, Some(1.25));
     }
 
     #[test]

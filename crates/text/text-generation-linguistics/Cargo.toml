@@ -20,6 +20,7 @@ runtime-core.workspace = true
 serde_json.workspace = true
 serde.workspace = true
 data-inversion-core.workspace = true
+media-core.workspace = true
 text-core.workspace = true
 text-generation.workspace = true
 text-linguistics.workspace = true

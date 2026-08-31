@@ -30,7 +30,8 @@ use text_core::{
     AnnotationConfidence, AnnotationProvenance, Sentence, TextAnnotationGraph, TextDocument,
     TextProcessingOptions, Token,
 };
-use text_core::{AnalysisEvent, DetectError, OwnedTextSegment, Result, TextAnalyzer, TextSegment};
+use media_core::{AnalysisEvent, DetectError, Result};
+use text_core::{OwnedTextSegment, TextSegment};
 #[cfg(feature = "transcripts")]
 use text_transcripts::{TranscriptSegment, TranscriptionContract, TranscriptionResult};
 
@@ -840,7 +841,7 @@ fn analysis_provenance(
     prefer_model_backends: bool,
 ) -> AnnotationProvenance {
     if alignments.is_some() || (prefer_model_backends && tokenizer.source.is_some()) {
-        AnnotationProvenance::Tokenizer
+        AnnotationProvenance::Derived
     } else {
         AnnotationProvenance::Heuristic
     }
@@ -851,6 +852,16 @@ fn analysis_provenance(
 pub struct LinguisticAnalyzer {
     options: LinguisticAnalysisOptions,
     segment_buffer: Vec<OwnedTextSegment>,
+}
+
+/// Capability-local adapter for incremental linguistic analysis.
+pub trait LinguisticSegmentAnalyzer {
+    /// Returns the linguistic operation name.
+    fn name(&self) -> &str;
+    /// Analyzes one text segment.
+    fn analyze_segment(&mut self, segment: &TextSegment<'_>) -> Result<Vec<AnalysisEvent>>;
+    /// Emits document-level observations after the final segment.
+    fn finish(&mut self) -> Result<Vec<AnalysisEvent>>;
 }
 
 impl LinguisticAnalyzer {
@@ -864,21 +875,18 @@ impl LinguisticAnalyzer {
 
     fn segment_events(
         &self,
-        segment: &TextSegment<'_>,
+        _segment: &TextSegment<'_>,
         analysis: &LinguisticAnalysis,
     ) -> Vec<AnalysisEvent> {
         let mut events = Vec::new();
         if let Some(language) = &analysis.language.primary {
-            let mut event =
+            let event =
                 AnalysisEvent::new(self.name(), format!("text:language:{}", language.language))
                     .score(language.confidence);
-            if let Some(timestamp) = segment.timestamp {
-                event = event.at_timestamp(timestamp);
-            }
             events.push(event);
         }
         events.extend(analysis.entities.iter().map(|entity| {
-            let mut event = AnalysisEvent::new(
+            let event = AnalysisEvent::new(
                 self.name(),
                 format!(
                     "text:entity:{:?}:{}",
@@ -887,20 +895,14 @@ impl LinguisticAnalyzer {
                 ),
             )
             .score(entity.confidence);
-            if let Some(timestamp) = segment.timestamp {
-                event = event.at_timestamp(timestamp);
-            }
             event
         }));
         events.extend(analysis.events.iter().map(|event_analysis| {
-            let mut event = AnalysisEvent::new(
+            let event = AnalysisEvent::new(
                 self.name(),
                 format!("text:event:{}", event_analysis.lemma.to_lowercase()),
             )
             .score(event_analysis.confidence);
-            if let Some(timestamp) = segment.timestamp {
-                event = event.at_timestamp(timestamp);
-            }
             event
         }));
         events
@@ -937,12 +939,12 @@ impl LinguisticAnalyzer {
     }
 }
 
-impl TextAnalyzer for LinguisticAnalyzer {
+impl LinguisticSegmentAnalyzer for LinguisticAnalyzer {
     fn name(&self) -> &str {
         "linguistics"
     }
 
-    fn process_segment(&mut self, segment: &TextSegment<'_>) -> Result<Vec<AnalysisEvent>> {
+    fn analyze_segment(&mut self, segment: &TextSegment<'_>) -> Result<Vec<AnalysisEvent>> {
         let analysis = analyze_segment(segment, &self.options)?;
         self.segment_buffer.push(
             OwnedTextSegment::new(segment.segment_index, segment.text)
@@ -952,7 +954,7 @@ impl TextAnalyzer for LinguisticAnalyzer {
         Ok(self.segment_events(segment, &analysis))
     }
 
-    fn finish(&mut self, _last_segment_index: Option<u64>) -> Result<Vec<AnalysisEvent>> {
+    fn finish(&mut self) -> Result<Vec<AnalysisEvent>> {
         self.document_events()
     }
 }

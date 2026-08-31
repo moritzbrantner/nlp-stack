@@ -5,19 +5,21 @@ use std::collections::{BTreeMap, BTreeSet};
 
 mod storage;
 
+use media_core::{DetectError, Result as CoreResult};
 use serde::{Deserialize, Serialize};
 use text_core::{
-    split_paragraphs, split_sentence_spans, tokenize, TextAnnotationSpan, TextDocument,
-    TextDocumentContract, TextProcessingOptions, TextProvenance, TextSegmentContract,
-    TextSourceRef, TextSpan, TokenKind,
+    split_paragraphs, split_sentence_spans, tokenize, TextDocument, TextProcessingOptions,
+    TextSpan, TokenKind,
 };
-use text_core::{DetectError, Result as CoreResult};
 use text_embeddings::{EmbeddingModelInfo, TextEmbedderBackend};
 use text_index::{
     ChunkingStrategy as IndexChunkingStrategy, IndexBuildOptions, IndexDocument,
     IndexDocumentMetadata, IndexMutationReport, MemoryIndexStore, TextIndex, TextIndexError,
 };
-use text_lexical::{Bm25Corpus, Bm25Options, CorpusOptions, TextCorpus, TextCorpusDocument};
+use text_lexical::{
+    Bm25Corpus, Bm25Options, CorpusOptions, TextAnnotationSpan, TextCorpus, TextCorpusDocument,
+    TextDocumentContract, TextProvenance, TextSegmentContract, TextSourceRef,
+};
 use text_model_runtime::{TextReranker, TextRuntimeBackend};
 use vector_analysis_index::{
     SerializableVectorRecord, VectorRecord, VectorRecordMetadata, VectorSearchFilter,
@@ -72,24 +74,12 @@ impl SearchDocument {
         if let Some(language) = document.language {
             metadata.insert("language".to_string(), language.to_string());
         }
-        if let Some(timestamp) = document.timestamp {
-            metadata.insert(
-                "timestamp_seconds".to_string(),
-                timestamp.seconds().to_string(),
-            );
-        }
         Self {
             id: document.id.to_string(),
             title: None,
             body: document.text.to_string(),
             metadata,
-            source: document.timestamp.map(|timestamp| TextSourceRef {
-                source_id: None,
-                source_kind: Some("text_document".to_string()),
-                uri: None,
-                media_timestamp: Some(timestamp.into()),
-                duration_seconds: None,
-            }),
+            source: None,
             provenance: Vec::new(),
             annotations: Vec::new(),
         }

@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
-use text_core::{DetectError, Result};
-use text_core::{TextDocumentContract, TextSegmentContract};
+use media_core::{DetectError, Result};
+use text_lexical::{TextDocumentContract, TextSegmentContract};
 use text_embeddings::{HashedTextEmbedder, TextEmbeddingConfig};
 use text_index::{
     IndexBuildOptions, IndexDocument, IndexInspectReport, IndexMutationReport, IndexQuery,
@@ -218,7 +218,6 @@ impl TextWorkspace {
             id: &contract.id,
             text: &contract.text,
             language: contract.language.as_deref(),
-            timestamp: contract.timestamp.map(Into::into),
         };
         let report = analyze_document(&text_document, &self.options.document_analysis)?;
         self.analysis_reports

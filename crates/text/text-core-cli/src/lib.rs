@@ -1,7 +1,9 @@
 use runtime_core::{
-    cli::{self, CliAdapterMetadata},
-    PackageSurface, SurfaceResponse,
+    cli::{self, CliAdapterMetadata}, describe_surface_response, structured_surface_response,
+    surface_operation, PackageSurface, RuntimeCapabilities, SurfaceOperation, SurfaceRequest,
+    SurfaceResponse,
 };
+use serde::Deserialize;
 
 /// Wrapped library crate name.
 pub const LIBRARY_CRATE: &str = "text-core";
@@ -26,7 +28,52 @@ const METADATA: CliAdapterMetadata = CliAdapterMetadata {
 };
 
 pub fn package_surface() -> PackageSurface {
-    text_core::surface::package_surface()
+    PackageSurface {
+        library: "moenarch-text-core".to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        capabilities: RuntimeCapabilities::pure_rust(),
+        operations: vec![
+            operation(
+                "describe",
+                "Inspect package metadata",
+                "Shared text documents, tokenization, spans, and statistics.",
+                serde_json::json!({"includeOperations": true}),
+            ),
+            operation(
+                "text.statistics",
+                "Text statistics",
+                "Counts bytes, characters, words, lines, and sentences.",
+                serde_json::json!({"text": "Hello world. Again."}),
+            ),
+            operation(
+                "text.normalize",
+                "Normalize text",
+                "Normalizes Unicode, casing, and whitespace with before/after statistics.",
+                serde_json::json!({"text": "  Hello   WORLD  ", "lowercase": true, "normalizeWhitespace": true}),
+            ),
+            operation(
+                "text.tokenize",
+                "Tokenize text",
+                "Returns span-aware tokens, script profile, and detailed text statistics.",
+                serde_json::json!({"text": "Hello, Berlin 2026.", "includePunctuation": true}),
+            ),
+            operation(
+                "text.boundaries",
+                "Text boundaries",
+                "Returns Unicode-safe word, sentence, paragraph, and grapheme boundaries.",
+                serde_json::json!({"text": "Hello world. Second paragraph."}),
+            ),
+        ],
+    }
+}
+
+fn operation(
+    id: &str,
+    name: &str,
+    description: &str,
+    example_request: serde_json::Value,
+) -> SurfaceOperation {
+    surface_operation(id, name, description, example_request)
 }
 
 pub fn package_metadata_json() -> String {
@@ -38,7 +85,140 @@ pub fn command_schema_json() -> String {
 }
 
 pub fn run_operation(operation: &str, input: serde_json::Value) -> Result<SurfaceResponse, String> {
-    cli::run_wrapped_operation(operation, input, text_core::surface::run_surface_operation)
+    cli::run_wrapped_operation(operation, input, run_surface_operation)
+}
+
+/// Runs the compatibility transport surface from the CLI boundary.
+pub fn run_surface_operation(request: SurfaceRequest) -> Result<SurfaceResponse, String> {
+    let operation = request.operation.clone();
+    let value = match request.operation.as_str() {
+        "describe" => return Ok(describe_surface_response(&package_surface(), request)),
+        "text.statistics" => statistics_value(parse_input(request.input)?)?,
+        "text.normalize" => normalize_value(parse_input(request.input)?)?,
+        "text.tokenize" => tokenize_value(parse_input(request.input)?)?,
+        "text.boundaries" => boundaries_value(parse_input(request.input)?)?,
+        operation => {
+            return Err(runtime_core::SurfaceError::unsupported_operation(
+                operation,
+                LIBRARY_CRATE,
+            )
+            .to_error_string());
+        }
+    };
+    Ok(structured_surface_response(
+        operation.clone(),
+        "Text core result",
+        "Ran a text-core transport operation.",
+        serde_json::json!({"status": "ok"}),
+        value,
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StatisticsRequest {
+    text: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NormalizeRequest {
+    text: String,
+    #[serde(default = "default_true")]
+    lowercase: bool,
+    #[serde(default)]
+    strip_diacritics: bool,
+    #[serde(default = "default_true")]
+    normalize_whitespace: bool,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TokenizeRequest {
+    text: String,
+    #[serde(default)]
+    include_whitespace: bool,
+    #[serde(default)]
+    include_punctuation: bool,
+    #[serde(default = "default_true")]
+    lowercase: bool,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct BoundariesRequest {
+    text: String,
+    #[serde(default = "default_true")]
+    keep_apostrophes: bool,
+}
+
+fn statistics_value(request: StatisticsRequest) -> Result<serde_json::Value, String> {
+    let stats = text_core::text_stats(&request.text);
+    Ok(serde_json::json!({
+        "byteCount": stats.bytes,
+        "characterCount": stats.chars,
+        "wordCount": stats.words,
+        "lineCount": stats.lines,
+        "sentenceCount": stats.sentences,
+    }))
+}
+
+fn normalize_value(request: NormalizeRequest) -> Result<serde_json::Value, String> {
+    let before = text_core::detailed_text_stats(&request.text, &text_core::TextProcessingOptions::default());
+    let mut normalized = text_core::normalize_text(
+        &request.text,
+        &text_core::TextProcessingOptions {
+            lowercase: request.lowercase,
+            ..text_core::TextProcessingOptions::default()
+        },
+    );
+    if request.strip_diacritics {
+        normalized = normalized.chars().filter(|ch| ch.is_ascii()).collect();
+    }
+    if request.normalize_whitespace {
+        normalized = text_core::normalize_whitespace(&normalized);
+    }
+    let after = text_core::detailed_text_stats(&normalized, &text_core::TextProcessingOptions::default());
+    Ok(serde_json::json!({"text": normalized, "before": before, "after": after}))
+}
+
+fn tokenize_value(request: TokenizeRequest) -> Result<serde_json::Value, String> {
+    let options = text_core::TextProcessingOptions {
+        lowercase: request.lowercase,
+        include_punctuation: request.include_punctuation || request.include_whitespace,
+        ..text_core::TextProcessingOptions::default()
+    };
+    Ok(serde_json::json!({
+        "tokens": text_core::tokenize(&request.text, &options),
+        "scriptProfile": text_core::detect_script_profile(&request.text),
+        "stats": text_core::detailed_text_stats(&request.text, &options),
+    }))
+}
+
+fn boundaries_value(request: BoundariesRequest) -> Result<serde_json::Value, String> {
+    let processing = text_core::TextProcessingOptions {
+        keep_apostrophes: request.keep_apostrophes,
+        include_punctuation: true,
+        ..text_core::TextProcessingOptions::default()
+    };
+    let boundary_options = text_core::TextBoundaryOptions {
+        include_punctuation: false,
+        ..text_core::TextBoundaryOptions::default()
+    };
+    Ok(serde_json::json!({
+        "words": text_core::segment_words(&request.text, &boundary_options),
+        "sentences": text_core::split_sentence_spans(&request.text, &processing),
+        "paragraphs": text_core::split_paragraphs(&request.text),
+        "graphemes": text_core::segment_graphemes(&request.text),
+    }))
+}
+
+fn parse_input<T: for<'de> Deserialize<'de>>(input: serde_json::Value) -> Result<T, String> {
+    runtime_core::parse_surface_input(None, input)
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[cfg(test)]

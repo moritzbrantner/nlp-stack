@@ -1,15 +1,10 @@
-use runtime_core::{OperationId, SurfaceRequest};
-use text_core::surface::run_surface_operation;
+use text_core::{build_annotation_graph, TextProcessingOptions};
 
 fn main() {
-    let response = run_surface_operation(SurfaceRequest {
-        operation: OperationId::new("text.tokenize"),
-        input: serde_json::json!({
-            "text": "Alice tagged #東京 from Berlin. Rust keeps café, emoji 👍, and offsets intact.",
-            "includeStats": true
-        }),
-    })
-    .expect("tokenize unicode text");
+    let graph = build_annotation_graph(
+        "Alice tagged #東京 from Berlin. Rust keeps café, emoji 👍, and offsets intact.",
+        &TextProcessingOptions::default(),
+    );
 
-    println!("{}", serde_json::to_string_pretty(&response.value).unwrap());
+    println!("{}", serde_json::to_string_pretty(&graph).unwrap());
 }

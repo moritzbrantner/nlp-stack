@@ -16,6 +16,7 @@ categories.workspace = true
 name = "text_retrieval"
 
 [dependencies]
+media-core.workspace = true
 runtime-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true

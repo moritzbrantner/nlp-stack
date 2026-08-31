@@ -6,8 +6,8 @@ mod synthesis;
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
+use media_core::{DetectError, Result};
 use text_core::tokenize_words;
-use text_core::{DetectError, Result};
 
 pub use synthesis::*;
 

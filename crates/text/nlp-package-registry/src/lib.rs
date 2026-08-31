@@ -211,8 +211,8 @@ fn registered_surfaces() -> Vec<RegisteredSurface> {
             text_classification::surface::run_surface_operation,
         ),
         registered(
-            text_core::surface::package_surface,
-            text_core::surface::run_surface_operation,
+            text_core_cli::package_surface,
+            text_core_cli::run_surface_operation,
         ),
         registered(
             text_embeddings::surface::package_surface,

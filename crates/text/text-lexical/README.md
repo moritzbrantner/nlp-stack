@@ -41,7 +41,7 @@ let similarity = token_shingle_similarity(
 )?;
 
 let _ = (keywords, similarity);
-# Ok::<(), text_core::DetectError>(())
+# Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
 ## Corpus APIs
@@ -67,8 +67,7 @@ without changing the scoring behavior.
 retrieval workflows that combine full-text, vector, and hybrid search.
 
 ```rust,no_run
-use text_core::{TextDocumentContract, TextSegmentContract};
-use text_lexical::{Bm25Options, CorpusOptions, TextCorpus};
+use text_lexical::{Bm25Options, CorpusOptions, TextCorpus, TextDocumentContract, TextSegmentContract};
 
 let mut document = TextDocumentContract::new("doc-1", "Rust cargo builds packages.");
 document.language = Some("en".to_string());

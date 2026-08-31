@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use text_core::Result;
+use media_core::Result;
 use text_core::{Sentence, TextSpan, Token, TokenKind};
 
 use crate::local_models::{RawPrediction, SequenceLabeler};
@@ -628,13 +628,9 @@ fn build_model_entity(
         .iter()
         .rposition(|token| byte_ranges_overlap(first.byte_start, last.byte_end, token.span))?
         + 1;
-    let char_start = text[..first.byte_start].chars().count();
-    let char_end = text[..last.byte_end].chars().count();
     let span = TextSpan {
         byte_start: first.byte_start,
         byte_end: last.byte_end,
-        char_start,
-        char_end,
     };
     let mention_text = text[span.byte_start..span.byte_end].to_string();
     let sentence_index = sentences
@@ -702,8 +698,6 @@ fn classify_capitalized_entity(tokens: &[Token]) -> EntityType {
             span: TextSpan {
                 byte_start: 0,
                 byte_end: token.len(),
-                char_start: 0,
-                char_end: token.chars().count(),
             },
             kind: TokenKind::Word,
         })
@@ -730,8 +724,6 @@ fn build_entity(
     let span = TextSpan {
         byte_start: tokens[token_start].span.byte_start,
         byte_end: tokens[token_end - 1].span.byte_end,
-        char_start: tokens[token_start].span.char_start,
-        char_end: tokens[token_end - 1].span.char_end,
     };
     let mention_text = text[span.byte_start..span.byte_end].to_string();
     NamedEntity {

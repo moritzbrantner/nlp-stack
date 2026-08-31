@@ -6,17 +6,18 @@ use std::collections::{BTreeMap, BTreeSet};
 #[cfg(feature = "sqlite")]
 use std::path::Path;
 
+use media_core::DetectError;
 use serde::{Deserialize, Serialize};
-use text_core::DetectError;
 use text_core::{
-    split_paragraphs, split_sentence_spans, tokenize, TextAnnotationSpan, TextDocumentContract,
-    TextProcessingOptions, TextProvenance, TextSegmentContract, TextSourceRef, TextSpan,
-    TimestampContract, TokenKind,
+    split_paragraphs, split_sentence_spans, tokenize, TextProcessingOptions, TextSpan, TokenKind,
 };
 use text_embeddings::{
     DenseVector, EmbeddingModelInfo, HashedTextEmbedder, TextEmbedderBackend, TextEmbeddingConfig,
 };
-use text_lexical::{Bm25Corpus, Bm25Options, CorpusOptions, TextCorpus, TextCorpusDocument};
+use text_lexical::{
+    Bm25Corpus, Bm25Options, CorpusOptions, TextAnnotationSpan, TextCorpus, TextCorpusDocument,
+    TextDocumentContract, TextProvenance, TextSegmentContract, TextSourceRef, TimestampContract,
+};
 use thiserror::Error;
 use vector_analysis_index::{
     VectorRecord, VectorRecordId, VectorRecordMetadata, VectorSearchIndex,
@@ -1203,8 +1204,6 @@ fn chunk_token_windows(
         let span = TextSpan {
             byte_start: tokens[start].span.byte_start,
             byte_end: tokens[end - 1].span.byte_end,
-            char_start: tokens[start].span.char_start,
-            char_end: tokens[end - 1].span.char_end,
         };
         push_chunk(
             &mut chunks,

@@ -4,8 +4,8 @@ pub mod surface;
 use std::collections::BTreeMap;
 
 use data_inversion_core::{Generated, InversionMethod};
+use media_core::Result;
 use text_core::OwnedTextDocument;
-use text_core::Result;
 use text_generation::{
     synthesize_from_terms, MarkovChain, MarkovInputMode, TermPrompt, TextSynthesisOptions,
 };

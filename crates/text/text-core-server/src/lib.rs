@@ -30,7 +30,7 @@ const METADATA: ServerAdapterMetadata = ServerAdapterMetadata {
 };
 
 pub fn package_surface() -> PackageSurface {
-    text_core::surface::package_surface()
+    text_core_cli::package_surface()
 }
 
 pub fn serve(addr: &str) -> io::Result<()> {
@@ -38,7 +38,7 @@ pub fn serve(addr: &str) -> io::Result<()> {
         addr,
         METADATA,
         package_surface,
-        text_core::surface::run_surface_operation,
+        text_core_cli::run_surface_operation,
     )
 }
 
@@ -49,7 +49,7 @@ pub fn response_for(method: &str, path: &str, body: &str) -> HttpResponse {
         body,
         METADATA,
         package_surface,
-        text_core::surface::run_surface_operation,
+        text_core_cli::run_surface_operation,
     )
 }
 

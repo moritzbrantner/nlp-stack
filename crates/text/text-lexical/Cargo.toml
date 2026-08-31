@@ -16,6 +16,7 @@ categories.workspace = true
 name = "text_lexical"
 
 [dependencies]
+media-core.workspace = true
 runtime-core.workspace = true
 serde_json.workspace = true
 math-sparse-data.workspace = true

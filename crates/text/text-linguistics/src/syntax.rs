@@ -128,8 +128,6 @@ pub fn chunk_phrases(
                 let span = TextSpan {
                     byte_start: tokens[start_index].span.byte_start,
                     byte_end: tokens[end_index].span.byte_end,
-                    char_start: tokens[start_index].span.char_start,
-                    char_end: tokens[end_index].span.char_end,
                 };
                 chunks.push(PhraseChunk {
                     kind,

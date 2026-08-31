@@ -4,7 +4,7 @@ use text_classification::{
     analyze_sentiment, classify_text, zero_shot_classify, FallbackPolicy, ModelSelection,
     SentimentRequest, TextClassificationRequest, ZeroShotClassificationRequest,
 };
-use text_core::Result;
+use media_core::Result;
 use text_core::{
     build_annotation_graph_from_parts, detailed_text_stats, detect_script_profile,
     split_paragraphs, split_sentence_spans, tokenize, TextDocument, TextProcessingOptions,

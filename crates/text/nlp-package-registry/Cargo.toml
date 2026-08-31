@@ -20,6 +20,7 @@ serde_json.workspace = true
 text-analysis.workspace = true
 text-classification.workspace = true
 text-core.workspace = true
+text-core-cli = { package = "moenarch-text-core-cli", version = "=0.1.1", path = "../text-core-cli" }
 text-embeddings.workspace = true
 text-generation.workspace = true
 text-generation-linguistics.workspace = true

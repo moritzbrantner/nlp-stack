@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use text_core::Result;
+use media_core::Result;
 use text_core::TextProcessingOptions;
 use text_lexical::{character_shingles, token_shingles};
 

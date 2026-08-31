@@ -5,7 +5,6 @@ use runtime_core::{
     SurfaceRequest, SurfaceResponse,
 };
 use serde::Deserialize;
-use text_core::TextSegmentContract;
 
 use crate::{
     format_srt, format_webvtt, normalize_transcription_contract, parse_plain_lines, parse_srt,
@@ -296,23 +295,20 @@ fn to_text_segments_value(request: ToTextSegmentsRequest) -> Result<serde_json::
     let segments = normalized
         .segments
         .iter()
-        .map(|segment| {
-            let mut text_segment = TextSegmentContract::from(segment);
-            if let Some(stream_id) = &request.stream_id {
-                text_segment.stream_id = Some(stream_id.clone());
-            }
-            text_segment
-        })
+        .cloned()
         .collect::<Vec<_>>();
     let documents = segments
         .iter()
-        .filter_map(|segment| {
-            segment.document_id().map(|id| {
+        .map(|segment| {
+            let id = request
+                .stream_id
+                .as_deref()
+                .map(|stream_id| text_core::segment_document_id(stream_id, segment.index))
+                .unwrap_or_else(|| segment.index.to_string());
                 serde_json::json!({
                     "id": id,
                     "text": segment.text
                 })
-            })
         })
         .collect::<Vec<_>>();
     Ok(serde_json::json!({
@@ -378,7 +374,7 @@ mod tests {
     }
 
     #[test]
-    fn to_text_segments_sets_stream_and_documents() {
+    fn to_text_segments_uses_stream_identity_only_at_the_document_boundary() {
         let response = run_surface_operation(SurfaceRequest {
             operation: OperationId::new("transcripts.toTextSegments"),
             input: serde_json::json!({
@@ -396,10 +392,7 @@ mod tests {
             }),
         })
         .expect("to text segments");
-        assert_eq!(
-            response.value["result"]["segments"][0]["streamId"],
-            "transcript-1"
-        );
+        assert_eq!(response.value["result"]["segments"][0]["index"], 0);
         assert_eq!(
             response.value["result"]["documents"][0]["id"],
             "transcript-1:0"

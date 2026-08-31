@@ -5,9 +5,9 @@ pub mod surface;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
+use media_core::{DetectError, Result};
 use serde::{Deserialize, Serialize};
 use text_core::tokenize_words;
-use text_core::{DetectError, Result};
 use text_lexical::{sentiment as lexical_sentiment, SentimentLexicon};
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
 use text_model_runtime::CandleSequenceClassifier;

@@ -3,9 +3,10 @@
 use std::collections::BTreeMap;
 
 use data_inversion_core::{Generated, InformationFidelity, InversionMethod, InversionTrace};
+use media_core::{AnalysisEvent, DetectError, Result};
 use serde::{Deserialize, Serialize};
 use text_core::{normalize_whitespace, OwnedTextDocument};
-use text_core::{AnalysisEvent, DetectError, OwnedTextSegment, Result};
+use text_core::OwnedTextSegment;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 /// Data type for term prompt.
@@ -137,7 +138,7 @@ pub fn synthesize_from_terms(
     if let Some(language) = options.language {
         document = document.language(language);
     }
-    let confidence = (0.25 + (ranked.len().min(10) as f32 * 0.025)).min(0.5);
+    let confidence = (0.25_f32 + (ranked.len().min(10) as f32 * 0.025)).min(0.5);
     let trace = InversionTrace::new(
         "weighted_terms",
         "owned_text_document",

@@ -23,4 +23,5 @@ path = "src/main.rs"
 runtime-core.workspace = true
 clap.workspace = true
 serde_json.workspace = true
+serde.workspace = true
 text-core = { package = "moenarch-text-core", version = "=0.1.1", path = "../text-core" }

@@ -16,6 +16,7 @@ categories.workspace = true
 name = "text_linguistics"
 
 [dependencies]
+media-core.workspace = true
 runtime-core.workspace = true
 candle-core = { workspace = true, optional = true }
 candle-nn = { workspace = true, optional = true }

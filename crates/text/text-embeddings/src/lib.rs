@@ -20,13 +20,14 @@ use candle_nn::VarBuilder as CandleVarBuilder;
 #[cfg(feature = "candle")]
 use candle_transformers::models::{bert as candle_bert, distilbert as candle_distilbert};
 use math_sparse_data::SparseVector;
+use media_core::{DetectError, Result};
 #[cfg(feature = "model-bundles")]
 use model_runtime::ModelBundle;
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "tokenizers")]
 use serde_json::Value;
 use text_core::{segment_document_id, tokenize_words, AnnotationProvenance, TextDocument};
-use text_core::{DetectError, Result, TextSegment};
+use text_core::TextSegment;
 use text_lexical::{term_counts, CorpusOptions, TfIdfCorpus};
 pub use text_model_runtime::TokenizedText;
 #[cfg(feature = "tokenizers")]
@@ -432,7 +433,7 @@ impl<R: OnnxTextEmbeddingRunner> TextEmbeddingBackend for OnnxTextEmbedder<R> {
     fn metadata(&self) -> TextEmbeddingMetadata {
         TextEmbeddingMetadata {
             backend: TextEmbeddingBackendKind::Onnx,
-            provenance: AnnotationProvenance::Onnx,
+            provenance: AnnotationProvenance::Model,
             model_name: Some(self.model_name.clone()),
             dimensions: self.dimensions,
         }
@@ -580,7 +581,7 @@ impl TextEmbeddingBackend for CandleTextEmbedder {
     fn metadata(&self) -> TextEmbeddingMetadata {
         TextEmbeddingMetadata {
             backend: TextEmbeddingBackendKind::Candle,
-            provenance: AnnotationProvenance::Candle,
+            provenance: AnnotationProvenance::Model,
             model_name: Some(self.model_name.clone()),
             dimensions: self.dimensions,
         }
@@ -1741,7 +1742,7 @@ mod tests {
         fn metadata(&self) -> TextEmbeddingMetadata {
             TextEmbeddingMetadata {
                 backend: TextEmbeddingBackendKind::Custom,
-                provenance: AnnotationProvenance::External,
+                provenance: AnnotationProvenance::Imported,
                 model_name: Some("tiny".to_string()),
                 dimensions: Some(2),
             }
@@ -1865,7 +1866,7 @@ mod tests {
         );
         assert_eq!(
             results[0].metadata.provenance,
-            AnnotationProvenance::External
+            AnnotationProvenance::Imported
         );
         assert_eq!(results[0].metadata.model_name.as_deref(), Some("tiny"));
 

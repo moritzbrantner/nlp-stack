@@ -1,15 +1,5 @@
 #![doc = include_str!("../README.md")]
 
-pub mod contracts;
-pub mod operations;
-pub mod surface;
-
-pub use contracts::{
-    AsTextSegmentContract, IntoTextDocumentContract, TextAnnotationSpan, TextDocumentContract,
-    TextProvenance, TextSegmentContract, TextSourceRef, TimebaseContract, TimestampContract,
-};
-pub use media_core::{AnalysisEvent, DetectError, Result, Timebase, Timestamp};
-
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -22,8 +12,6 @@ use unicode_segmentation::UnicodeSegmentation;
 pub struct TextSegment<'a> {
     /// Stable segment index within its source.
     pub segment_index: u64,
-    /// Optional media timestamp.
-    pub timestamp: Option<Timestamp>,
     /// UTF-8 text content.
     pub text: &'a str,
     /// Optional language tag.
@@ -37,8 +25,6 @@ pub struct TextSegment<'a> {
 pub struct OwnedTextSegment {
     /// Stable segment index within its source.
     pub segment_index: u64,
-    /// Optional media timestamp.
-    pub timestamp: Option<Timestamp>,
     /// UTF-8 text content.
     pub text: String,
     /// Optional language tag.
@@ -52,17 +38,10 @@ impl OwnedTextSegment {
     pub fn new(segment_index: u64, text: impl Into<String>) -> Self {
         Self {
             segment_index,
-            timestamp: None,
             text: text.into(),
             language: None,
             is_final: true,
         }
-    }
-
-    /// Adds a media timestamp.
-    pub fn timestamp(mut self, timestamp: Timestamp) -> Self {
-        self.timestamp = Some(timestamp);
-        self
     }
 
     /// Adds a language tag.
@@ -81,150 +60,10 @@ impl OwnedTextSegment {
     pub fn as_segment(&self) -> TextSegment<'_> {
         TextSegment {
             segment_index: self.segment_index,
-            timestamp: self.timestamp,
             text: &self.text,
             language: self.language.as_deref(),
             is_final: self.is_final,
         }
-    }
-}
-
-#[derive(Debug, Default, Clone, PartialEq)]
-/// Aggregate result returned when a text pipeline finishes.
-pub struct TextAnalysisResult {
-    /// Events emitted during the pipeline run.
-    pub events: Vec<AnalysisEvent>,
-    /// Number of segments processed.
-    pub segments_processed: u64,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-/// Incremental result returned after one text segment.
-pub struct TextAnalysis {
-    /// The processed segment index.
-    pub segment_index: u64,
-    /// Events emitted for this segment.
-    pub events: Vec<AnalysisEvent>,
-    /// Number of segments processed in the current run.
-    pub segments_processed: u64,
-}
-
-/// Analyzer interface for text segments.
-pub trait TextAnalyzer {
-    /// Returns the analyzer name.
-    fn name(&self) -> &str;
-
-    /// Processes one borrowed segment.
-    fn process_segment(&mut self, segment: &TextSegment<'_>) -> Result<Vec<AnalysisEvent>>;
-
-    /// Finishes a run and optionally emits delayed events.
-    fn finish(&mut self, _last_segment_index: Option<u64>) -> Result<Vec<AnalysisEvent>> {
-        Ok(Vec::new())
-    }
-}
-
-/// Stateful composition of text analyzers.
-pub struct TextPipeline {
-    analyzers: Vec<Box<dyn TextAnalyzer>>,
-    state: TextPipelineState,
-}
-
-#[derive(Debug, Default, Clone)]
-struct TextPipelineState {
-    events: Vec<AnalysisEvent>,
-    last_segment_index: Option<u64>,
-    segments_processed: u64,
-    finished: bool,
-}
-
-impl TextPipeline {
-    /// Creates a pipeline builder.
-    pub fn builder() -> TextPipelineBuilder {
-        TextPipelineBuilder::default()
-    }
-
-    /// Processes one owned segment.
-    pub fn process_segment(&mut self, segment: OwnedTextSegment) -> Result<TextAnalysis> {
-        if self.state.finished {
-            return Err(DetectError::InvalidArgument(
-                "cannot process text segments after finish_analysis; call reset first".to_string(),
-            ));
-        }
-        let segment_ref = segment.as_segment();
-        self.state.last_segment_index = Some(segment_ref.segment_index);
-
-        let mut events = Vec::new();
-        for analyzer in &mut self.analyzers {
-            let mut new_events = analyzer.process_segment(&segment_ref)?;
-            events.append(&mut new_events);
-        }
-        self.state.events.extend(events.iter().cloned());
-        self.state.segments_processed += 1;
-
-        Ok(TextAnalysis {
-            segment_index: segment_ref.segment_index,
-            events,
-            segments_processed: self.state.segments_processed,
-        })
-    }
-
-    /// Finishes the current analysis run.
-    pub fn finish_analysis(&mut self) -> Result<TextAnalysisResult> {
-        if !self.state.finished {
-            let mut events = Vec::new();
-            for analyzer in &mut self.analyzers {
-                let mut new_events = analyzer.finish(self.state.last_segment_index)?;
-                events.append(&mut new_events);
-            }
-            self.state.events.extend(events);
-            self.state.finished = true;
-        }
-        Ok(TextAnalysisResult {
-            events: self.state.events.clone(),
-            segments_processed: self.state.segments_processed,
-        })
-    }
-
-    /// Resets the pipeline for another run.
-    pub fn reset(&mut self) {
-        self.state = TextPipelineState::default();
-    }
-
-    /// Returns all events emitted in the current run.
-    pub fn events(&self) -> &[AnalysisEvent] {
-        &self.state.events
-    }
-
-    /// Returns the number of processed segments.
-    pub fn segments_processed(&self) -> u64 {
-        self.state.segments_processed
-    }
-}
-
-#[derive(Default)]
-/// Builder for a text analysis pipeline.
-pub struct TextPipelineBuilder {
-    analyzers: Vec<Box<dyn TextAnalyzer>>,
-}
-
-impl TextPipelineBuilder {
-    /// Adds an analyzer.
-    pub fn analyzer<A: TextAnalyzer + 'static>(mut self, analyzer: A) -> Self {
-        self.analyzers.push(Box::new(analyzer));
-        self
-    }
-
-    /// Builds a non-empty pipeline.
-    pub fn build(self) -> Result<TextPipeline> {
-        if self.analyzers.is_empty() {
-            return Err(DetectError::InvalidArgument(
-                "at least one text analyzer is required".to_string(),
-            ));
-        }
-        Ok(TextPipeline {
-            analyzers: self.analyzers,
-            state: TextPipelineState::default(),
-        })
     }
 }
 
@@ -237,8 +76,6 @@ pub struct TextDocument<'a> {
     pub text: &'a str,
     /// Optional BCP-47-style language hint such as `en`.
     pub language: Option<&'a str>,
-    /// Optional media timestamp when this document came from a timed segment.
-    pub timestamp: Option<Timestamp>,
 }
 
 impl<'a> TextDocument<'a> {
@@ -248,7 +85,6 @@ impl<'a> TextDocument<'a> {
             id,
             text,
             language: None,
-            timestamp: None,
         }
     }
 
@@ -258,7 +94,6 @@ impl<'a> TextDocument<'a> {
             id,
             text: segment.text,
             language: segment.language,
-            timestamp: segment.timestamp,
         }
     }
 
@@ -277,12 +112,11 @@ impl<'a> TextDocument<'a> {
             id: stream_id,
             text: segment.text,
             language: segment.language,
-            timestamp: segment.timestamp,
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 /// Owned text document for storage, serialization, and cross-thread workflows.
 pub struct OwnedTextDocument {
     /// Stable caller-supplied document id.
@@ -291,8 +125,9 @@ pub struct OwnedTextDocument {
     pub text: String,
     /// Optional BCP-47-style language hint such as `en`.
     pub language: Option<String>,
-    /// Optional media timestamp when this document came from a timed segment.
-    pub timestamp: Option<Timestamp>,
+    /// Unknown, non-semantic attachment data retained for interchange round-trips.
+    #[serde(default)]
+    pub attachments: BTreeMap<String, serde_json::Value>,
 }
 
 impl OwnedTextDocument {
@@ -302,7 +137,7 @@ impl OwnedTextDocument {
             id: id.into(),
             text: text.into(),
             language: None,
-            timestamp: None,
+            attachments: BTreeMap::new(),
         }
     }
 
@@ -312,9 +147,9 @@ impl OwnedTextDocument {
         self
     }
 
-    /// Returns timestamp.
-    pub fn timestamp(mut self, timestamp: Timestamp) -> Self {
-        self.timestamp = Some(timestamp);
+    /// Adds an opaque interchange attachment without assigning it text semantics.
+    pub fn attachment(mut self, name: impl Into<String>, value: serde_json::Value) -> Self {
+        self.attachments.insert(name.into(), value);
         self
     }
 
@@ -325,7 +160,7 @@ impl OwnedTextDocument {
             id: id.into(),
             text: segment.text.to_string(),
             language: segment.language.map(ToString::to_string),
-            timestamp: segment.timestamp,
+            attachments: BTreeMap::new(),
         }
     }
 
@@ -335,7 +170,7 @@ impl OwnedTextDocument {
             id: segment_document_id(stream_id, segment.segment_index),
             text: segment.text.to_string(),
             language: segment.language.map(ToString::to_string),
-            timestamp: segment.timestamp,
+            attachments: BTreeMap::new(),
         }
     }
 
@@ -355,7 +190,7 @@ impl OwnedTextDocument {
             id: stream_id.into(),
             text: segment.text.to_string(),
             language: segment.language.map(ToString::to_string),
-            timestamp: segment.timestamp,
+            attachments: BTreeMap::new(),
         }
     }
 
@@ -365,7 +200,6 @@ impl OwnedTextDocument {
             id: &self.id,
             text: &self.text,
             language: self.language.as_deref(),
-            timestamp: self.timestamp,
         }
     }
 }
@@ -391,16 +225,93 @@ pub struct TextStats {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-/// Half-open byte and character span into a UTF-8 text buffer.
+/// Half-open UTF-8 byte span into a text buffer.
 pub struct TextSpan {
     /// Inclusive byte offset.
     pub byte_start: usize,
     /// Exclusive byte offset.
     pub byte_end: usize,
-    /// Inclusive Unicode scalar index.
-    pub char_start: usize,
-    /// Exclusive Unicode scalar index.
-    pub char_end: usize,
+}
+
+impl TextSpan {
+    /// Creates a span after validating that both offsets are UTF-8 boundaries.
+    pub fn new(text: &str, byte_start: usize, byte_end: usize) -> Result<Self, TextError> {
+        if byte_start > byte_end || byte_end > text.len() {
+            return Err(TextError::InvalidByteRange {
+                byte_start,
+                byte_end,
+                text_length: text.len(),
+            });
+        }
+        if !text.is_char_boundary(byte_start) || !text.is_char_boundary(byte_end) {
+            return Err(TextError::NonCharacterBoundary {
+                byte_start,
+                byte_end,
+            });
+        }
+        Ok(Self {
+            byte_start,
+            byte_end,
+        })
+    }
+
+    /// Converts this canonical byte range to UTF-16 code-unit offsets at a boundary.
+    pub fn to_utf16(self, text: &str) -> Result<Utf16Span, TextError> {
+        Self::new(text, self.byte_start, self.byte_end)?;
+        Ok(Utf16Span {
+            start: text[..self.byte_start].encode_utf16().count(),
+            end: text[..self.byte_end].encode_utf16().count(),
+        })
+    }
+
+    /// Converts this canonical byte range to grapheme-cluster offsets at a boundary.
+    pub fn to_grapheme(self, text: &str) -> Result<GraphemeOffsetSpan, TextError> {
+        Self::new(text, self.byte_start, self.byte_end)?;
+        let start = text[..self.byte_start].graphemes(true).count();
+        let end = text[..self.byte_end].graphemes(true).count();
+        Ok(GraphemeOffsetSpan { start, end })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// Half-open UTF-16 code-unit span for an explicit boundary conversion.
+pub struct Utf16Span {
+    /// Inclusive UTF-16 code-unit offset.
+    pub start: usize,
+    /// Exclusive UTF-16 code-unit offset.
+    pub end: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// Half-open grapheme-cluster span for an explicit boundary conversion.
+pub struct GraphemeOffsetSpan {
+    /// Inclusive grapheme-cluster offset.
+    pub start: usize,
+    /// Exclusive grapheme-cluster offset.
+    pub end: usize,
+}
+
+#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+/// Errors raised by text-core coordinate validation and conversion.
+pub enum TextError {
+    /// A byte range lies outside the source text or is reversed.
+    #[error("invalid UTF-8 byte range {byte_start}..{byte_end} for text length {text_length}")]
+    InvalidByteRange {
+        /// Inclusive requested start offset.
+        byte_start: usize,
+        /// Exclusive requested end offset.
+        byte_end: usize,
+        /// Source text length in bytes.
+        text_length: usize,
+    },
+    /// A requested byte range would split a UTF-8 scalar.
+    #[error("UTF-8 byte range {byte_start}..{byte_end} does not align to character boundaries")]
+    NonCharacterBoundary {
+        /// Inclusive requested start offset.
+        byte_start: usize,
+        /// Exclusive requested end offset.
+        byte_end: usize,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -443,18 +354,14 @@ impl From<f32> for AnnotationConfidence {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 /// Variants describing annotation provenance.
 pub enum AnnotationProvenance {
+    /// The observed variant.
+    Observed,
     /// The heuristic variant.
     Heuristic,
-    /// The tokenizer variant.
-    Tokenizer,
-    /// The ONNX variant.
-    Onnx,
-    /// The candle variant.
-    Candle,
-    /// The cuda oxide variant.
-    CudaOxide,
-    /// The external variant.
-    External,
+    /// The model-derived variant.
+    Model,
+    /// The imported variant.
+    Imported,
     /// The derived variant.
     Derived,
 }
@@ -834,7 +741,6 @@ pub fn segment_words(text: &str, options: &TextBoundaryOptions) -> Vec<WordSegme
                 previous.text.push_str(&current.text);
                 previous.normalized = normalize_text(&previous.text, &processing);
                 previous.span.byte_end = current.span.byte_end;
-                previous.span.char_end = current.span.char_end;
                 continue;
             }
         }
@@ -1159,7 +1065,7 @@ pub fn build_annotation_graph_from_parts(
 
     TextAnnotationGraph {
         text: text.to_string(),
-        provenance: AnnotationProvenance::Tokenizer,
+        provenance: AnnotationProvenance::Derived,
         confidence: AnnotationConfidence::default(),
         tokens: annotated_tokens,
         sentences: annotated_sentences,
@@ -1209,12 +1115,7 @@ fn next_char(text: &str, byte_index: usize) -> char {
 }
 
 fn span_for(text: &str, byte_start: usize, byte_end: usize) -> TextSpan {
-    TextSpan {
-        byte_start,
-        byte_end,
-        char_start: text[..byte_start].chars().count(),
-        char_end: text[..byte_end].chars().count(),
-    }
+    TextSpan::new(text, byte_start, byte_end).expect("tokenization only creates UTF-8 boundaries")
 }
 
 fn span_is_inside(inner: TextSpan, outer: TextSpan) -> bool {
@@ -1510,10 +1411,11 @@ mod tests {
 
     #[test]
     fn tokenizes_unicode_words_with_offsets() {
-        let tokens = tokenize("Hi café 東京", &TextProcessingOptions::default());
+        let text = "Hi café 東京";
+        let tokens = tokenize(text, &TextProcessingOptions::default());
         assert_eq!(tokens[1].text, "café");
         assert_eq!(tokens[1].span.byte_start, 3);
-        assert_eq!(tokens[1].span.char_start, 3);
+        assert_eq!(tokens[1].span.to_utf16(text).unwrap().start, 3);
         assert_eq!(tokens[2].text, "東京");
     }
 
@@ -1621,17 +1523,18 @@ mod tests {
     }
 
     #[test]
-    fn segments_graphemes_with_byte_and_char_spans() {
-        let graphemes = segment_graphemes("e\u{301}👍🏽a");
+    fn segments_graphemes_with_canonical_byte_spans_and_explicit_conversions() {
+        let text = "e\u{301}👍🏽a";
+        let graphemes = segment_graphemes(text);
         assert_eq!(graphemes.len(), 3);
         assert_eq!(graphemes[0].text, "e\u{301}");
         assert_eq!(graphemes[0].span.byte_start, 0);
         assert_eq!(graphemes[0].span.byte_end, 3);
-        assert_eq!(graphemes[0].span.char_start, 0);
-        assert_eq!(graphemes[0].span.char_end, 2);
+        assert_eq!(graphemes[0].span.to_utf16(text).unwrap(), Utf16Span { start: 0, end: 2 });
+        assert_eq!(graphemes[0].span.to_grapheme(text).unwrap(), GraphemeOffsetSpan { start: 0, end: 1 });
         assert_eq!(graphemes[1].text, "👍🏽");
-        assert_eq!(graphemes[1].span.char_start, 2);
-        assert_eq!(graphemes[1].span.char_end, 4);
+        assert_eq!(graphemes[1].span.to_utf16(text).unwrap(), Utf16Span { start: 2, end: 6 });
+        assert_eq!(graphemes[1].span.to_grapheme(text).unwrap(), GraphemeOffsetSpan { start: 1, end: 2 });
     }
 
     #[test]
@@ -1679,7 +1582,7 @@ mod tests {
         assert_eq!(graph.tokens.len(), 8);
         assert_eq!(graph.sentences.len(), 2);
         assert_eq!(graph.paragraphs.len(), 2);
-        assert_eq!(graph.provenance, AnnotationProvenance::Tokenizer);
+        assert_eq!(graph.provenance, AnnotationProvenance::Derived);
         assert!(graph.confidence.get() > 0.0);
 
         let first_sentence = &graph.sentences[0];

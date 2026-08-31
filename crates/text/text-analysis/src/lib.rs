@@ -404,8 +404,8 @@ pub fn document_from_text<'a>(id: &'a str, text: &'a str) -> TextDocument<'a> {
     TextDocument::new(id, text)
 }
 
-pub(crate) fn invalid_argument(message: impl Into<String>) -> text_core::DetectError {
-    text_core::DetectError::InvalidArgument(message.into())
+pub(crate) fn invalid_argument(message: impl Into<String>) -> media_core::DetectError {
+    media_core::DetectError::InvalidArgument(message.into())
 }
 
 #[cfg(test)]

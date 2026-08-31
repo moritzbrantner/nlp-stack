@@ -5,13 +5,13 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(js_name = packageSurface)]
 pub fn package_surface() -> Result<JsValue, JsValue> {
-    serde_wasm_bindgen::to_value(&text_core::surface::package_surface()).map_err(into_js_error)
+    serde_wasm_bindgen::to_value(&text_core_cli::package_surface()).map_err(into_js_error)
 }
 
 #[wasm_bindgen(js_name = runOperation)]
 pub fn run_operation(request: JsValue) -> Result<JsValue, JsValue> {
     let request: SurfaceRequest = serde_wasm_bindgen::from_value(request).map_err(into_js_error)?;
-    let response = text_core::surface::run_surface_operation(request).map_err(into_js_error)?;
+    let response = text_core_cli::run_surface_operation(request).map_err(into_js_error)?;
     serde_wasm_bindgen::to_value(&response).map_err(into_js_error)
 }
 
@@ -23,7 +23,7 @@ fn into_js_error(error: impl std::fmt::Display) -> JsValue {
 mod tests {
     #[test]
     fn wrapped_surface_has_operations() {
-        let surface = text_core::surface::package_surface();
+        let surface = text_core_cli::package_surface();
         assert_eq!(surface.library, "moenarch-text-core");
         assert!(!surface.operations.is_empty());
     }

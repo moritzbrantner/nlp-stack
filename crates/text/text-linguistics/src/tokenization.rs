@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use text_core::Result;
+use media_core::Result;
 use text_core::{TextSpan, Token};
 pub use text_model_runtime::{
     TokenizedText, TokenizerBundle, TokenizerDownloadOptions, TokenizerPreset, TokenizerSource,
@@ -258,12 +258,8 @@ fn byte_span_to_text_span(text: &str, byte_start: usize, byte_end: usize) -> Opt
     if byte_start > byte_end || byte_end > text.len() {
         return None;
     }
-    let char_start = text[..byte_start].chars().count();
-    let char_end = text[..byte_end].chars().count();
     Some(TextSpan {
         byte_start,
         byte_end,
-        char_start,
-        char_end,
     })
 }

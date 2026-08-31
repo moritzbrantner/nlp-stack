@@ -1,4 +1,4 @@
-use text_core::Result;
+use media_core::Result;
 use text_core::{detailed_text_stats, TextDocument};
 use text_embeddings::{HashedTextEmbedder, TextEmbeddingConfig};
 use text_lexical::{

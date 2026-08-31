@@ -22,3 +22,4 @@ serde_json.workspace = true
 serde-wasm-bindgen = "0.6.5"
 wasm-bindgen = "0.2.105"
 text-core.workspace = true
+text-core-cli = { package = "moenarch-text-core-cli", version = "=0.1.1", path = "../../text/text-core-cli" }

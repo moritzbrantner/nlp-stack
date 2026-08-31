@@ -1,10 +1,6 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
-use text_core::{
-    AsTextSegmentContract, TextSegmentContract, TextSourceRef, Timebase, Timestamp,
-    TimestampContract,
-};
 
 use crate::{TranscriptSegment, TranscriptWord, TranscriptionError, TranscriptionResult};
 
@@ -192,34 +188,6 @@ impl TranscriptSegmentContract {
     }
 }
 
-impl AsTextSegmentContract for TranscriptSegmentContract {
-    fn as_text_segment_contract(&self) -> TextSegmentContract {
-        let mut attributes = self.attributes.clone();
-        insert_optional(&mut attributes, "speaker", self.speaker.as_deref());
-        insert_optional_display(&mut attributes, "confidence", self.confidence);
-
-        TextSegmentContract {
-            stream_id: None,
-            segment_index: self.index,
-            text: self.text.clone(),
-            language: self.language.clone(),
-            timestamp: self.start_seconds.map(seconds_to_timestamp_contract),
-            duration_seconds: self.duration_seconds(),
-            is_final: self.is_final,
-            attributes,
-            source: Some(TextSourceRef {
-                source_id: None,
-                source_kind: Some("transcript_segment".to_string()),
-                uri: None,
-                media_timestamp: self.start_seconds.map(seconds_to_timestamp_contract),
-                duration_seconds: self.duration_seconds(),
-            }),
-            provenance: Vec::new(),
-            annotations: Vec::new(),
-        }
-    }
-}
-
 impl From<TranscriptSegment> for TranscriptSegmentContract {
     fn from(value: TranscriptSegment) -> Self {
         Self {
@@ -257,39 +225,6 @@ impl From<TranscriptSegmentContract> for TranscriptSegment {
             is_final: value.is_final,
         }
     }
-}
-
-impl From<TranscriptSegmentContract> for TextSegmentContract {
-    fn from(value: TranscriptSegmentContract) -> Self {
-        value.as_text_segment_contract()
-    }
-}
-
-impl From<&TranscriptSegmentContract> for TextSegmentContract {
-    fn from(value: &TranscriptSegmentContract) -> Self {
-        value.as_text_segment_contract()
-    }
-}
-
-pub fn text_segment_contract_with_source(
-    segment: &TranscriptSegmentContract,
-    stream_id: impl Into<String>,
-    source_kind: impl Into<String>,
-    uri: impl Into<String>,
-) -> TextSegmentContract {
-    let stream_id = stream_id.into();
-    let source_kind = source_kind.into();
-    let uri = uri.into();
-    let mut contract = segment.as_text_segment_contract();
-    contract.stream_id = Some(stream_id.clone());
-    contract.source = Some(TextSourceRef {
-        source_id: Some(stream_id),
-        source_kind: Some(source_kind),
-        uri: Some(uri),
-        media_timestamp: contract.timestamp,
-        duration_seconds: contract.duration_seconds,
-    });
-    contract
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -440,10 +375,6 @@ impl From<TranscriptionContract> for TranscriptionResult {
     }
 }
 
-fn seconds_to_timestamp_contract(seconds: f64) -> TimestampContract {
-    Timestamp::new((seconds * 1_000.0).round() as i64, Timebase::new(1, 1_000)).into()
-}
-
 fn sanitize_confidence(value: Option<f32>) -> Option<f32> {
     value.and_then(|confidence| confidence.is_finite().then(|| confidence.clamp(0.0, 1.0)))
 }
@@ -508,20 +439,4 @@ fn validate_char_inside_segment(
         }
     }
     Ok(())
-}
-
-fn insert_optional(metadata: &mut BTreeMap<String, String>, key: &str, value: Option<&str>) {
-    if let Some(value) = value {
-        metadata.insert(key.to_string(), value.to_string());
-    }
-}
-
-fn insert_optional_display<T: std::fmt::Display>(
-    metadata: &mut BTreeMap<String, String>,
-    key: &str,
-    value: Option<T>,
-) {
-    if let Some(value) = value {
-        metadata.insert(key.to_string(), value.to_string());
-    }
 }
