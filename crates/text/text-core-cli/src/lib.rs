@@ -1,7 +1,9 @@
+use jobs_core::OperationResult;
 use runtime_core::{
     cli::{self, CliAdapterMetadata},
     describe_surface_response, structured_surface_response, surface_operation, PackageSurface,
-    RuntimeCapabilities, SurfaceOperation, SurfaceRequest, SurfaceResponse,
+    Diagnostic, DiagnosticSeverity, RuntimeCapabilities, SurfaceOperation, SurfaceRequest,
+    SurfaceResponse,
 };
 use serde::Deserialize;
 
@@ -107,11 +109,64 @@ pub fn run_surface_operation(request: SurfaceRequest) -> Result<SurfaceResponse,
     };
     Ok(structured_surface_response(
         operation.clone(),
-        "Text core result",
-        "Ran a text-core transport operation.",
-        serde_json::json!({"status": "ok"}),
+        workflow_title(operation.as_str()),
+        workflow_message(operation.as_str()),
+        workflow_summary(operation.as_str(), &value),
         value,
     ))
+}
+
+fn workflow_title(operation: &str) -> &'static str {
+    match operation {
+        "text.statistics" => "Text statistics",
+        "text.normalize" => "Normalized text",
+        "text.tokenize" => "Tokenized text",
+        "text.boundaries" => "Text boundaries",
+        _ => "Text core result",
+    }
+}
+
+fn workflow_message(operation: &str) -> &'static str {
+    match operation {
+        "text.statistics" => {
+            "Computed deterministic byte, character, word, line, and sentence statistics."
+        }
+        "text.normalize" => "Normalized text with explicit before and after statistics.",
+        "text.tokenize" => {
+            "Tokenized the supplied text with spans, script profile, and text statistics."
+        }
+        "text.boundaries" => {
+            "Extracted Unicode-safe word, sentence, paragraph, and grapheme boundaries."
+        }
+        _ => "Ran a text-core package operation.",
+    }
+}
+
+fn workflow_summary(operation: &str, value: &serde_json::Value) -> serde_json::Value {
+    match operation {
+        "text.statistics" => serde_json::json!({
+            "status": "ok",
+            "words": value["value"]["wordCount"],
+            "sentences": value["value"]["sentenceCount"]
+        }),
+        "text.normalize" => serde_json::json!({
+            "status": "ok",
+            "inputWords": value["before"]["basic"]["words"],
+            "outputWords": value["after"]["basic"]["words"]
+        }),
+        "text.tokenize" => serde_json::json!({
+            "status": "ok",
+            "tokenCount": value["tokens"].as_array().map(Vec::len).unwrap_or(0),
+            "dominantScript": value["scriptProfile"]["dominantScript"]
+        }),
+        "text.boundaries" => serde_json::json!({
+            "status": "ok",
+            "wordCount": value["words"].as_array().map(Vec::len).unwrap_or(0),
+            "sentenceCount": value["sentences"].as_array().map(Vec::len).unwrap_or(0),
+            "paragraphCount": value["paragraphs"].as_array().map(Vec::len).unwrap_or(0)
+        }),
+        _ => serde_json::json!({"status": "ok"}),
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -154,13 +209,26 @@ struct BoundariesRequest {
 
 fn statistics_value(request: StatisticsRequest) -> Result<serde_json::Value, String> {
     let stats = text_core::text_stats(&request.text);
-    Ok(serde_json::json!({
-        "byteCount": stats.bytes,
-        "characterCount": stats.chars,
-        "wordCount": stats.words,
-        "lineCount": stats.lines,
-        "sentenceCount": stats.sentences,
-    }))
+    let mut diagnostics = Vec::new();
+    if request.text.is_empty() {
+        diagnostics.push(Diagnostic::new(
+            DiagnosticSeverity::Warning,
+            "text.empty",
+            "Input text is empty.",
+        ));
+    }
+    let result = OperationResult {
+        value: Some(serde_json::json!({
+            "byteCount": stats.bytes,
+            "characterCount": stats.chars,
+            "wordCount": stats.words,
+            "lineCount": stats.lines,
+            "sentenceCount": stats.sentences,
+        })),
+        diagnostics,
+        artifacts: Vec::new(),
+    };
+    serde_json::to_value(result).map_err(|error| error.to_string())
 }
 
 fn normalize_value(request: NormalizeRequest) -> Result<serde_json::Value, String> {
@@ -232,5 +300,29 @@ mod tests {
         let metadata = package_metadata_json();
         assert!(metadata.contains(LIBRARY_CRATE));
         assert!(metadata.contains(SURFACE_KIND));
+    }
+
+    #[test]
+    fn statistics_preserves_the_operation_result_envelope() {
+        let response = run_surface_operation(SurfaceRequest {
+            operation: runtime_core::OperationId::new("text.statistics"),
+            input: serde_json::json!({"text": "one two"}),
+        })
+        .unwrap();
+
+        assert_eq!(response.value["value"]["wordCount"], 2);
+        assert_eq!(response.value["diagnostics"], serde_json::json!([]));
+        assert_eq!(response.value["artifacts"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn statistics_preserves_empty_input_diagnostics() {
+        let response = run_surface_operation(SurfaceRequest {
+            operation: runtime_core::OperationId::new("text.statistics"),
+            input: serde_json::json!({"text": ""}),
+        })
+        .unwrap();
+
+        assert_eq!(response.value["diagnostics"][0]["code"], "text.empty");
     }
 }
