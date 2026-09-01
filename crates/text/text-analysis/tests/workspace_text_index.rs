@@ -2,7 +2,7 @@ use text_analysis::{
     TextWorkspace, TextWorkspaceOptions, WorkspaceDocument, WorkspaceIndexOptions,
     WorkspaceIndexStorage,
 };
-use text_core::TextDocumentContract;
+use text_lexical::TextDocumentContract;
 use text_index::{IndexBuildOptions, IndexQuery};
 
 #[test]
