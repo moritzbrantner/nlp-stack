@@ -382,6 +382,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use crate::{HybridConfig, IngestionOptions, SearchDocument, SearchQuery};
+    use media_core::Result as CoreResult;
     use tempfile::tempdir;
     use text_embeddings::{
         DenseVector, HashedTextEmbedder, TextEmbeddingBackend, TextEmbeddingBackendKind,
@@ -409,7 +410,7 @@ mod tests {
     }
 
     impl TextEmbeddingBackend for NamedEmbedder {
-        fn embed_text(&self, _text: &str) -> text_core::Result<DenseVector> {
+        fn embed_text(&self, _text: &str) -> CoreResult<DenseVector> {
             DenseVector::new(vec![1.0; self.dimensions])
         }
 

@@ -1553,6 +1553,7 @@ fn text_index_error(error: TextIndexError) -> DetectError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use media_core::{Timebase, Timestamp};
     use std::cell::Cell;
     use text_embeddings::{
         DenseVector, HashedTextEmbedder, TextEmbeddingBackend, TextEmbeddingBackendKind,
@@ -1584,7 +1585,7 @@ mod tests {
     }
 
     impl TextEmbeddingBackend for FlaggedEmbedder {
-        fn embed_text(&self, text: &str) -> text_core::Result<DenseVector> {
+        fn embed_text(&self, text: &str) -> CoreResult<DenseVector> {
             if self.panic_on_embed.get() {
                 panic!("query embedding should have been skipped");
             }
@@ -1607,7 +1608,7 @@ mod tests {
     struct FakeReranker;
 
     impl TextReranker for FakeReranker {
-        fn rerank(&mut self, _query: &str, documents: &[String]) -> text_core::Result<Vec<f32>> {
+        fn rerank(&mut self, _query: &str, documents: &[String]) -> CoreResult<Vec<f32>> {
             Ok(documents
                 .iter()
                 .map(|document| {
@@ -1723,8 +1724,7 @@ mod tests {
         let mut segment = TextSegmentContract::new(7, "hello retrieval");
         segment.stream_id = Some("subs".to_string());
         segment.language = Some("en".to_string());
-        segment.timestamp =
-            Some(text_core::Timestamp::new(1250, text_core::Timebase::new(1, 1000)).into());
+        segment.timestamp = Some(Timestamp::new(1250, Timebase::new(1, 1000)).into());
         segment.duration_seconds = Some(1.25);
         segment
             .attributes
