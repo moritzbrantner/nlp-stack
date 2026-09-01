@@ -1480,7 +1480,6 @@ mod tests {
         ]
         .into_iter()
         .flatten()
-        .into_iter()
         .map(|event| event.label)
         .collect::<Vec<_>>();
         assert!(labels.contains(&"text:stats".to_string()));
