@@ -23,7 +23,7 @@ let report = analyze_text(
 )?;
 
 assert!(!report.lexical.keywords.is_empty());
-# Ok::<(), text_core::DetectError>(())
+# Ok::<(), media_core::DetectError>(())
 ```
 
 ## Feature flags
