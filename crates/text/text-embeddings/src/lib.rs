@@ -1765,14 +1765,12 @@ mod tests {
         let mut index = EmbeddingSearchIndex::new(TinyEmbedder);
         let rust_segment = TextSegment {
             segment_index: 4,
-            timestamp: None,
             text: "rust cargo segment",
             language: Some("en"),
             is_final: true,
         };
         let fruit_segment = TextSegment {
             segment_index: 5,
-            timestamp: None,
             text: "orange banana segment",
             language: Some("en"),
             is_final: true,
@@ -1798,14 +1796,12 @@ mod tests {
         let mut index = SemanticTextIndex::new(HashedTextEmbedder::default());
         let first = TextSegment {
             segment_index: 0,
-            timestamp: None,
             text: "rust cargo crates",
             language: Some("en"),
             is_final: true,
         };
         let second = TextSegment {
             segment_index: 1,
-            timestamp: None,
             text: "banana citrus apple",
             language: Some("en"),
             is_final: true,
@@ -1826,7 +1822,6 @@ mod tests {
     fn stream_segment_document_constructor_matches_corpus_and_semantic_ids() {
         let segment = TextSegment {
             segment_index: 9,
-            timestamp: None,
             text: "rust cargo segment",
             language: Some("en"),
             is_final: true,

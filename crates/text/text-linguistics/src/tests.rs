@@ -574,8 +574,6 @@ fn extracts_dates_and_amounts_without_pos_annotations() {
         span: TextSpan {
             byte_start: 0,
             byte_end: text.len(),
-            char_start: 0,
-            char_end: text.chars().count(),
         },
         token_count: 6,
     }];
@@ -586,8 +584,6 @@ fn extracts_dates_and_amounts_without_pos_annotations() {
             span: TextSpan {
                 byte_start: 0,
                 byte_end: 6,
-                char_start: 0,
-                char_end: 6,
             },
             kind: TokenKind::Word,
         },
@@ -597,8 +593,6 @@ fn extracts_dates_and_amounts_without_pos_annotations() {
             span: TextSpan {
                 byte_start: 7,
                 byte_end: 9,
-                char_start: 7,
-                char_end: 9,
             },
             kind: TokenKind::Word,
         },
@@ -608,8 +602,6 @@ fn extracts_dates_and_amounts_without_pos_annotations() {
             span: TextSpan {
                 byte_start: 10,
                 byte_end: 17,
-                char_start: 10,
-                char_end: 17,
             },
             kind: TokenKind::Word,
         },
@@ -619,8 +611,6 @@ fn extracts_dates_and_amounts_without_pos_annotations() {
             span: TextSpan {
                 byte_start: 18,
                 byte_end: 22,
-                char_start: 18,
-                char_end: 22,
             },
             kind: TokenKind::Number,
         },
@@ -630,8 +620,6 @@ fn extracts_dates_and_amounts_without_pos_annotations() {
             span: TextSpan {
                 byte_start: 23,
                 byte_end: 28,
-                char_start: 23,
-                char_end: 28,
             },
             kind: TokenKind::Word,
         },
@@ -641,8 +629,6 @@ fn extracts_dates_and_amounts_without_pos_annotations() {
             span: TextSpan {
                 byte_start: 29,
                 byte_end: 32,
-                char_start: 29,
-                char_end: 32,
             },
             kind: TokenKind::Other,
         },
