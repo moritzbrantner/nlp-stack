@@ -126,7 +126,8 @@
       "expected_tag": null,
       "intended_next_release_owner": "moritzbrantner/nlp-stack",
       "release_dependencies": [
-        "moenarch-text-core"
+        "moenarch-text-core",
+        "moenarch-text-core-cli"
       ]
     },
     {
@@ -138,7 +139,8 @@
       "expected_tag": null,
       "intended_next_release_owner": "moritzbrantner/nlp-stack",
       "release_dependencies": [
-        "moenarch-text-core"
+        "moenarch-text-core",
+        "moenarch-text-core-cli"
       ]
     },
     {
@@ -747,6 +749,7 @@
         "moenarch-text-analysis",
         "moenarch-text-classification",
         "moenarch-text-core",
+        "moenarch-text-core-cli",
         "moenarch-text-embeddings",
         "moenarch-text-generation",
         "moenarch-text-generation-linguistics",
