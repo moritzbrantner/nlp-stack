@@ -10,25 +10,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             id: "doc-architecture",
             text: "Rust text crates expose stable APIs for lexical analysis, retrieval, and reports.",
             language: Some("en"),
-            timestamp: None,
         },
         TextDocument {
             id: "doc-retrieval",
             text: "Retrieval reports combine lexical matches, hashed embeddings, and metadata-aware chunks.",
             language: Some("en"),
-            timestamp: None,
         },
         TextDocument {
             id: "doc-retrieval-copy",
             text: "Retrieval reports combine lexical matches, hashed embeddings, and metadata-aware chunks.",
             language: Some("en"),
-            timestamp: None,
         },
         TextDocument {
             id: "doc-analysis",
             text: "Corpus analysis highlights keywords, summaries, near duplicates, and semantic neighbors.",
             language: Some("en"),
-            timestamp: None,
         },
     ];
 
