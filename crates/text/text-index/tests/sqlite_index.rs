@@ -2,13 +2,12 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use text_core::TextSourceRef;
 use text_embeddings::{HashedTextEmbedder, TextEmbeddingConfig};
 use text_index::{
     IndexBuildOptions, IndexDocument, IndexFilter, IndexQuery, MemoryIndexStore, SemanticFacet,
     SemanticFacetFilter, SqliteIndexStore, TextIndex, TextIndexStore,
 };
-use text_lexical::CorpusOptions;
+use text_lexical::{CorpusOptions, TextSourceRef};
 
 fn embedder() -> HashedTextEmbedder {
     HashedTextEmbedder::new(
@@ -34,7 +33,9 @@ fn documents() -> Vec<IndexDocument> {
         source_id: Some("report".to_string()),
         source_kind: Some("markdown".to_string()),
         uri: None,
-        media_timestamp: Some(text_core::Timestamp::new(10, text_core::Timebase::new(1, 1)).into()),
+        media_timestamp: Some(
+            media_core::Timestamp::new(10, media_core::Timebase::new(1, 1)).into(),
+        ),
         duration_seconds: None,
     });
     report.semantic_facets.push(SemanticFacet {

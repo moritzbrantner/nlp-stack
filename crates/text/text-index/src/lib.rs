@@ -1824,7 +1824,7 @@ fn fts5_query(query: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use text_core::TextProvenance;
+    use text_lexical::TextProvenance;
 
     fn index() -> MemoryTextIndex<HashedTextEmbedder> {
         MemoryTextIndex::new_memory()
@@ -1999,7 +1999,7 @@ mod tests {
             source_kind: Some("audio".to_string()),
             uri: None,
             media_timestamp: Some(
-                text_core::Timestamp::new(10, text_core::Timebase::new(1, 1)).into(),
+                media_core::Timestamp::new(10, media_core::Timebase::new(1, 1)).into(),
             ),
             duration_seconds: Some(3.0),
         });

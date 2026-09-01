@@ -1,10 +1,11 @@
 use super::*;
 
+use media_core::Result;
 use text_core::{
     split_sentence_spans, tokenize, AnnotationProvenance, Sentence, TextProcessingOptions,
     TextSpan, Token, TokenKind,
 };
-use text_core::{OwnedTextSegment, Result, TextAnalyzer};
+use text_core::OwnedTextSegment;
 #[cfg(feature = "transcripts")]
 use text_transcripts::{
     parse_srt, parse_webvtt, TranscriptSegment, TranscriptSegmentContract, TranscriptionContract,
@@ -555,11 +556,11 @@ fn classifies_discourse_topics_and_style() {
 fn analyzer_emits_segment_and_document_events() {
     let mut analyzer = LinguisticAnalyzer::new(LinguisticAnalysisOptions::heuristic());
     let segment = OwnedTextSegment::new(0, "Alice presented the roadmap");
-    let events = analyzer.process_segment(&segment.as_segment()).unwrap();
+    let events = analyzer.analyze_segment(&segment.as_segment()).unwrap();
     assert!(events
         .iter()
         .any(|event| event.label.starts_with("text:language:")));
-    let final_events = analyzer.finish(Some(0)).unwrap();
+    let final_events = analyzer.finish().unwrap();
     assert!(final_events
         .iter()
         .any(|event| event.label.starts_with("text:topic:")));
