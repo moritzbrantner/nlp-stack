@@ -2,8 +2,8 @@ use text_analysis::{
     TextWorkspace, TextWorkspaceOptions, WorkspaceDocument, WorkspaceIndexOptions,
     WorkspaceIndexStorage,
 };
-use text_lexical::TextDocumentContract;
 use text_index::{IndexBuildOptions, IndexQuery};
+use text_lexical::TextDocumentContract;
 
 #[test]
 fn workspace_builds_and_searches_memory_text_index() {

@@ -1,11 +1,11 @@
 use super::*;
 
 use media_core::Result;
+use text_core::OwnedTextSegment;
 use text_core::{
     split_sentence_spans, tokenize, AnnotationProvenance, Sentence, TextProcessingOptions,
     TextSpan, Token, TokenKind,
 };
-use text_core::OwnedTextSegment;
 #[cfg(feature = "transcripts")]
 use text_transcripts::{
     parse_srt, parse_webvtt, TranscriptSegment, TranscriptSegmentContract, TranscriptionContract,
