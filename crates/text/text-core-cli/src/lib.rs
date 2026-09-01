@@ -1,7 +1,7 @@
 use runtime_core::{
-    cli::{self, CliAdapterMetadata}, describe_surface_response, structured_surface_response,
-    surface_operation, PackageSurface, RuntimeCapabilities, SurfaceOperation, SurfaceRequest,
-    SurfaceResponse,
+    cli::{self, CliAdapterMetadata},
+    describe_surface_response, structured_surface_response, surface_operation, PackageSurface,
+    RuntimeCapabilities, SurfaceOperation, SurfaceRequest, SurfaceResponse,
 };
 use serde::Deserialize;
 
@@ -164,7 +164,8 @@ fn statistics_value(request: StatisticsRequest) -> Result<serde_json::Value, Str
 }
 
 fn normalize_value(request: NormalizeRequest) -> Result<serde_json::Value, String> {
-    let before = text_core::detailed_text_stats(&request.text, &text_core::TextProcessingOptions::default());
+    let before =
+        text_core::detailed_text_stats(&request.text, &text_core::TextProcessingOptions::default());
     let mut normalized = text_core::normalize_text(
         &request.text,
         &text_core::TextProcessingOptions {
@@ -178,7 +179,8 @@ fn normalize_value(request: NormalizeRequest) -> Result<serde_json::Value, Strin
     if request.normalize_whitespace {
         normalized = text_core::normalize_whitespace(&normalized);
     }
-    let after = text_core::detailed_text_stats(&normalized, &text_core::TextProcessingOptions::default());
+    let after =
+        text_core::detailed_text_stats(&normalized, &text_core::TextProcessingOptions::default());
     Ok(serde_json::json!({"text": normalized, "before": before, "after": after}))
 }
 

@@ -26,8 +26,8 @@ use model_runtime::ModelBundle;
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "tokenizers")]
 use serde_json::Value;
-use text_core::{segment_document_id, tokenize_words, AnnotationProvenance, TextDocument};
 use text_core::TextSegment;
+use text_core::{segment_document_id, tokenize_words, AnnotationProvenance, TextDocument};
 use text_lexical::{term_counts, CorpusOptions, TfIdfCorpus};
 pub use text_model_runtime::TokenizedText;
 #[cfg(feature = "tokenizers")]

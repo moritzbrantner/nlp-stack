@@ -6,17 +6,16 @@ use std::fmt;
 use std::fs;
 use std::path::Path;
 
+use media_core::{AnalysisEvent, DetectError, Timebase, Timestamp};
 use serde::Deserialize;
 use serde_json::Value;
-use media_core::{AnalysisEvent, DetectError, Timebase, Timestamp};
-use text_core::{
-    tokenize, tokenize_words, OwnedTextSegment, TextProcessingOptions, TokenKind,
-};
+use text_core::{tokenize, tokenize_words, OwnedTextSegment, TextProcessingOptions, TokenKind};
 
 use thiserror::Error;
 pub mod contracts;
 pub use contracts::{
-    TranscriptCharContract, TranscriptSegmentContract, TranscriptWordContract, TranscriptionContract,
+    TranscriptCharContract, TranscriptSegmentContract, TranscriptWordContract,
+    TranscriptionContract,
 };
 
 #[derive(Debug, Error)]

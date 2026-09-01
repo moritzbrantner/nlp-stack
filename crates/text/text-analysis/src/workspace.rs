@@ -1,14 +1,14 @@
 use std::collections::BTreeMap;
 
-use serde::{Deserialize, Serialize};
 use media_core::{DetectError, Result};
-use text_lexical::{TextDocumentContract, TextSegmentContract};
+use serde::{Deserialize, Serialize};
 use text_embeddings::{HashedTextEmbedder, TextEmbeddingConfig};
 use text_index::{
     IndexBuildOptions, IndexDocument, IndexInspectReport, IndexMutationReport, IndexQuery,
     IndexSearchResult, MemoryIndexStore, TextIndex,
 };
 use text_lexical::{CorpusOptions, TextCorpus, TextCorpusDocument};
+use text_lexical::{TextDocumentContract, TextSegmentContract};
 use text_retrieval::{
     IngestReport, IngestionOptions, RetrievalIndex, SearchDocument, SearchQuery, SearchResult,
 };

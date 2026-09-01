@@ -7,11 +7,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use media_core::{AnalysisEvent, DetectError, Result, Timestamp};
 use serde::{Deserialize, Serialize};
+use text_core::TextSegment;
 use text_core::{
     detailed_text_stats, split_sentence_spans, text_stats, tokenize, tokenize_words, word_counts,
     TextProcessingOptions, TextSpan, TextStats, TokenKind,
 };
-use text_core::TextSegment;
 
 pub use corpus::*;
 
@@ -960,12 +960,8 @@ impl LexicalSegmentAnalyzer for KeywordAnalyzer {
         Ok(keywords(segment.text, &self.options)
             .into_iter()
             .map(|keyword| {
-                event_at(
-                    self.name(),
-                    &format!("text:keyword:{}", keyword.text),
-                    None,
-                )
-                .score(keyword.score)
+                event_at(self.name(), &format!("text:keyword:{}", keyword.text), None)
+                    .score(keyword.score)
             })
             .collect())
     }
@@ -983,11 +979,7 @@ impl LexicalSegmentAnalyzer for PatternAnalyzer {
     fn analyze_segment(&self, segment: &TextSegment<'_>) -> Result<Vec<AnalysisEvent>> {
         let mut events = pattern_events(self.name(), segment.text, None);
         if segment.text.trim_end().ends_with(['?', '؟', '？']) {
-            events.push(event_at(
-                self.name(),
-                "text:pattern:question",
-                None,
-            ));
+            events.push(event_at(self.name(), "text:pattern:question", None));
         }
         Ok(events)
     }
@@ -1476,15 +1468,21 @@ mod tests {
     fn lexical_analyzers_run_as_explicit_capability_operations() {
         let segment = OwnedTextSegment::new(0, "Visit https://example.com with rust rust?");
         let labels = [
-            TextStatsAnalyzer.analyze_segment(&segment.as_segment()).unwrap(),
-            KeywordAnalyzer::default().analyze_segment(&segment.as_segment()).unwrap(),
-            PatternAnalyzer.analyze_segment(&segment.as_segment()).unwrap(),
+            TextStatsAnalyzer
+                .analyze_segment(&segment.as_segment())
+                .unwrap(),
+            KeywordAnalyzer::default()
+                .analyze_segment(&segment.as_segment())
+                .unwrap(),
+            PatternAnalyzer
+                .analyze_segment(&segment.as_segment())
+                .unwrap(),
         ]
         .into_iter()
         .flatten()
-            .into_iter()
-            .map(|event| event.label)
-            .collect::<Vec<_>>();
+        .into_iter()
+        .map(|event| event.label)
+        .collect::<Vec<_>>();
         assert!(labels.contains(&"text:stats".to_string()));
         assert!(labels.contains(&"text:keyword:rust".to_string()));
         assert!(labels.contains(&"text:pattern:question".to_string()));

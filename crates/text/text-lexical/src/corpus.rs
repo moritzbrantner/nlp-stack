@@ -6,89 +6,175 @@ use std::collections::{BTreeMap, BTreeSet};
 use math_sparse_data::{CooMatrix, CsrMatrix, SparseVector};
 use media_core::{DetectError, Result, Timebase, Timestamp};
 use serde::{Deserialize, Serialize};
+use text_core::TextSegment;
 use text_core::{
     segment_document_id, tokenize, TextDocument, TextProcessingOptions, TextSpan, TokenKind,
 };
-use text_core::TextSegment;
 
 const TEXT_CORPUS_SNAPSHOT_SCHEMA_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TimebaseContract { pub num: i32, pub den: i32 }
-impl From<Timebase> for TimebaseContract { fn from(value: Timebase) -> Self { Self { num: value.num, den: value.den } } }
-impl From<TimebaseContract> for Timebase { fn from(value: TimebaseContract) -> Self { Self::new(value.num, value.den) } }
+pub struct TimebaseContract {
+    pub num: i32,
+    pub den: i32,
+}
+impl From<Timebase> for TimebaseContract {
+    fn from(value: Timebase) -> Self {
+        Self {
+            num: value.num,
+            den: value.den,
+        }
+    }
+}
+impl From<TimebaseContract> for Timebase {
+    fn from(value: TimebaseContract) -> Self {
+        Self::new(value.num, value.den)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TimestampContract { pub pts: i64, pub timebase: TimebaseContract }
-impl TimestampContract { pub fn seconds(self) -> f64 { Timestamp::from(self).seconds() } }
-impl From<Timestamp> for TimestampContract { fn from(value: Timestamp) -> Self { Self { pts: value.pts, timebase: value.timebase.into() } } }
-impl From<TimestampContract> for Timestamp { fn from(value: TimestampContract) -> Self { Self::new(value.pts, value.timebase.into()) } }
+pub struct TimestampContract {
+    pub pts: i64,
+    pub timebase: TimebaseContract,
+}
+impl TimestampContract {
+    pub fn seconds(self) -> f64 {
+        Timestamp::from(self).seconds()
+    }
+}
+impl From<Timestamp> for TimestampContract {
+    fn from(value: Timestamp) -> Self {
+        Self {
+            pts: value.pts,
+            timebase: value.timebase.into(),
+        }
+    }
+}
+impl From<TimestampContract> for Timestamp {
+    fn from(value: TimestampContract) -> Self {
+        Self::new(value.pts, value.timebase.into())
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TextSourceRef {
-    #[serde(default)] pub source_id: Option<String>,
-    #[serde(default)] pub source_kind: Option<String>,
-    #[serde(default)] pub uri: Option<String>,
-    #[serde(default)] pub media_timestamp: Option<TimestampContract>,
-    #[serde(default)] pub duration_seconds: Option<f64>,
+    #[serde(default)]
+    pub source_id: Option<String>,
+    #[serde(default)]
+    pub source_kind: Option<String>,
+    #[serde(default)]
+    pub uri: Option<String>,
+    #[serde(default)]
+    pub media_timestamp: Option<TimestampContract>,
+    #[serde(default)]
+    pub duration_seconds: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TextProvenance {
-    #[serde(default)] pub crate_name: Option<String>,
-    #[serde(default)] pub operation: Option<String>,
-    #[serde(default)] pub model_id: Option<String>,
-    #[serde(default)] pub runtime: Option<String>,
-    #[serde(default)] pub confidence: Option<f32>,
+    #[serde(default)]
+    pub crate_name: Option<String>,
+    #[serde(default)]
+    pub operation: Option<String>,
+    #[serde(default)]
+    pub model_id: Option<String>,
+    #[serde(default)]
+    pub runtime: Option<String>,
+    #[serde(default)]
+    pub confidence: Option<f32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TextAnnotationSpan {
     pub span: TextSpan,
-    #[serde(default)] pub token_start: Option<usize>,
-    #[serde(default)] pub token_end: Option<usize>,
-    #[serde(default)] pub source_segment_id: Option<String>,
+    #[serde(default)]
+    pub token_start: Option<usize>,
+    #[serde(default)]
+    pub token_end: Option<usize>,
+    #[serde(default)]
+    pub source_segment_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TextDocumentContract {
     pub id: String,
     pub text: String,
-    #[serde(default)] pub language: Option<String>,
-    #[serde(default)] pub timestamp: Option<TimestampContract>,
-    #[serde(default)] pub attributes: BTreeMap<String, String>,
-    #[serde(default)] pub source: Option<TextSourceRef>,
-    #[serde(default)] pub provenance: Vec<TextProvenance>,
-    #[serde(default)] pub annotations: Vec<TextAnnotationSpan>,
+    #[serde(default)]
+    pub language: Option<String>,
+    #[serde(default)]
+    pub timestamp: Option<TimestampContract>,
+    #[serde(default)]
+    pub attributes: BTreeMap<String, String>,
+    #[serde(default)]
+    pub source: Option<TextSourceRef>,
+    #[serde(default)]
+    pub provenance: Vec<TextProvenance>,
+    #[serde(default)]
+    pub annotations: Vec<TextAnnotationSpan>,
 }
 impl TextDocumentContract {
     pub fn new(id: impl Into<String>, text: impl Into<String>) -> Self {
-        Self { id: id.into(), text: text.into(), language: None, timestamp: None, attributes: BTreeMap::new(), source: None, provenance: Vec::new(), annotations: Vec::new() }
+        Self {
+            id: id.into(),
+            text: text.into(),
+            language: None,
+            timestamp: None,
+            attributes: BTreeMap::new(),
+            source: None,
+            provenance: Vec::new(),
+            annotations: Vec::new(),
+        }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TextSegmentContract {
-    #[serde(default)] pub stream_id: Option<String>,
+    #[serde(default)]
+    pub stream_id: Option<String>,
     pub segment_index: u64,
     pub text: String,
-    #[serde(default)] pub language: Option<String>,
-    #[serde(default)] pub timestamp: Option<TimestampContract>,
-    #[serde(default)] pub duration_seconds: Option<f64>,
+    #[serde(default)]
+    pub language: Option<String>,
+    #[serde(default)]
+    pub timestamp: Option<TimestampContract>,
+    #[serde(default)]
+    pub duration_seconds: Option<f64>,
     pub is_final: bool,
-    #[serde(default)] pub attributes: BTreeMap<String, String>,
-    #[serde(default)] pub source: Option<TextSourceRef>,
-    #[serde(default)] pub provenance: Vec<TextProvenance>,
-    #[serde(default)] pub annotations: Vec<TextAnnotationSpan>,
+    #[serde(default)]
+    pub attributes: BTreeMap<String, String>,
+    #[serde(default)]
+    pub source: Option<TextSourceRef>,
+    #[serde(default)]
+    pub provenance: Vec<TextProvenance>,
+    #[serde(default)]
+    pub annotations: Vec<TextAnnotationSpan>,
 }
 impl TextSegmentContract {
     pub fn new(segment_index: u64, text: impl Into<String>) -> Self {
-        Self { stream_id: None, segment_index, text: text.into(), language: None, timestamp: None, duration_seconds: None, is_final: true, attributes: BTreeMap::new(), source: None, provenance: Vec::new(), annotations: Vec::new() }
+        Self {
+            stream_id: None,
+            segment_index,
+            text: text.into(),
+            language: None,
+            timestamp: None,
+            duration_seconds: None,
+            is_final: true,
+            attributes: BTreeMap::new(),
+            source: None,
+            provenance: Vec::new(),
+            annotations: Vec::new(),
+        }
     }
-    pub fn document_id(&self) -> Option<String> { self.stream_id.as_deref().map(|stream_id| segment_document_id(stream_id, self.segment_index)) }
+    pub fn document_id(&self) -> Option<String> {
+        self.stream_id
+            .as_deref()
+            .map(|stream_id| segment_document_id(stream_id, self.segment_index))
+    }
     pub fn to_text_document_contract(&self) -> TextDocumentContract {
         TextDocumentContract {
-            id: self.document_id().unwrap_or_else(|| self.segment_index.to_string()),
+            id: self
+                .document_id()
+                .unwrap_or_else(|| self.segment_index.to_string()),
             text: self.text.clone(),
             language: self.language.clone(),
             timestamp: self.timestamp,

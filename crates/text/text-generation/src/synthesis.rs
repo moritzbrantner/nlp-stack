@@ -5,8 +5,8 @@ use std::collections::BTreeMap;
 use data_inversion_core::{Generated, InformationFidelity, InversionMethod, InversionTrace};
 use media_core::{AnalysisEvent, DetectError, Result};
 use serde::{Deserialize, Serialize};
-use text_core::{normalize_whitespace, OwnedTextDocument};
 use text_core::OwnedTextSegment;
+use text_core::{normalize_whitespace, OwnedTextDocument};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 /// Data type for term prompt.

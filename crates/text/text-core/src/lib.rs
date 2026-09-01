@@ -1530,11 +1530,23 @@ mod tests {
         assert_eq!(graphemes[0].text, "e\u{301}");
         assert_eq!(graphemes[0].span.byte_start, 0);
         assert_eq!(graphemes[0].span.byte_end, 3);
-        assert_eq!(graphemes[0].span.to_utf16(text).unwrap(), Utf16Span { start: 0, end: 2 });
-        assert_eq!(graphemes[0].span.to_grapheme(text).unwrap(), GraphemeOffsetSpan { start: 0, end: 1 });
+        assert_eq!(
+            graphemes[0].span.to_utf16(text).unwrap(),
+            Utf16Span { start: 0, end: 2 }
+        );
+        assert_eq!(
+            graphemes[0].span.to_grapheme(text).unwrap(),
+            GraphemeOffsetSpan { start: 0, end: 1 }
+        );
         assert_eq!(graphemes[1].text, "👍🏽");
-        assert_eq!(graphemes[1].span.to_utf16(text).unwrap(), Utf16Span { start: 2, end: 6 });
-        assert_eq!(graphemes[1].span.to_grapheme(text).unwrap(), GraphemeOffsetSpan { start: 1, end: 2 });
+        assert_eq!(
+            graphemes[1].span.to_utf16(text).unwrap(),
+            Utf16Span { start: 2, end: 6 }
+        );
+        assert_eq!(
+            graphemes[1].span.to_grapheme(text).unwrap(),
+            GraphemeOffsetSpan { start: 1, end: 2 }
+        );
     }
 
     #[test]

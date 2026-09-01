@@ -21,6 +21,7 @@ use crate::tokenization::{
 };
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
 use jobs_core::BackgroundJobRunner;
+use media_core::{AnalysisEvent, DetectError, Result};
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
 use model_runtime::{
     jobs::spawn_model_download_job, HuggingFaceDownloader, ModelBundle, ModelBundleStore,
@@ -30,7 +31,6 @@ use text_core::{
     AnnotationConfidence, AnnotationProvenance, Sentence, TextAnnotationGraph, TextDocument,
     TextProcessingOptions, Token,
 };
-use media_core::{AnalysisEvent, DetectError, Result};
 use text_core::{OwnedTextSegment, TextSegment};
 #[cfg(feature = "transcripts")]
 use text_transcripts::{TranscriptSegment, TranscriptionContract, TranscriptionResult};

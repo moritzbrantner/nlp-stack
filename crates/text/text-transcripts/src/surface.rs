@@ -292,11 +292,7 @@ fn to_text_segments_value(request: ToTextSegmentsRequest) -> Result<serde_json::
         .contract
         .normalized()
         .map_err(|error| error.to_string())?;
-    let segments = normalized
-        .segments
-        .iter()
-        .cloned()
-        .collect::<Vec<_>>();
+    let segments = normalized.segments.iter().cloned().collect::<Vec<_>>();
     let documents = segments
         .iter()
         .map(|segment| {
@@ -305,10 +301,10 @@ fn to_text_segments_value(request: ToTextSegmentsRequest) -> Result<serde_json::
                 .as_deref()
                 .map(|stream_id| text_core::segment_document_id(stream_id, segment.index))
                 .unwrap_or_else(|| segment.index.to_string());
-                serde_json::json!({
-                    "id": id,
-                    "text": segment.text
-                })
+            serde_json::json!({
+                "id": id,
+                "text": segment.text
+            })
         })
         .collect::<Vec<_>>();
     Ok(serde_json::json!({
