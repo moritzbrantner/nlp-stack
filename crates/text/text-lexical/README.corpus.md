@@ -33,7 +33,7 @@ for segment in [
 }
 
 assert_eq!(subtitle_corpus.documents()[0].id, "subs:0");
-# Ok::<(), text_core::DetectError>(())
+# Ok::<(), media_core::DetectError>(())
 ```
 
 ## Related crates
