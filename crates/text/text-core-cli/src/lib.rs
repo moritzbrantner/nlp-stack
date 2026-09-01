@@ -1,8 +1,8 @@
 use jobs_core::OperationResult;
 use runtime_core::{
     cli::{self, CliAdapterMetadata},
-    describe_surface_response, structured_surface_response, surface_operation, PackageSurface,
-    Diagnostic, DiagnosticSeverity, RuntimeCapabilities, SurfaceOperation, SurfaceRequest,
+    describe_surface_response, structured_surface_response, surface_operation, Diagnostic,
+    DiagnosticSeverity, PackageSurface, RuntimeCapabilities, SurfaceOperation, SurfaceRequest,
     SurfaceResponse,
 };
 use serde::Deserialize;
