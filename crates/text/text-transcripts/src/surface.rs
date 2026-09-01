@@ -292,7 +292,7 @@ fn to_text_segments_value(request: ToTextSegmentsRequest) -> Result<serde_json::
         .contract
         .normalized()
         .map_err(|error| error.to_string())?;
-    let segments = normalized.segments.iter().cloned().collect::<Vec<_>>();
+    let segments = normalized.segments.to_vec();
     let documents = segments
         .iter()
         .map(|segment| {
