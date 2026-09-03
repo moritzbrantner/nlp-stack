@@ -1,5 +1,9 @@
 mod derive;
+mod dynamics;
+mod interpretation;
+mod linguistic;
 mod model;
+mod scaling;
 mod units;
 
 use std::collections::BTreeSet;
@@ -13,11 +17,22 @@ use crate::invalid_argument;
 use self::derive::build_report;
 use self::units::{conversation_units, document_units};
 
-pub use self::model::{
-    ConversationTurn, SemanticAnalysisOptions, SemanticAnalysisReport, SemanticCluster,
-    SemanticHotspot, SemanticNeighbor, SemanticTimelinePoint, SemanticUnit, SemanticUnitKind,
-    SpeakerConceptShare, SpeakerSemanticProfile,
+pub use self::interpretation::{
+    interpret_semantic_report, SemanticConceptInterpretation, SemanticConceptInterpretationContent,
+    SemanticConceptInterpretationRequest, SemanticInterpretationBackend,
+    SemanticInterpretationMetadata, SemanticInterpretationReport,
 };
+pub use self::linguistic::{
+    compose_linguistic_semantic_graph, SemanticGraphEdge, SemanticGraphEdgeKind, SemanticGraphNode,
+    SemanticGraphNodeKind, SemanticLinguisticGraph,
+};
+pub use self::model::{
+    ConceptAdoption, ConceptHandoff, ConceptIntroduction, ConversationSemanticDynamics,
+    ConversationTurn, RecurringConcept, SemanticAnalysisOptions, SemanticAnalysisReport,
+    SemanticCluster, SemanticHotspot, SemanticNeighbor, SemanticTimelinePoint, SemanticUnit,
+    SemanticUnitKind, SpeakerConceptShare, SpeakerPairDynamics, SpeakerSemanticProfile,
+};
+pub use self::scaling::{compare_semantic_neighborhoods, SemanticNeighborhoodEvidence};
 
 /// Analyzes one document with the deterministic hashed embedding baseline.
 pub fn analyze_document_semantics(
