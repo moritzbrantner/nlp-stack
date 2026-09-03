@@ -5,6 +5,7 @@ use text_embeddings::TextEmbeddingBackend;
 
 use crate::invalid_argument;
 
+use super::dynamics::conversation_dynamics;
 use super::{
     SemanticAnalysisOptions, SemanticAnalysisReport, SemanticCluster, SemanticHotspot,
     SemanticNeighbor, SemanticTimelinePoint, SemanticUnit, SemanticUnitKind, SpeakerConceptShare,
@@ -51,6 +52,8 @@ pub(super) fn build_report<E: TextEmbeddingBackend + ?Sized>(
     let timeline = semantic_timeline(&units, &primary_indices, &similarities, &clusters);
     let hotspots = semantic_hotspots(&timeline, &clusters);
     let speaker_profiles = speaker_profiles(&units, &primary_indices, &timeline);
+    let dynamics = (primary_unit_kind == SemanticUnitKind::SpeakerTurn)
+        .then(|| conversation_dynamics(&units, &primary_indices, &timeline));
 
     let mut embedding_model = embedder.model_info();
     if embedding_model.dimensions == 0 {
@@ -67,6 +70,7 @@ pub(super) fn build_report<E: TextEmbeddingBackend + ?Sized>(
         timeline,
         hotspots,
         speaker_profiles,
+        conversation_dynamics: dynamics,
     })
 }
 
