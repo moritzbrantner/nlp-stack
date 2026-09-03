@@ -1,3 +1,4 @@
+import { createSemanticMapResultTabs } from "@moritzbrantner/nlp-app-ui";
 import { createTextResultTabs, PackageSurfaceWorkbench, type PackageAppConfig } from "@moritzbrantner/nlp-app-ui/package-surface";
 import * as wasm from "@moritzbrantner/text-analysis-wasm";
 
@@ -137,38 +138,41 @@ const packageAppConfig: PackageAppConfig = {
       },
     },
   ],
-  resultTabs: createTextResultTabs({
-    library: "text-analysis",
-    primaryOperations: {
-      "analysis.document": {
-        title: "Document analysis",
-        summaryFields: ["tokenCount", "sentenceCount", "keywordCount", "entityCount", "embeddingDimensions", "diagnosticCount"],
-        listFields: ["lexical.keywords", "lexical.ruleEntities", "diagnostics"],
-        objectFields: ["core", "lexical", "linguistic", "embedding", "classification"],
-        explanation: () => "The orchestrator ran core statistics, lexical keyword extraction, linguistic projections, deterministic embeddings, and retrieval-oriented diagnostics for one document.",
+  resultTabs: [
+    ...createTextResultTabs({
+      library: "text-analysis",
+      primaryOperations: {
+        "analysis.document": {
+          title: "Document analysis",
+          summaryFields: ["tokenCount", "sentenceCount", "keywordCount", "entityCount", "embeddingDimensions", "diagnosticCount"],
+          listFields: ["lexical.keywords", "lexical.ruleEntities", "diagnostics"],
+          objectFields: ["core", "lexical", "linguistic", "embedding", "classification"],
+          explanation: () => "The orchestrator ran core statistics, lexical keyword extraction, linguistic projections, deterministic embeddings, and retrieval-oriented diagnostics for one document.",
+        },
+        "analysis.semantic-map": {
+          title: "Semantic map",
+          summaryFields: ["unitCount", "conceptCount", "neighborCount", "hotspotCount", "graphNodeCount", "graphEdgeCount", "neighborhoodSharedEdgeCount", "neighborhoodExactOnlyEdgeCount", "neighborhoodIndexedOnlyEdgeCount"],
+          listFields: ["semantic.clusters", "semantic.timeline", "semantic.hotspots", "semantic.neighbors", "linguisticGraph.nodes", "linguisticGraph.edges"],
+          objectFields: ["semantic.embeddingModel", "semantic.conversationDynamics", "neighborhoodEvidence"],
+          explanation: () => "The semantic map keeps source units and deterministic concept structure as the primary evidence, adds typed linguistic graph projections, and can compare exact neighbors with the existing vector-index implementation without silently changing algorithms.",
+        },
+        "analysis.corpus": {
+          title: "Corpus analysis",
+          summaryFields: ["documentCount", "resultCount", "nearDuplicateCount", "semanticNeighborCount"],
+          listFields: ["results", "nearDuplicates", "semanticNeighbors", "documents"],
+          objectFields: ["embedding", "diagnostics"],
+          explanation: () => "The app built a transient corpus from the sample documents, searched it, and added near-duplicate or semantic-neighbor sections when requested.",
+        },
+        "analysis.similarity": {
+          title: "Text similarity",
+          summaryFields: ["mode", "n", "score", "intersectionCount", "unionCount"],
+          objectFields: ["similarity", "result"],
+          explanation: () => "The run compared two transcript passages with the selected shingle mode and reports scalar overlap counts for the selected n-gram size.",
+        },
       },
-      "analysis.semantic-map": {
-        title: "Semantic map",
-        summaryFields: ["unitCount", "conceptCount", "neighborCount", "hotspotCount", "graphNodeCount", "graphEdgeCount", "neighborhoodSharedEdgeCount", "neighborhoodExactOnlyEdgeCount", "neighborhoodIndexedOnlyEdgeCount"],
-        listFields: ["semantic.clusters", "semantic.timeline", "semantic.hotspots", "semantic.neighbors", "linguisticGraph.nodes", "linguisticGraph.edges"],
-        objectFields: ["semantic.embeddingModel", "semantic.conversationDynamics", "neighborhoodEvidence"],
-        explanation: () => "The semantic map keeps source units and deterministic concept structure as the primary evidence, adds typed linguistic graph projections, and can compare exact neighbors with the existing vector-index implementation without silently changing algorithms.",
-      },
-      "analysis.corpus": {
-        title: "Corpus analysis",
-        summaryFields: ["documentCount", "resultCount", "nearDuplicateCount", "semanticNeighborCount"],
-        listFields: ["results", "nearDuplicates", "semanticNeighbors", "documents"],
-        objectFields: ["embedding", "diagnostics"],
-        explanation: () => "The app built a transient corpus from the sample documents, searched it, and added near-duplicate or semantic-neighbor sections when requested.",
-      },
-      "analysis.similarity": {
-        title: "Text similarity",
-        summaryFields: ["mode", "n", "score", "intersectionCount", "unionCount"],
-        objectFields: ["similarity", "result"],
-        explanation: () => "The run compared two transcript passages with the selected shingle mode and reports scalar overlap counts for the selected n-gram size.",
-      },
-    },
-  }),
+    }),
+    ...createSemanticMapResultTabs(),
+  ],
 };
 
 export function App() {
