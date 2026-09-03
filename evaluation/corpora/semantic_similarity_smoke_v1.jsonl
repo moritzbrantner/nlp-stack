@@ -1,0 +1,5 @@
+{"id":"identical","left":"Semantic search improves retrieval.","right":"Semantic search improves retrieval.","similarity":1.0}
+{"id":"paraphrase","left":"Semantic search improves retrieval.","right":"Meaning-based search helps users find relevant results.","similarity":0.85}
+{"id":"related","left":"Vector indexes accelerate nearest-neighbor search.","right":"Semantic retrieval uses embedding vectors.","similarity":0.65}
+{"id":"weakly-related","left":"Tomatoes grow in garden soil.","right":"Plants need healthy soil.","similarity":0.45}
+{"id":"unrelated","left":"Semantic search improves retrieval.","right":"Tomatoes grow in garden soil.","similarity":0.05}
