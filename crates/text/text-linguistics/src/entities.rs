@@ -417,6 +417,8 @@ pub struct EventArgument {
     pub role: String,
     /// Text content for this value.
     pub text: String,
+    /// Source span for this argument.
+    pub span: TextSpan,
     /// Confidence score for this value.
     pub confidence: f32,
 }
@@ -424,12 +426,20 @@ pub struct EventArgument {
 #[derive(Debug, Clone, PartialEq)]
 /// Data type for relation triple.
 pub struct RelationTriple {
+    /// Source sentence containing this relation.
+    pub sentence_index: usize,
     /// The subject value.
     pub subject: String,
+    /// Source span for the subject.
+    pub subject_span: TextSpan,
     /// The relation value.
     pub relation: String,
+    /// Source span for the relation predicate.
+    pub relation_span: TextSpan,
     /// The object value.
     pub object: String,
+    /// Source span for the object.
+    pub object_span: TextSpan,
     /// The relation type value.
     pub relation_type: RelationType,
     /// Confidence score for this value.
@@ -443,6 +453,8 @@ pub struct ExtractedEvent {
     pub sentence_index: usize,
     /// The predicate value.
     pub predicate: String,
+    /// Source span for the predicate.
+    pub predicate_span: TextSpan,
     /// The lemma value.
     pub lemma: String,
     /// The relation type value.
@@ -471,7 +483,8 @@ impl EventExtractor {
             let Some(root_index) = tree.root_token_index else {
                 continue;
             };
-            let predicate = tokens[root_index].text.clone();
+            let predicate_token = &tokens[root_index];
+            let predicate = predicate_token.text.clone();
             let lemma = lemmas
                 .lemmas
                 .get(root_index)
@@ -481,7 +494,10 @@ impl EventExtractor {
                 .edges
                 .iter()
                 .find(|edge| edge.relation == DependencyRelation::Nsubj)
-                .map(|edge| tokens[edge.dependent_token_index].text.clone());
+                .map(|edge| {
+                    let token = &tokens[edge.dependent_token_index];
+                    (token.text.clone(), token.span)
+                });
             let object = tree
                 .edges
                 .iter()
@@ -491,7 +507,10 @@ impl EventExtractor {
                         DependencyRelation::Obj | DependencyRelation::Obl
                     )
                 })
-                .map(|edge| tokens[edge.dependent_token_index].text.clone());
+                .map(|edge| {
+                    let token = &tokens[edge.dependent_token_index];
+                    (token.text.clone(), token.span)
+                });
             let relation_type =
                 if ["say", "announce", "report", "present"].contains(&lemma.as_str()) {
                     RelationType::Attribution
@@ -503,17 +522,19 @@ impl EventExtractor {
                     RelationType::Action
                 };
             let mut arguments = Vec::new();
-            if let Some(subject) = subject.clone() {
+            if let Some((subject, span)) = subject.clone() {
                 arguments.push(EventArgument {
                     role: "subject".to_string(),
                     text: subject,
+                    span,
                     confidence: 0.75,
                 });
             }
-            if let Some(object) = object.clone() {
+            if let Some((object, span)) = object.clone() {
                 arguments.push(EventArgument {
                     role: "object".to_string(),
                     text: object,
+                    span,
                     confidence: 0.7,
                 });
             }
@@ -521,17 +542,23 @@ impl EventExtractor {
                 events.push(ExtractedEvent {
                     sentence_index: tree.sentence_index,
                     predicate: predicate.clone(),
+                    predicate_span: predicate_token.span,
                     lemma: lemma.clone(),
                     relation_type,
                     arguments: arguments.clone(),
                     confidence: 0.7,
                 });
             }
-            if let (Some(subject), Some(object)) = (subject, object) {
+            if let (Some((subject, subject_span)), Some((object, object_span))) = (subject, object)
+            {
                 relations.push(RelationTriple {
+                    sentence_index: tree.sentence_index,
                     subject,
+                    subject_span,
                     relation: lemma,
+                    relation_span: predicate_token.span,
                     object,
+                    object_span,
                     relation_type,
                     confidence: 0.7,
                 });

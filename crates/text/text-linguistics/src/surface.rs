@@ -182,19 +182,26 @@ fn entities_value(request: AnalyzeRequest) -> Result<serde_json::Value, String> 
             "aliases": entity.aliases
         })).collect::<Vec<_>>(),
         "relations": analysis.relations.into_iter().map(|relation| serde_json::json!({
+            "sentenceIndex": relation.sentence_index,
             "relation": format!("{:?}", relation.relation),
+            "relationSpan": relation.relation_span,
             "subject": relation.subject,
+            "subjectSpan": relation.subject_span,
             "object": relation.object,
+            "objectSpan": relation.object_span,
             "confidence": relation.confidence
         })).collect::<Vec<_>>(),
         "events": analysis.events.into_iter().map(|event| serde_json::json!({
+            "sentenceIndex": event.sentence_index,
             "predicate": event.predicate,
+            "predicateSpan": event.predicate_span,
             "lemma": event.lemma,
             "relationType": format!("{:?}", event.relation_type),
             "confidence": event.confidence,
             "arguments": event.arguments.into_iter().map(|argument| serde_json::json!({
                 "role": argument.role,
                 "text": argument.text,
+                "span": argument.span,
                 "confidence": argument.confidence
             })).collect::<Vec<_>>()
         })).collect::<Vec<_>>()
