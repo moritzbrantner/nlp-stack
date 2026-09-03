@@ -26,6 +26,26 @@ assert!(!report.lexical.keywords.is_empty());
 # Ok::<(), text_core::DetectError>(())
 ```
 
+## Semantic maps
+
+`analyze_document_semantics` and `analyze_conversation_semantics` build a typed,
+multi-scale semantic map rather than reducing a whole source to one vector.
+Documents keep sentence, paragraph, and document units; conversations keep
+speaker turns plus sentence children. The primary sequence is then used to
+produce deterministic semantic-neighbor edges, concept clusters, a semantic
+shift/activation timeline, concept hotspots, and per-speaker concept shares.
+
+The convenience functions use the no-download hashed embedding baseline. The
+matching `*_with` functions accept any `TextEmbeddingBackend`, so local
+Candle/ONNX or future embedding implementations can reuse the same semantic-map
+contracts and deterministic aggregation algorithms.
+
+The initial exact similarity matrix is intentionally O(n²). It is a transparent
+baseline, not a claim that all future large-corpus analysis should stay
+pairwise. See
+[`docs/SEMANTIC_ANALYSIS_HORIZON.md`](../../../docs/SEMANTIC_ANALYSIS_HORIZON.md)
+for the implementation horizon and ownership constraints.
+
 ## Feature flags
 
 - `tokenizers`: enables tokenizer-backed model bundle helpers.
@@ -43,6 +63,11 @@ analysis remains deterministic, local-first, and no-download.
 
 This crate composes lower-level heuristic and hashed-vector outputs. It provides
 consistent report structure, not a production-grade NLP quality guarantee.
+
+Semantic-map clusters and heat-map-oriented metrics are structural signals over
+embedding similarity. They must not be interpreted as psychological judgments,
+truth assessments, or lossless representations of meaning. Hashed embeddings
+remain deterministic fixtures rather than semantic-quality claims.
 
 ## Model-backed analysis
 
