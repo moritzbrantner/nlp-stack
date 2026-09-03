@@ -13,7 +13,6 @@ use std::path::PathBuf;
 pub use corpus::analyze_corpus;
 pub use document::{analyze_document, analyze_text};
 pub use fingerprint::{shingle_hamming_distance, simhash64, DocumentSimilarityPair};
-use serde::{Deserialize, Serialize};
 pub use semantic::{
     analyze_conversation_semantics, analyze_conversation_semantics_with,
     analyze_document_semantics, analyze_document_semantics_with, ConversationTurn,
@@ -21,6 +20,7 @@ pub use semantic::{
     SemanticNeighbor, SemanticTimelinePoint, SemanticUnit, SemanticUnitKind, SpeakerConceptShare,
     SpeakerSemanticProfile,
 };
+use serde::{Deserialize, Serialize};
 pub use stats::enriched_text_stats;
 use text_classification::TextClassificationLocalModelOptions;
 use text_core::{
