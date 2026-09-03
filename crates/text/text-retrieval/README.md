@@ -30,6 +30,17 @@ types, metadata filters, snapshot planning, and persistence DTOs. New durable
 indexing/search work should use `moritzbrantner-text-index`; this crate keeps
 older callers and reranking workflows working while they migrate.
 
+These text-specific request/result types are deliberately richer than the
+backend-neutral `moenarch-corpus-core` retrieval seam in Foundation. Foundation
+owns portable corpus identity and minimal cross-domain retrieval interchange;
+this crate continues to own text query interpretation, BM25/semantic/hybrid
+ranking, richer filters, candidate windows, snippets, facets, score breakdowns,
+related-text behavior, and reranking. Do not expand Foundation merely to make the
+two APIs field-for-field identical.
+
+See [`docs/FOUNDATION_RETRIEVAL_BOUNDARY.md`](../../../docs/FOUNDATION_RETRIEVAL_BOUNDARY.md)
+for the lossless mapping, dependency rule, and extraction criteria.
+
 ## Quality and limits
 
 Hybrid score calibration and ranking quality are best-effort. Persistence helper
@@ -57,6 +68,8 @@ in-memory indexes and do not write files.
 
 ## Related crates
 
+- `moritzbrantner-text-index`
 - `moritzbrantner-text-embeddings`
 - `moritzbrantner-text-lexical`
 - `moritzbrantner-vector-analysis-index`
+- `moenarch-corpus-core` (portable corpus/retrieval interchange; no committed dependency yet)
