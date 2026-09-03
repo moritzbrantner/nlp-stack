@@ -4,6 +4,9 @@ import * as wasm from "@moritzbrantner/text-analysis-wasm";
 const sampleText =
   "Alice presented the tokenizer roadmap in Berlin during the release review. Rust text crates extract keywords, entities, and transcript evidence with deterministic local features. Semantic search and lexical statistics help editors find the strongest report passages.";
 
+const semanticSampleText =
+  "Alice presented the semantic search roadmap in Berlin. Semantic retrieval uses embeddings to find related passages. Bob asked how the vector index scales to larger corpora. Alice explained that exact similarity remains the deterministic baseline. Tomatoes grow in garden soil. Healthy soil supports tomato roots.";
+
 const packageAppConfig: PackageAppConfig = {
   library: "text-analysis",
   title: "Text Analysis",
@@ -20,7 +23,7 @@ const packageAppConfig: PackageAppConfig = {
   },
   defaultOperation: "analysis.document",
   defaultPresetId: "document-deterministic",
-  featuredOperations: ["analysis.document", "analysis.corpus", "analysis.similarity", "analysis.describe", "describe"],
+  featuredOperations: ["analysis.document", "analysis.semantic-map", "analysis.corpus", "analysis.similarity", "analysis.describe", "describe"],
   workbench: {
     layout: "focused",
     sidePanels: {
@@ -33,6 +36,7 @@ const packageAppConfig: PackageAppConfig = {
     showLandscapeContract: false,
     inputFields: {
       "analysis.document": ["text", "keywordLimit", "summarySentences"],
+      "analysis.semantic-map": ["text", "neighborsPerUnit", "neighborThreshold", "clusterThreshold", "includeLinguisticGraph", "includeNeighborhoodEvidence"],
       "analysis.corpus": ["query", "topK", "includeNearDuplicates", "includeSemanticNeighbors"],
       "analysis.similarity": ["left", "right", "n", "mode"],
       "analysis.describe": [],
@@ -43,8 +47,8 @@ const packageAppConfig: PackageAppConfig = {
     {
       id: "workflow",
       label: "Workflow",
-      description: "Run document, corpus, and text-similarity analysis workflows.",
-      operations: ["analysis.document", "analysis.corpus", "analysis.similarity"],
+      description: "Run document, semantic-map, corpus, and text-similarity analysis workflows.",
+      operations: ["analysis.document", "analysis.semantic-map", "analysis.corpus", "analysis.similarity"],
     },
     {
       id: "debug",
@@ -69,6 +73,21 @@ const packageAppConfig: PackageAppConfig = {
         shingleSizes: [3, 5],
         linguistics: { mode: "heuristicBalanced" },
         embedding: { mode: "hashed", dimensions: 128, useIdf: false },
+      },
+    },
+    {
+      id: "semantic-map",
+      label: "Semantic map: concepts and trajectory",
+      operation: "analysis.semantic-map",
+      description: "Build deterministic semantic units, concept clusters, trajectory and hotspots, then project existing linguistic evidence onto the same units.",
+      input: {
+        id: "semantic-map-berlin",
+        text: semanticSampleText,
+        neighborsPerUnit: 4,
+        neighborThreshold: 0.25,
+        clusterThreshold: 0.6,
+        includeLinguisticGraph: true,
+        includeNeighborhoodEvidence: true,
       },
     },
     {
@@ -127,6 +146,13 @@ const packageAppConfig: PackageAppConfig = {
         listFields: ["lexical.keywords", "lexical.ruleEntities", "diagnostics"],
         objectFields: ["core", "lexical", "linguistic", "embedding", "classification"],
         explanation: () => "The orchestrator ran core statistics, lexical keyword extraction, linguistic projections, deterministic embeddings, and retrieval-oriented diagnostics for one document.",
+      },
+      "analysis.semantic-map": {
+        title: "Semantic map",
+        summaryFields: ["unitCount", "conceptCount", "neighborCount", "hotspotCount", "graphNodeCount", "graphEdgeCount", "neighborhoodSharedEdgeCount", "neighborhoodExactOnlyEdgeCount", "neighborhoodIndexedOnlyEdgeCount"],
+        listFields: ["semantic.clusters", "semantic.timeline", "semantic.hotspots", "semantic.neighbors", "linguisticGraph.nodes", "linguisticGraph.edges"],
+        objectFields: ["semantic.embeddingModel", "semantic.conversationDynamics", "neighborhoodEvidence"],
+        explanation: () => "The semantic map keeps source units and deterministic concept structure as the primary evidence, adds typed linguistic graph projections, and can compare exact neighbors with the existing vector-index implementation without silently changing algorithms.",
       },
       "analysis.corpus": {
         title: "Corpus analysis",

@@ -15,10 +15,16 @@ pub use document::{analyze_document, analyze_text};
 pub use fingerprint::{shingle_hamming_distance, simhash64, DocumentSimilarityPair};
 pub use semantic::{
     analyze_conversation_semantics, analyze_conversation_semantics_with,
-    analyze_document_semantics, analyze_document_semantics_with, ConversationTurn,
-    SemanticAnalysisOptions, SemanticAnalysisReport, SemanticCluster, SemanticHotspot,
-    SemanticNeighbor, SemanticTimelinePoint, SemanticUnit, SemanticUnitKind, SpeakerConceptShare,
-    SpeakerSemanticProfile,
+    analyze_document_semantics, analyze_document_semantics_with, compare_semantic_neighborhoods,
+    compose_linguistic_semantic_graph, interpret_semantic_report, ConceptAdoption, ConceptHandoff,
+    ConceptIntroduction, ConversationSemanticDynamics, ConversationTurn, RecurringConcept,
+    SemanticAnalysisOptions, SemanticAnalysisReport, SemanticCluster,
+    SemanticConceptInterpretation, SemanticConceptInterpretationContent,
+    SemanticConceptInterpretationRequest, SemanticGraphEdge, SemanticGraphEdgeKind,
+    SemanticGraphNode, SemanticGraphNodeKind, SemanticHotspot, SemanticInterpretationBackend,
+    SemanticInterpretationMetadata, SemanticInterpretationReport, SemanticLinguisticGraph,
+    SemanticNeighbor, SemanticNeighborhoodEvidence, SemanticTimelinePoint, SemanticUnit,
+    SemanticUnitKind, SpeakerConceptShare, SpeakerPairDynamics, SpeakerSemanticProfile,
 };
 use serde::{Deserialize, Serialize};
 pub use stats::enriched_text_stats;

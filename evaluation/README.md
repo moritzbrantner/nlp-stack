@@ -27,6 +27,28 @@ The script generates predictions through the public `text-core` sentence-boundar
 
 The committed prediction and aggregate report files under `evaluation/baselines/` are reproducible fixtures for the current baseline. The Python test suite verifies that the aggregate report is derivable from those committed inputs. The live script is the proof that current Rust behavior still produces predictions through the public capability seam.
 
+## Semantic-analysis smoke suites
+
+`semantic_similarity_smoke_v1.jsonl` and `topic_shift_smoke_v1.jsonl` establish the first versioned H7 fixtures. They are deliberately small contract/evaluator fixtures, not semantic-quality benchmarks.
+
+The evaluator exposes two report-only commands:
+
+```bash
+python3 -m evaluation.runner semantic-similarity \
+  --gold evaluation/corpora/semantic_similarity_smoke_v1.jsonl \
+  --predictions path/to/predictions.jsonl \
+  --suite semantic-similarity-smoke-v1 \
+  --system your-system
+
+python3 -m evaluation.runner topic-shifts \
+  --gold evaluation/corpora/topic_shift_smoke_v1.jsonl \
+  --predictions path/to/predictions.jsonl \
+  --suite topic-shift-smoke-v1 \
+  --system your-system
+```
+
+Semantic similarity reports Spearman rank correlation and mean absolute error. Topic shifts use exact index precision/recall/F1. No minimum semantic-quality threshold is enforced yet: hashed embeddings are useful deterministic interoperability fixtures, but they are not a meaningful quality target for semantic similarity or topic segmentation. Larger labelled corpora and model-backed comparisons should be added with explicit provenance before quality gates are considered.
+
 ## Adding a capability suite
 
 Keep each suite independently runnable and independently interpretable. Add a versioned corpus, a prediction shape, a deterministic evaluator using the reusable metrics where possible, a baseline report that states which system produced it, and the narrowest adapter needed to obtain predictions through the capability's stable public seam.

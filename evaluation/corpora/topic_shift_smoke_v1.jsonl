@@ -1,0 +1,3 @@
+{"id":"single-shift","units":["Semantic search improves retrieval.","Embedding indexes support semantic search.","Tomatoes grow in garden soil.","Healthy soil supports tomato roots."],"shiftIndices":[2]}
+{"id":"two-shifts","units":["Rust compiles native code.","Cargo manages Rust packages.","Tomatoes grow in soil.","Garden irrigation supports plants.","Semantic retrieval uses embeddings.","Vector indexes accelerate search."],"shiftIndices":[2,4]}
+{"id":"stable-topic","units":["Semantic search uses embeddings.","Embedding models map text to vectors.","Vector search retrieves similar passages."],"shiftIndices":[]}

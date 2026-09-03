@@ -20,6 +20,11 @@ fn describe_alias_reports_operation_inventory() {
         .unwrap()
         .iter()
         .any(|operation| operation == "analysis.corpus"));
+    assert!(value["operations"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|operation| operation == "analysis.semantic-map"));
 }
 
 #[test]
@@ -162,6 +167,7 @@ fn workflow_operation_examples_return_structured_values() {
     let surface = package_surface();
     for operation_id in [
         "analysis.document",
+        "analysis.semantic-map",
         "analysis.corpus",
         "analysis.similarity",
     ] {

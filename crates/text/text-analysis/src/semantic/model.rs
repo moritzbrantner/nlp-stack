@@ -132,6 +132,71 @@ pub struct SpeakerSemanticProfile {
     pub concepts: Vec<SpeakerConceptShare>,
 }
 
+/// Similarity evidence for adjacent turns spoken by a pair of speakers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpeakerPairDynamics {
+    pub left_speaker: String,
+    pub right_speaker: String,
+    pub adjacent_turn_count: usize,
+    pub mean_similarity: f32,
+    pub first_similarity: f32,
+    pub last_similarity: f32,
+    pub similarity_delta: f32,
+}
+
+/// First observed use of a deterministic concept by a speaker.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConceptIntroduction {
+    pub cluster_id: String,
+    pub speaker: String,
+    pub sequence_index: usize,
+}
+
+/// First later use of an introduced concept by another speaker.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConceptAdoption {
+    pub cluster_id: String,
+    pub introduced_by: String,
+    pub adopted_by: String,
+    pub sequence_index: usize,
+}
+
+/// Adjacent speaker change accompanied by a deterministic concept change.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConceptHandoff {
+    pub from_cluster_id: String,
+    pub to_cluster_id: String,
+    pub from_speaker: String,
+    pub to_speaker: String,
+    pub sequence_index: usize,
+}
+
+/// Deterministic concept that returns after at least one intervening turn.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecurringConcept {
+    pub cluster_id: String,
+    pub occurrence_count: usize,
+    pub non_adjacent_return_count: usize,
+    pub first_sequence_index: usize,
+    pub last_sequence_index: usize,
+}
+
+/// Observable semantic structure derived from an ordered multi-speaker conversation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConversationSemanticDynamics {
+    pub speaker_pairs: Vec<SpeakerPairDynamics>,
+    pub introductions: Vec<ConceptIntroduction>,
+    pub adoptions: Vec<ConceptAdoption>,
+    pub handoffs: Vec<ConceptHandoff>,
+    pub recurring_concepts: Vec<RecurringConcept>,
+}
+
 /// Multi-scale semantic map derived from a document or ordered conversation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -145,4 +210,6 @@ pub struct SemanticAnalysisReport {
     pub timeline: Vec<SemanticTimelinePoint>,
     pub hotspots: Vec<SemanticHotspot>,
     pub speaker_profiles: Vec<SpeakerSemanticProfile>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conversation_dynamics: Option<ConversationSemanticDynamics>,
 }
