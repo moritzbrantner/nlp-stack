@@ -1,3 +1,5 @@
+mod semantic_map;
+
 use std::path::PathBuf;
 
 use runtime_core::{
@@ -48,6 +50,7 @@ pub fn package_surface() -> PackageSurface {
                     "embedding": {"mode": "hashed", "dimensions": 128, "useIdf": false}
                 }),
             ),
+            semantic_map::operation(),
             operation(
                 "analysis.corpus",
                 "Analyze corpus",
@@ -98,6 +101,7 @@ pub fn run_surface_operation(request: SurfaceRequest) -> Result<SurfaceResponse,
                 diagnostics,
             )
         }
+        "analysis.semantic-map" => (semantic_map::run(request.input)?, Vec::new()),
         "analysis.corpus" => {
             let input = parse_input::<CorpusRequest>(request.input)?;
             let options = input.options();
@@ -235,6 +239,7 @@ fn annotated_value(operation: &OperationId, value: serde_json::Value) -> serde_j
                 "diagnosticCount": value["diagnostics"].as_array().map(Vec::len).unwrap_or(0)
             }),
         ),
+        "analysis.semantic-map" => semantic_map::annotation(&value),
         "analysis.corpus" => (
             "Corpus analysis result",
             "Analyzed a transient corpus with lexical statistics, search reports, near duplicates, and semantic neighbors.",
