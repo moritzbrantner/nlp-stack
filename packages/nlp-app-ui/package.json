@@ -24,7 +24,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest --run --maxWorkers=2 --maxConcurrency=2 --environment jsdom src/package-surface/package-surface.test.tsx"
+    "test": "vitest --run --maxWorkers=2 --maxConcurrency=2 --environment jsdom src/package-surface"
   },
   "peerDependencies": {
     "react": ">=19.0.0",
