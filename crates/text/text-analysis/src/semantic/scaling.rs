@@ -161,11 +161,13 @@ fn insert_edge(
 fn render_edges(edges: BTreeMap<(String, String), f32>) -> Vec<SemanticNeighbor> {
     edges
         .into_iter()
-        .map(|((source_unit_id, target_unit_id), similarity)| SemanticNeighbor {
-            source_unit_id,
-            target_unit_id,
-            similarity,
-        })
+        .map(
+            |((source_unit_id, target_unit_id), similarity)| SemanticNeighbor {
+                source_unit_id,
+                target_unit_id,
+                similarity,
+            },
+        )
         .collect()
 }
 

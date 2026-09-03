@@ -166,11 +166,7 @@ fn conversation_dynamics_track_adoption_handoffs_and_recurring_concepts() {
             "Semantic search improves retrieval.",
         ),
         ConversationTurn::new("turn-2", Some("Bob"), "Tomatoes grow in soil."),
-        ConversationTurn::new(
-            "turn-3",
-            Some("Bob"),
-            "Semantic search improves retrieval.",
-        ),
+        ConversationTurn::new("turn-3", Some("Bob"), "Semantic search improves retrieval."),
         ConversationTurn::new("turn-4", Some("Alice"), "Tomatoes grow in soil."),
         ConversationTurn::new(
             "turn-5",

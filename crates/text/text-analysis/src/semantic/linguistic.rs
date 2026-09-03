@@ -280,7 +280,10 @@ pub fn compose_linguistic_semantic_graph(
         nodes.push(SemanticGraphNode {
             id: relation_id.clone(),
             kind: SemanticGraphNodeKind::Relation,
-            label: format!("{} {} {}", relation.subject, relation.relation, relation.object),
+            label: format!(
+                "{} {} {}",
+                relation.subject, relation.relation, relation.object
+            ),
             span: None,
             sequence_index: None,
             confidence: Some(relation.confidence),
