@@ -1,0 +1,30 @@
+name: fix-h5-unused-import
+
+on:
+  push:
+    branches: [feat/semantic-event-provenance]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove stale SemanticUnit import
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('crates/text/text-analysis/src/semantic/linguistic.rs')
+          text = path.read_text()
+          old = 'use super::{SemanticAnalysisReport, SemanticUnit};'
+          assert text.count(old) == 1
+          path.write_text(text.replace(old, 'use super::SemanticAnalysisReport;'))
+          PY
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add crates/text/text-analysis/src/semantic/linguistic.rs
+          git commit -m "fix: remove stale semantic graph import"
+          git push origin HEAD:feat/semantic-event-provenance
