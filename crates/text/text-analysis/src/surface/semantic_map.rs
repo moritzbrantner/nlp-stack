@@ -61,9 +61,7 @@ pub(super) fn run(input: serde_json::Value) -> Result<serde_json::Value, String>
     }))
 }
 
-pub(super) fn annotation(
-    value: &serde_json::Value,
-) -> (&'static str, &'static str, serde_json::Value) {
+pub(super) fn annotation(value: &serde_json::Value) -> (&'static str, &'static str, serde_json::Value) {
     (
         "Semantic map result",
         "Built deterministic semantic structure and projected existing linguistic evidence onto the same source units.",
