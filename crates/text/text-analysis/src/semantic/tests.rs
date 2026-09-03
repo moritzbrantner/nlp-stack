@@ -4,9 +4,9 @@ use text_linguistics::{TextNlpConfig, TextNlpPipeline};
 use super::{
     analyze_conversation_semantics, analyze_document_semantics, compare_semantic_neighborhoods,
     compose_linguistic_semantic_graph, interpret_semantic_report, ConversationTurn,
-    SemanticAnalysisOptions, SemanticGraphEdgeKind, SemanticGraphNodeKind,
-    SemanticInterpretationBackend, SemanticInterpretationMetadata,
-    SemanticConceptInterpretationContent, SemanticConceptInterpretationRequest, SemanticUnitKind,
+    SemanticAnalysisOptions, SemanticConceptInterpretationContent, SemanticConceptInterpretationRequest,
+    SemanticGraphEdgeKind, SemanticGraphNodeKind, SemanticInterpretationBackend,
+    SemanticInterpretationMetadata, SemanticUnitKind,
 };
 
 fn strict_options() -> SemanticAnalysisOptions {
