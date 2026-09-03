@@ -27,9 +27,9 @@ pub(super) fn operation() -> SurfaceOperation {
 
 pub(super) fn run(input: serde_json::Value) -> Result<serde_json::Value, String> {
     let input = super::parse_input::<SemanticMapRequest>(input)?;
+    let options = input.options();
     let id = input.id.unwrap_or_else(|| "semantic-doc".to_string());
     let document = TextDocument::new(&id, &input.text);
-    let options = input.options();
     let semantic =
         analyze_document_semantics(&document, &options).map_err(|error| error.to_string())?;
 
