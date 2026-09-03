@@ -4,9 +4,9 @@ use text_linguistics::{TextNlpConfig, TextNlpPipeline};
 use super::{
     analyze_conversation_semantics, analyze_document_semantics, compare_semantic_neighborhoods,
     compose_linguistic_semantic_graph, interpret_semantic_report, ConversationTurn,
-    SemanticAnalysisOptions, SemanticConceptInterpretationContent, SemanticConceptInterpretationRequest,
-    SemanticGraphEdgeKind, SemanticGraphNodeKind, SemanticInterpretationBackend,
-    SemanticInterpretationMetadata, SemanticUnitKind,
+    SemanticAnalysisOptions, SemanticConceptInterpretationContent,
+    SemanticConceptInterpretationRequest, SemanticGraphEdgeKind, SemanticGraphNodeKind,
+    SemanticInterpretationBackend, SemanticInterpretationMetadata, SemanticUnitKind,
 };
 
 fn strict_options() -> SemanticAnalysisOptions {
@@ -228,8 +228,8 @@ fn interpretation_is_annotation_over_deterministic_clusters() {
         .concepts
         .iter()
         .all(|concept| concept.metadata.backend == "fixture"));
-    assert!(interpreted
-        .concepts
+    assert!(interpreted.concepts.iter().all(|concept| report
+        .clusters
         .iter()
-        .all(|concept| report.clusters.iter().any(|cluster| cluster.id == concept.cluster_id)));
+        .any(|cluster| cluster.id == concept.cluster_id)));
 }
