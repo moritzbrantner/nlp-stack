@@ -1,6 +1,10 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use runtime_core::{OperationId, SurfaceRequest};
+use text_analysis::semantic::{
+    analyze_document_semantics, compare_semantic_neighborhoods, SemanticAnalysisOptions,
+};
 use text_analysis::surface::run_surface_operation;
+use text_core::TextDocument;
 
 fn bench_document_and_corpus(c: &mut Criterion) {
     let document_input = serde_json::json!({
@@ -22,6 +26,20 @@ fn bench_document_and_corpus(c: &mut Criterion) {
         "includeSemanticNeighbors": true,
         "embedding": {"mode": "hashed", "dimensions": 128, "useIdf": true}
     });
+    let semantic_text = [
+        "Semantic search improves retrieval.",
+        "Semantic search improves retrieval.",
+        "Tomatoes grow in soil.",
+        "Vector indexes accelerate nearest-neighbor search.",
+        "Semantic search improves retrieval.",
+        "Garden soil supports tomato roots.",
+    ]
+    .join(" ")
+    .repeat(12);
+    let semantic_document = TextDocument::new("semantic-bench", &semantic_text);
+    let semantic_options = SemanticAnalysisOptions::default();
+    let semantic_report =
+        analyze_document_semantics(&semantic_document, &semantic_options).unwrap();
 
     c.bench_function("analysis_document", |b| {
         b.iter(|| {
@@ -38,6 +56,16 @@ fn bench_document_and_corpus(c: &mut Criterion) {
                 operation: OperationId::new("analysis.corpus"),
                 input: black_box(corpus_input.clone()),
             })
+            .unwrap()
+        })
+    });
+    c.bench_function("semantic_neighborhood_parity", |b| {
+        b.iter(|| {
+            compare_semantic_neighborhoods(
+                black_box(&semantic_report),
+                semantic_options.neighbors_per_unit,
+                semantic_options.neighbor_threshold,
+            )
             .unwrap()
         })
     });
