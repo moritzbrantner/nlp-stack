@@ -1,0 +1,391 @@
+name: apply-semantic-provenance
+
+on:
+  push:
+    branches: [feat/semantic-event-provenance]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply H5 provenance patch
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str, label: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one match, got {count}")
+              file.write_text(text.replace(old, new, 1))
+
+          entities = "crates/text/text-linguistics/src/entities.rs"
+          replace_once(entities, '''    /// Text content for this value.
+              pub text: String,
+              /// Confidence score for this value.
+              pub confidence: f32,
+          }
+
+          #[derive(Debug, Clone, PartialEq)]
+          /// Data type for relation triple.
+          pub struct RelationTriple {
+              /// The subject value.
+              pub subject: String,
+              /// The relation value.
+              pub relation: String,
+              /// The object value.
+              pub object: String,
+              /// The relation type value.
+              pub relation_type: RelationType,
+              /// Confidence score for this value.
+              pub confidence: f32,
+          }
+
+          #[derive(Debug, Clone, PartialEq)]
+          /// Data type for extracted event.
+          pub struct ExtractedEvent {
+              /// The sentence index value.
+              pub sentence_index: usize,
+              /// The predicate value.
+              pub predicate: String,
+          ''', '''    /// Text content for this value.
+              pub text: String,
+              /// Source span for this argument.
+              pub span: TextSpan,
+              /// Confidence score for this value.
+              pub confidence: f32,
+          }
+
+          #[derive(Debug, Clone, PartialEq)]
+          /// Data type for relation triple.
+          pub struct RelationTriple {
+              /// Source sentence containing this relation.
+              pub sentence_index: usize,
+              /// The subject value.
+              pub subject: String,
+              /// Source span for the subject.
+              pub subject_span: TextSpan,
+              /// The relation value.
+              pub relation: String,
+              /// Source span for the relation predicate.
+              pub relation_span: TextSpan,
+              /// The object value.
+              pub object: String,
+              /// Source span for the object.
+              pub object_span: TextSpan,
+              /// The relation type value.
+              pub relation_type: RelationType,
+              /// Confidence score for this value.
+              pub confidence: f32,
+          }
+
+          #[derive(Debug, Clone, PartialEq)]
+          /// Data type for extracted event.
+          pub struct ExtractedEvent {
+              /// The sentence index value.
+              pub sentence_index: usize,
+              /// The predicate value.
+              pub predicate: String,
+              /// Source span for the predicate.
+              pub predicate_span: TextSpan,
+          ''', "event/relation contracts")
+
+          replace_once(entities, '''            let predicate = tokens[root_index].text.clone();
+              let lemma = lemmas
+          ''', '''            let predicate_token = &tokens[root_index];
+              let predicate = predicate_token.text.clone();
+              let lemma = lemmas
+          ''', "predicate token")
+
+          replace_once(entities, '''            let subject = tree
+                  .edges
+                  .iter()
+                  .find(|edge| edge.relation == DependencyRelation::Nsubj)
+                  .map(|edge| tokens[edge.dependent_token_index].text.clone());
+              let object = tree
+                  .edges
+                  .iter()
+                  .find(|edge| {
+                      matches!(
+                          edge.relation,
+                          DependencyRelation::Obj | DependencyRelation::Obl
+                      )
+                  })
+                  .map(|edge| tokens[edge.dependent_token_index].text.clone());
+          ''', '''            let subject = tree
+                  .edges
+                  .iter()
+                  .find(|edge| edge.relation == DependencyRelation::Nsubj)
+                  .map(|edge| {
+                      let token = &tokens[edge.dependent_token_index];
+                      (token.text.clone(), token.span)
+                  });
+              let object = tree
+                  .edges
+                  .iter()
+                  .find(|edge| {
+                      matches!(
+                          edge.relation,
+                          DependencyRelation::Obj | DependencyRelation::Obl
+                      )
+                  })
+                  .map(|edge| {
+                      let token = &tokens[edge.dependent_token_index];
+                      (token.text.clone(), token.span)
+                  });
+          ''', "argument token provenance")
+
+          replace_once(entities, '''            if let Some(subject) = subject.clone() {
+                  arguments.push(EventArgument {
+                      role: "subject".to_string(),
+                      text: subject,
+                      confidence: 0.75,
+                  });
+              }
+              if let Some(object) = object.clone() {
+                  arguments.push(EventArgument {
+                      role: "object".to_string(),
+                      text: object,
+                      confidence: 0.7,
+                  });
+              }
+          ''', '''            if let Some((subject, span)) = subject.clone() {
+                  arguments.push(EventArgument {
+                      role: "subject".to_string(),
+                      text: subject,
+                      span,
+                      confidence: 0.75,
+                  });
+              }
+              if let Some((object, span)) = object.clone() {
+                  arguments.push(EventArgument {
+                      role: "object".to_string(),
+                      text: object,
+                      span,
+                      confidence: 0.7,
+                  });
+              }
+          ''', "event argument spans")
+
+          replace_once(entities, '''                events.push(ExtractedEvent {
+                      sentence_index: tree.sentence_index,
+                      predicate: predicate.clone(),
+                      lemma: lemma.clone(),
+          ''', '''                events.push(ExtractedEvent {
+                      sentence_index: tree.sentence_index,
+                      predicate: predicate.clone(),
+                      predicate_span: predicate_token.span,
+                      lemma: lemma.clone(),
+          ''', "event predicate span")
+
+          replace_once(entities, '''            if let (Some(subject), Some(object)) = (subject, object) {
+                  relations.push(RelationTriple {
+                      subject,
+                      relation: lemma,
+                      object,
+                      relation_type,
+                      confidence: 0.7,
+                  });
+              }
+          ''', '''            if let (Some((subject, subject_span)), Some((object, object_span))) =
+                  (subject, object)
+              {
+                  relations.push(RelationTriple {
+                      sentence_index: tree.sentence_index,
+                      subject,
+                      subject_span,
+                      relation: lemma,
+                      relation_span: predicate_token.span,
+                      object,
+                      object_span,
+                      relation_type,
+                      confidence: 0.7,
+                  });
+              }
+          ''', "relation provenance")
+
+          surface = "crates/text/text-linguistics/src/surface.rs"
+          replace_once(surface, '''        "relations": analysis.relations.into_iter().map(|relation| serde_json::json!({
+                  "relation": format!("{:?}", relation.relation),
+                  "subject": relation.subject,
+                  "object": relation.object,
+                  "confidence": relation.confidence
+              })).collect::<Vec<_>>(),
+              "events": analysis.events.into_iter().map(|event| serde_json::json!({
+                  "predicate": event.predicate,
+                  "lemma": event.lemma,
+                  "relationType": format!("{:?}", event.relation_type),
+                  "confidence": event.confidence,
+                  "arguments": event.arguments.into_iter().map(|argument| serde_json::json!({
+                      "role": argument.role,
+                      "text": argument.text,
+                      "confidence": argument.confidence
+                  })).collect::<Vec<_>>()
+              })).collect::<Vec<_>>()
+          ''', '''        "relations": analysis.relations.into_iter().map(|relation| serde_json::json!({
+                  "sentenceIndex": relation.sentence_index,
+                  "relation": format!("{:?}", relation.relation),
+                  "relationSpan": relation.relation_span,
+                  "subject": relation.subject,
+                  "subjectSpan": relation.subject_span,
+                  "object": relation.object,
+                  "objectSpan": relation.object_span,
+                  "confidence": relation.confidence
+              })).collect::<Vec<_>>(),
+              "events": analysis.events.into_iter().map(|event| serde_json::json!({
+                  "sentenceIndex": event.sentence_index,
+                  "predicate": event.predicate,
+                  "predicateSpan": event.predicate_span,
+                  "lemma": event.lemma,
+                  "relationType": format!("{:?}", event.relation_type),
+                  "confidence": event.confidence,
+                  "arguments": event.arguments.into_iter().map(|argument| serde_json::json!({
+                      "role": argument.role,
+                      "text": argument.text,
+                      "span": argument.span,
+                      "confidence": argument.confidence
+                  })).collect::<Vec<_>>()
+              })).collect::<Vec<_>>()
+          ''', "surface provenance")
+
+          graph = "crates/text/text-analysis/src/semantic/linguistic.rs"
+          replace_once(graph, '''            label: event.predicate.clone(),
+                  span: None,
+                  sequence_index: Some(event.sentence_index),
+          ''', '''            label: event.predicate.clone(),
+                  span: Some(event.predicate_span),
+                  sequence_index: Some(event.sentence_index),
+          ''', "event graph span")
+          replace_once(graph, '''                label: argument.text.clone(),
+                      span: None,
+                      sequence_index: Some(event.sentence_index),
+          ''', '''                label: argument.text.clone(),
+                      span: Some(argument.span),
+                      sequence_index: Some(event.sentence_index),
+          ''', "argument graph span")
+          replace_once(graph, '''            span: None,
+                  sequence_index: None,
+                  confidence: Some(relation.confidence),
+              });
+              if let Some(unit) =
+                  unit_containing_relation(&primary_units, &relation.subject, &relation.object)
+              {
+          ''', '''            span: Some(relation.relation_span),
+                  sequence_index: Some(relation.sentence_index),
+                  confidence: Some(relation.confidence),
+              });
+              if let Some(unit) = unit_by_sequence.get(&relation.sentence_index) {
+          ''', "relation graph provenance")
+          replace_once(graph, '''            "subject",
+                  &relation.subject,
+                  SemanticGraphEdgeKind::RelationSubject,
+                  relation.confidence,
+          ''', '''            "subject",
+                  &relation.subject,
+                  relation.subject_span,
+                  relation.sentence_index,
+                  SemanticGraphEdgeKind::RelationSubject,
+                  relation.confidence,
+          ''', "relation subject provenance")
+          replace_once(graph, '''            "object",
+                  &relation.object,
+                  SemanticGraphEdgeKind::RelationObject,
+                  relation.confidence,
+          ''', '''            "object",
+                  &relation.object,
+                  relation.object_span,
+                  relation.sentence_index,
+                  SemanticGraphEdgeKind::RelationObject,
+                  relation.confidence,
+          ''', "relation object provenance")
+          replace_once(graph, '''fn unit_containing_relation<'a>(
+              units: &[&'a SemanticUnit],
+              subject: &str,
+              object: &str,
+          ) -> Option<&'a SemanticUnit> {
+              let subject = subject.to_lowercase();
+              let object = object.to_lowercase();
+              units.iter().copied().find(|unit| {
+                  let text = unit.text.to_lowercase();
+                  text.contains(&subject) && text.contains(&object)
+              })
+          }
+
+          ''', '', "remove relation substring lookup")
+          replace_once(graph, '''    role: &str,
+              text: &str,
+              edge_kind: SemanticGraphEdgeKind,
+          ''', '''    role: &str,
+              text: &str,
+              span: TextSpan,
+              sequence_index: usize,
+              edge_kind: SemanticGraphEdgeKind,
+          ''', "relation endpoint signature")
+          replace_once(graph, '''        label: text.to_string(),
+              span: None,
+              sequence_index: None,
+              confidence: Some(confidence),
+          ''', '''        label: text.to_string(),
+              span: Some(span),
+              sequence_index: Some(sequence_index),
+              confidence: Some(confidence),
+          ''', "relation endpoint node provenance")
+
+          docs = "docs/SEMANTIC_ANALYSIS_HORIZON.md"
+          replace_once(docs, '''`text-analysis` performs graph projection only. Extraction remains owned by `text-linguistics`. Next work should improve explicit span/provenance on event/relation outputs themselves rather than reconstructing information in the composition layer.
+          ''', '''`text-analysis` performs graph projection only. Extraction remains owned by `text-linguistics`. Event predicates/arguments and relation subjects/predicates/objects now carry explicit source spans and sentence provenance from dependency extraction, so graph composition no longer guesses relation ownership from text matching. Further work can extend the same provenance discipline to richer model-backed event/relation extractors.
+          ''', "H5 horizon status")
+
+          Path("crates/text/text-linguistics/tests/event_relation_provenance.rs").write_text(r'''use text_core::TextSpan;
+          use text_linguistics::{TextNlpConfig, TextNlpPipeline};
+
+          fn assert_span(text: &str, span: TextSpan, expected: &str) {
+              assert_eq!(&text[span.byte_start..span.byte_end], expected);
+              let chars = text
+                  .chars()
+                  .skip(span.char_start)
+                  .take(span.char_end - span.char_start)
+                  .collect::<String>();
+              assert_eq!(chars, expected);
+          }
+
+          #[test]
+          fn events_and_relations_retain_source_spans() {
+              let text = "Élodie visited Berlin.";
+              let analysis = TextNlpPipeline::new(TextNlpConfig::rich())
+                  .analyze_text(text)
+                  .expect("linguistic analysis");
+
+              let event = analysis.events.first().expect("event");
+              assert_eq!(event.sentence_index, 0);
+              assert_span(text, event.predicate_span, &event.predicate);
+              for argument in &event.arguments {
+                  assert_span(text, argument.span, &argument.text);
+              }
+
+              let relation = analysis.relations.first().expect("relation");
+              assert_eq!(relation.sentence_index, event.sentence_index);
+              assert_span(text, relation.subject_span, &relation.subject);
+              assert_span(text, relation.relation_span, &event.predicate);
+              assert_span(text, relation.object_span, &relation.object);
+          }
+          ''')
+          PY
+          cargo fmt --all
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add crates/text/text-linguistics/src/entities.rs \
+                  crates/text/text-linguistics/src/surface.rs \
+                  crates/text/text-linguistics/tests/event_relation_provenance.rs \
+                  crates/text/text-analysis/src/semantic/linguistic.rs \
+                  docs/SEMANTIC_ANALYSIS_HORIZON.md
+          git commit -m "feat: carry event and relation source provenance"
+          git push origin HEAD:feat/semantic-event-provenance
