@@ -2,7 +2,7 @@
 
 This document defines the implementation direction for semantic analysis in `nlp-stack`.
 
-The goal is not to equate meaning with one embedding vector. The stack should combine multiple typed signals over multiple text scales so longer documents and conversations can be represented as semantic units, neighborhoods, concepts, trajectories, and eventually richer linguistic graphs.
+The goal is not to equate meaning with one embedding vector. The stack should combine multiple typed signals over multiple text scales so longer documents and conversations can be represented as semantic units, neighborhoods, concepts, trajectories, and richer linguistic graphs.
 
 ## Architectural rule
 
@@ -21,7 +21,7 @@ Semantic request/result contracts stay independent of model backend, device, dow
 
 ## Implemented first batch
 
-Issues #34–#36 establish the first deterministic semantic-map baseline.
+Issues #34–#36 established the first deterministic semantic-map baseline.
 
 ### S1: multi-scale semantic units
 
@@ -40,7 +40,7 @@ The library provides a deterministic hashed baseline and accepts any existing `T
 
 For the primary sequence (sentences for documents, speaker turns for conversations), compute exact pairwise cosine similarity and expose a deterministic undirected k-nearest-neighbor graph.
 
-The first implementation is intentionally exact and O(n^2). This provides a transparent baseline. If scale becomes a real problem, index-backed exact/approximate kNN can replace the implementation behind the same result shape.
+The production baseline remains intentionally exact and O(n^2). This provides a transparent reference behavior rather than silently replacing the result with an approximate algorithm.
 
 ### S3: concepts, hotspots, and trajectory
 
@@ -56,70 +56,79 @@ Derive deterministic higher-level structure from the similarity matrix:
 
 Every primary unit belongs to exactly one concept, including singleton concepts. The baseline does not ask an LLM to name clusters.
 
-## Next horizons
+## H4–H9 baseline slices
+
+Issues #38–#43 continue the horizon with independently useful baseline slices. These slices establish contracts and evidence paths; they do not imply that each horizon is complete.
 
 ### H4: large-scale semantic neighborhoods
 
-Move generic kNN/index mechanics downward when scale demonstrates the need. Benchmark exact pairwise computation against foundation vector indexes and approximate-neighbor methods while preserving deterministic test fixtures and result semantics.
+Implemented baseline:
+
+- exact semantic-neighborhood behavior remains the source-of-truth implementation;
+- `SemanticNeighborhoodEvidence` compares that behavior with the existing Foundation-backed `EmbeddingSearchIndex` over the same stored vectors;
+- parity evidence reports shared/exact-only/indexed-only edges and maximum similarity delta;
+- a Criterion benchmark exercises the comparison path.
+
+This is deliberately an observation path, not an automatic index switch. Next work is to measure crossover points on larger corpora and evaluate approximate-neighbor indexes only when their ownership and accuracy tradeoffs are explicit.
 
 ### H5: linguistic semantic graph
 
-Join the semantic-map units to `text-linguistics` outputs:
+Implemented baseline:
 
-- entities and canonical entities;
-- coreference chains;
-- events;
-- typed relations;
-- discourse links;
-- topic signals.
+- `SemanticLinguisticGraph` composes semantic units/concepts with existing `text-linguistics` outputs;
+- typed nodes cover entity mentions, canonical entities, coreference clusters/mentions, events/arguments, relations/endpoints, discourse segments, and topics;
+- typed edges retain distinctions such as concept membership, semantic neighbor, mention-to-canonical, coreference, event arguments, relation subject/object, discourse transition, and topic membership;
+- source spans are retained wherever the underlying linguistic output exposes them.
 
-This produces a graph with several edge kinds rather than pretending cosine similarity alone is meaning.
+`text-analysis` performs graph projection only. Extraction remains owned by `text-linguistics`. Next work should improve explicit span/provenance on event/relation outputs themselves rather than reconstructing information in the composition layer.
 
 ### H6: conversation dynamics
 
-Add speaker-aware measures that can be derived from ordered turn embeddings and concept membership:
+Implemented baseline derives observable structure from ordered speaker turns:
 
-- semantic convergence/divergence between speakers;
-- topic ownership and hand-off;
-- recurring unresolved concepts;
-- concept introduction and adoption;
-- parallel conversational threads.
+- adjacent cross-speaker similarity by speaker pair, including first/last/mean similarity and delta;
+- deterministic concept introduction;
+- first adoption of an introduced concept by another speaker;
+- concept hand-offs across adjacent speaker/topic changes;
+- concepts that recur after intervening turns.
 
-These measures must be phrased as observable semantic-structure signals, not psychological judgments about participants.
+These are semantic-structure measurements, not psychological judgments. Next work includes stronger topic-ownership definitions, parallel-thread tracking, and evidence for any notion of an "unresolved" concept before such a label is exposed.
 
 ### H7: evaluation and model quality
 
-Add versioned evaluation data for:
+Implemented baseline:
 
-- semantic textual similarity correlation;
-- clustering stability/quality on labelled corpora;
-- topic-shift boundary quality;
-- multilingual behavior;
-- model size/latency/memory across native and browser/WASM paths.
+- versioned semantic-textual-similarity and topic-shift smoke corpora under the existing evaluation framework;
+- semantic-similarity reports with Spearman correlation and mean absolute error;
+- topic-shift reports with exact-index precision/recall/F1;
+- evaluator tests for both report types.
 
-Hashed embeddings remain a deterministic interoperability fixture, not a semantic-quality benchmark.
+No semantic-quality threshold is blocking CI yet. The smoke fixtures validate contracts/evaluators only. Hashed embeddings remain a deterministic interoperability fixture, not a semantic-quality benchmark.
+
+Next work includes labelled clustering data, larger STS/topic-shift datasets with provenance, multilingual evaluation, and native/browser model latency/memory evidence.
 
 ### H8: workbench visualization
 
-Expose the typed report in the NLP workbench with views such as:
+Implemented baseline:
 
-- semantic timeline/heat map;
-- concept hotspot lanes;
-- neighborhood graph;
-- per-speaker concept distribution;
-- drill-down from concept to source spans/turns;
-- model comparison using the same semantic-map contracts.
+- `analysis.semantic-map` is exposed through the existing `text-analysis` package surface and therefore the existing WASM adapter;
+- the text-analysis workbench includes a semantic-map preset;
+- result views expose semantic concepts, timeline, hotspots, neighborhood edges, linguistic graph nodes/edges, source-carrying semantic units, and optional H4 parity counts.
+
+This first workbench slice uses the existing structured result renderer rather than introducing a bespoke graph/heat-map library. Next work can add purpose-built timeline/hotspot lanes, graph interaction, source-span drill-down, conversation input, speaker distributions, and model comparison while retaining the same report contracts.
 
 Dimensionality-reduction plots may be useful exploratory views, but they must not be presented as lossless semantic geometry.
 
 ### H9: optional model-assisted interpretation
 
-Only after the deterministic structures are useful on their own, allow optional model-assisted interpretation such as:
+Implemented baseline:
 
-- human-readable names for deterministic clusters;
-- claim/proposition extraction;
-- entailment/contradiction classification;
-- concise semantic summaries grounded in cluster members and source spans.
+- `SemanticInterpretationBackend` is a caller-supplied typed seam;
+- backends receive deterministic cluster membership, representative units, and source members;
+- optional labels/summaries/confidence become `SemanticConceptInterpretation` annotations with explicit backend/model provenance;
+- interpretation validation does not mutate cluster membership, graph structure, spans, or trajectories.
+
+The capability layer adds no hosted inference, credential, download, retry, or caching policy. Next work may add proposition/claim annotations and entailment/contradiction annotations, but only as grounded annotations over deterministic source evidence.
 
 The model-generated interpretation is an annotation over the semantic structure, not the structure's source of truth.
 
