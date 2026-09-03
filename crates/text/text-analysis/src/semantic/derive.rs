@@ -134,10 +134,14 @@ fn neighborhood_graph(
     threshold: f32,
 ) -> Vec<SemanticNeighbor> {
     let mut edges = BTreeMap::<(usize, usize), f32>::new();
-    for source in 0..primary_indices.len() {
+    for (source, source_similarities) in similarities
+        .iter()
+        .enumerate()
+        .take(primary_indices.len())
+    {
         let mut candidates = (0..primary_indices.len())
             .filter(|target| *target != source)
-            .map(|target| (target, similarities[source][target]))
+            .map(|target| (target, source_similarities[target]))
             .collect::<Vec<_>>();
         candidates.sort_by(|(left_index, left_score), (right_index, right_score)| {
             right_score.total_cmp(left_score).then_with(|| {
