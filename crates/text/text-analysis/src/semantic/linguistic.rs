@@ -285,7 +285,8 @@ pub fn compose_linguistic_semantic_graph(
             sequence_index: None,
             confidence: Some(relation.confidence),
         });
-        if let Some(unit) = unit_containing_relation(&primary_units, &relation.subject, &relation.object)
+        if let Some(unit) =
+            unit_containing_relation(&primary_units, &relation.subject, &relation.object)
         {
             edges.push(SemanticGraphEdge {
                 source_id: unit.id.clone(),
