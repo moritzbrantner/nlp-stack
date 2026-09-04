@@ -125,12 +125,12 @@ pub fn chunk_phrases(
             };
 
             if let Some((kind, start_index, end_index, head_index)) = maybe_chunk {
-                let span = TextSpan {
-                    byte_start: tokens[start_index].span.byte_start,
-                    byte_end: tokens[end_index].span.byte_end,
-                    char_start: tokens[start_index].span.char_start,
-                    char_end: tokens[end_index].span.char_end,
-                };
+                let span = TextSpan::from_byte_range(
+                    text,
+                    tokens[start_index].span.byte_start,
+                    tokens[end_index].span.byte_end,
+                )
+                .expect("token spans define valid UTF-8 byte boundaries");
                 chunks.push(PhraseChunk {
                     kind,
                     sentence_index,

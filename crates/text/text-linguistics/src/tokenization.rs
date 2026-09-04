@@ -255,15 +255,5 @@ fn spans_overlap(left: TextSpan, right: TextSpan) -> bool {
 }
 
 fn byte_span_to_text_span(text: &str, byte_start: usize, byte_end: usize) -> Option<TextSpan> {
-    if byte_start > byte_end || byte_end > text.len() {
-        return None;
-    }
-    let char_start = text[..byte_start].chars().count();
-    let char_end = text[..byte_end].chars().count();
-    Some(TextSpan {
-        byte_start,
-        byte_end,
-        char_start,
-        char_end,
-    })
+    TextSpan::from_byte_range(text, byte_start, byte_end).ok()
 }
