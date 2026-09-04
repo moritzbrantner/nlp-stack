@@ -5,6 +5,7 @@ mod interpretation;
 mod linguistic;
 mod model;
 mod scaling;
+mod senses;
 mod units;
 
 use std::collections::BTreeSet;
@@ -41,6 +42,10 @@ pub use self::model::{
     SemanticUnitKind, SpeakerConceptShare, SpeakerPairDynamics, SpeakerSemanticProfile,
 };
 pub use self::scaling::{compare_semantic_neighborhoods, SemanticNeighborhoodEvidence};
+pub use self::senses::{
+    analyze_word_senses, analyze_word_senses_with, SemanticWordOccurrence, SemanticWordSense,
+    SemanticWordSenseAnalysisOptions, SemanticWordSenseReport,
+};
 
 /// Analyzes one document with the deterministic hashed embedding baseline.
 pub fn analyze_document_semantics(
