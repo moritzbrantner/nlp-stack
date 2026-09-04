@@ -139,16 +139,16 @@ class TextCoreA2BoundaryTests(unittest.TestCase):
 
         self.assertEqual(check_contract(root), [])
 
-    def test_direct_text_span_literal_is_guarded(self) -> None:
+    def test_direct_text_span_literal_is_guarded_regardless_of_field_order(self) -> None:
         temporary, root = self._fixture()
         self.addCleanup(temporary.cleanup)
         consumer = root / "crates" / "text" / "text-analysis" / "src"
         consumer.mkdir(parents=True)
         (consumer / "lib.rs").write_text(
             "let span = TextSpan {\n"
-            "    byte_start: 0,\n"
-            "    byte_end: 1,\n"
             "    char_start: 0,\n"
+            "    byte_end: 1,\n"
+            "    byte_start: 0,\n"
             "    char_end: 1,\n"
             "};\n",
             encoding="utf-8",
