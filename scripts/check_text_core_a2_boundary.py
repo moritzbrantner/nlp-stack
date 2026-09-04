@@ -2,17 +2,12 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import tomllib
 from pathlib import Path
 
-# These are the dependencies already present when A2 starts. The migration may
-# remove any of them; adding a new dependency requires an explicit architecture
-# decision rather than silently expanding the kernel again.
-LEGACY_DEPENDENCY_CEILING = {
-    "jobs-core",
-    "media-core",
-    "runtime-core",
+KERNEL_DEPENDENCY_ALLOWLIST = {
     "serde",
     "serde_json",
     "unicode-casefold",
@@ -20,26 +15,25 @@ LEGACY_DEPENDENCY_CEILING = {
     "unicode-segmentation",
 }
 
-# Existing cross-domain imports are migration debt. They may disappear, but
-# must not spread to new text-core source files while A2 is in progress.
-LEGACY_MEDIA_FILES = {Path("src/lib.rs"), Path("src/contracts.rs")}
-LEGACY_RUNTIME_FILES = {
-    Path("src/contracts.rs"),
-    Path("src/operations.rs"),
-    Path("src/surface.rs"),
+# These are the only cross-domain dependencies grandfathered at the start of A2.
+# The debt ledger must shrink as they are removed. Adding another name requires
+# changing this guard explicitly rather than merely editing the ledger.
+ORIGINAL_CROSS_DOMAIN_DEPENDENCIES = {
+    "jobs-core": "jobs_core",
+    "media-core": "media_core",
+    "runtime-core": "runtime_core",
 }
-LEGACY_JOBS_FILES = {Path("src/operations.rs")}
 
-# A2 removes the parallel rich *Contract hierarchy. Until that migration is
-# complete, each existing mirror type is grandfathered only in its current
-# source file. The migration may delete it; it may not add another mirror type
-# or move/copy an existing mirror into a different text-core module.
-LEGACY_CONTRACT_LOCATIONS = {
-    "TextDocumentContract": Path("src/contracts.rs"),
-    "TextSegmentContract": Path("src/contracts.rs"),
-    "TimebaseContract": Path("src/contracts.rs"),
-    "TimestampContract": Path("src/contracts.rs"),
+# These are the only parallel mirror-contract names grandfathered at A2 start.
+# The ledger records which ones still exist and where; it must shrink with the
+# implementation rather than remaining a permanent permission list.
+ORIGINAL_MIRROR_CONTRACTS = {
+    "TextDocumentContract",
+    "TextSegmentContract",
+    "TimebaseContract",
+    "TimestampContract",
 }
+
 CONTRACT_PATTERN = re.compile(
     r"\bpub\s+struct\s+([A-Za-z_][A-Za-z0-9_]*Contract)\b"
 )
@@ -47,6 +41,23 @@ CONTRACT_PATTERN = re.compile(
 
 def _contains_import(content: str, crate_name: str) -> bool:
     return f"{crate_name}::" in content or f"use {crate_name}" in content
+
+
+def _display_paths(paths: set[Path]) -> str:
+    return ", ".join(sorted(path.as_posix() for path in paths)) or "<none>"
+
+
+def _load_debt(root: Path) -> tuple[dict, list[str]]:
+    debt_path = root / "scripts" / "text_core_a2_debt.json"
+    if not debt_path.is_file():
+        return {}, ["missing scripts/text_core_a2_debt.json"]
+    try:
+        debt = json.loads(debt_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as error:
+        return {}, [f"invalid text-core A2 debt ledger: {error}"]
+    if debt.get("schemaVersion") != 1:
+        return debt, ["text-core A2 debt ledger must use schemaVersion 1"]
+    return debt, []
 
 
 def check_contract(root: Path) -> list[str]:
@@ -60,43 +71,111 @@ def check_contract(root: Path) -> list[str]:
     if not src.is_dir():
         return ["missing crates/text/text-core/src"]
 
+    debt, debt_errors = _load_debt(root)
+    errors.extend(debt_errors)
+    if debt_errors:
+        return errors
+
+    declared_dependencies = set(debt.get("crossDomainDependencies", []))
+    unknown_declared_dependencies = sorted(
+        declared_dependencies - ORIGINAL_CROSS_DOMAIN_DEPENDENCIES.keys()
+    )
+    if unknown_declared_dependencies:
+        errors.append(
+            "text-core A2 ledger declares unapproved cross-domain dependencies: "
+            + ", ".join(unknown_declared_dependencies)
+        )
+
     cargo = tomllib.loads(cargo_path.read_text(encoding="utf-8"))
     dependencies = set(cargo.get("dependencies", {}))
-    unexpected_dependencies = sorted(dependencies - LEGACY_DEPENDENCY_CEILING)
+    actual_cross_domain_dependencies = (
+        dependencies & ORIGINAL_CROSS_DOMAIN_DEPENDENCIES.keys()
+    )
+    if actual_cross_domain_dependencies != declared_dependencies:
+        errors.append(
+            "text-core cross-domain dependency debt does not match ledger: "
+            f"declared {', '.join(sorted(declared_dependencies)) or '<none>'}; "
+            f"actual {', '.join(sorted(actual_cross_domain_dependencies)) or '<none>'}"
+        )
+
+    unexpected_dependencies = sorted(
+        dependencies - KERNEL_DEPENDENCY_ALLOWLIST - declared_dependencies
+    )
     if unexpected_dependencies:
         errors.append(
-            "text-core dependency surface grew beyond the A2 baseline: "
+            "text-core dependency surface grew beyond the A2 boundary: "
             + ", ".join(unexpected_dependencies)
         )
 
+    declared_source_files_raw = debt.get("crossDomainSourceFiles", {})
+    declared_source_files = {
+        crate_name: {Path(value) for value in values}
+        for crate_name, values in declared_source_files_raw.items()
+    }
+    known_rust_crates = set(ORIGINAL_CROSS_DOMAIN_DEPENDENCIES.values())
+    unknown_source_crates = sorted(declared_source_files.keys() - known_rust_crates)
+    if unknown_source_crates:
+        errors.append(
+            "text-core A2 ledger declares unapproved source dependency names: "
+            + ", ".join(unknown_source_crates)
+        )
+
+    actual_source_files = {crate_name: set() for crate_name in known_rust_crates}
+    actual_contract_locations: dict[str, set[Path]] = {}
     for path in sorted(src.rglob("*.rs")):
         relative = path.relative_to(core)
         content = path.read_text(encoding="utf-8")
 
-        if _contains_import(content, "media_core") and relative not in LEGACY_MEDIA_FILES:
-            errors.append(
-                f"media-core usage spread outside grandfathered A2 debt: {relative.as_posix()}"
-            )
-        if _contains_import(content, "runtime_core") and relative not in LEGACY_RUNTIME_FILES:
-            errors.append(
-                f"runtime-core usage spread outside grandfathered A2 debt: {relative.as_posix()}"
-            )
-        if _contains_import(content, "jobs_core") and relative not in LEGACY_JOBS_FILES:
-            errors.append(
-                f"jobs-core usage spread outside grandfathered A2 debt: {relative.as_posix()}"
-            )
+        for crate_name in known_rust_crates:
+            if _contains_import(content, crate_name):
+                actual_source_files[crate_name].add(relative)
 
         for contract_name in CONTRACT_PATTERN.findall(content):
-            expected_location = LEGACY_CONTRACT_LOCATIONS.get(contract_name)
-            if expected_location is None:
-                errors.append(
-                    f"text-core gained new parallel *Contract type during A2: {contract_name}"
-                )
-            elif relative != expected_location:
-                errors.append(
-                    "text-core mirror contract spread outside grandfathered A2 debt: "
-                    f"{contract_name} in {relative.as_posix()}"
-                )
+            actual_contract_locations.setdefault(contract_name, set()).add(relative)
+
+    for crate_name in sorted(known_rust_crates):
+        declared = declared_source_files.get(crate_name, set())
+        actual = actual_source_files[crate_name]
+        if actual != declared:
+            errors.append(
+                f"{crate_name} source debt does not match ledger: "
+                f"declared {_display_paths(declared)}; actual {_display_paths(actual)}"
+            )
+
+    declared_contracts_raw = debt.get("mirrorContracts", {})
+    declared_contracts = {
+        name: Path(location) for name, location in declared_contracts_raw.items()
+    }
+    unknown_declared_contracts = sorted(
+        declared_contracts.keys() - ORIGINAL_MIRROR_CONTRACTS
+    )
+    if unknown_declared_contracts:
+        errors.append(
+            "text-core A2 ledger declares unapproved mirror *Contract types: "
+            + ", ".join(unknown_declared_contracts)
+        )
+
+    unknown_actual_contracts = sorted(
+        actual_contract_locations.keys() - ORIGINAL_MIRROR_CONTRACTS
+    )
+    if unknown_actual_contracts:
+        errors.append(
+            "text-core gained unapproved mirror *Contract types during A2: "
+            + ", ".join(unknown_actual_contracts)
+        )
+
+    for contract_name in sorted(ORIGINAL_MIRROR_CONTRACTS):
+        declared_location = declared_contracts.get(contract_name)
+        actual_locations = actual_contract_locations.get(contract_name, set())
+        expected_locations = (
+            {declared_location} if declared_location is not None else set()
+        )
+        if actual_locations != expected_locations:
+            errors.append(
+                f"{contract_name} debt does not match ledger: "
+                f"declared {_display_paths(expected_locations)}; "
+                f"actual {_display_paths(actual_locations)}"
+            )
 
     return errors
 
