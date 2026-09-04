@@ -28,6 +28,7 @@ pub use self::linguistic::{
 };
 pub use self::model::{
     ConceptAdoption, ConceptHandoff, ConceptIntroduction, ConversationSemanticDynamics,
+    ConversationSemanticThread, ConversationSemanticThreadSegment, ConversationThreadInterleaving,
     ConversationTurn, RecurringConcept, SemanticAnalysisOptions, SemanticAnalysisReport,
     SemanticCluster, SemanticHotspot, SemanticNeighbor, SemanticTimelinePoint, SemanticUnit,
     SemanticUnitKind, SpeakerConceptShare, SpeakerPairDynamics, SpeakerSemanticProfile,
