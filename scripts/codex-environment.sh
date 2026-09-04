@@ -66,10 +66,9 @@ if [[ -n "$desired_bun" ]]; then
     printf 'Bun preflight mismatch: expected %s, got %s\n' "$desired_bun" "$(bun --version)" >&2
     exit 1
   fi
-  if [[ -d "$HOME/.bun/bin" ]]; then
-    export PATH="$HOME/.bun/bin:$PATH"
-    publish_path "$HOME/.bun/bin"
-  fi
+  verified_bun_dir="$(dirname "$(command -v bun)")"
+  export PATH="$verified_bun_dir:$PATH"
+  publish_path "$verified_bun_dir"
 fi
 
 desired_node="$(python3 - "$root/.node-version" <<'PY'
