@@ -432,6 +432,30 @@ impl fmt::Display for TextSpanConversionError {
 impl std::error::Error for TextSpanConversionError {}
 
 impl TextSpan {
+    /// Constructs a canonical span from a validated UTF-8 byte range.
+    ///
+    /// Legacy scalar offsets are populated only for compatibility. Callers own
+    /// byte ranges; alternate coordinate systems are derived at their boundary.
+    pub fn from_byte_range(
+        text: &str,
+        byte_start: usize,
+        byte_end: usize,
+    ) -> Result<Self, TextSpanConversionError> {
+        let candidate = Self {
+            byte_start,
+            byte_end,
+            char_start: 0,
+            char_end: 0,
+        };
+        candidate.validate_byte_range(text)?;
+        Ok(Self {
+            byte_start,
+            byte_end,
+            char_start: text[..byte_start].chars().count(),
+            char_end: text[..byte_end].chars().count(),
+        })
+    }
+
     /// Validates the canonical byte range against the supplied UTF-8 text.
     pub fn validate_byte_range(self, text: &str) -> Result<(), TextSpanConversionError> {
         if self.byte_start > self.byte_end || self.byte_end > text.len() {
@@ -478,6 +502,15 @@ impl TextSpan {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn span_construction_derives_legacy_scalars_from_bytes() {
+        let text = "e\u{301}👍🏽a";
+        let span = TextSpan::from_byte_range(text, 3, 11).unwrap();
+
+        assert_eq!((span.byte_start, span.byte_end), (3, 11));
+        assert_eq!((span.char_start, span.char_end), (2, 4));
+    }
 
     #[test]
     fn span_conversions_use_bytes_as_the_source_of_truth() {
