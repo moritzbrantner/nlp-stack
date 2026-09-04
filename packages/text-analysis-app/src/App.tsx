@@ -1,4 +1,4 @@
-import { createSemanticMapResultTabs } from "@moritzbrantner/nlp-app-ui";
+import { createSemanticCorpusResultTabs, createSemanticMapResultTabs } from "@moritzbrantner/nlp-app-ui";
 import { createTextResultTabs, PackageSurfaceWorkbench, type PackageAppConfig } from "@moritzbrantner/nlp-app-ui/package-surface";
 import * as wasm from "@moritzbrantner/text-analysis-wasm";
 
@@ -24,7 +24,7 @@ const packageAppConfig: PackageAppConfig = {
   },
   defaultOperation: "analysis.document",
   defaultPresetId: "document-deterministic",
-  featuredOperations: ["analysis.document", "analysis.semantic-map", "analysis.corpus", "analysis.similarity", "analysis.describe", "describe"],
+  featuredOperations: ["analysis.document", "analysis.semantic-map", "analysis.semantic-corpus", "analysis.corpus", "analysis.similarity", "analysis.describe", "describe"],
   workbench: {
     layout: "focused",
     sidePanels: {
@@ -38,6 +38,7 @@ const packageAppConfig: PackageAppConfig = {
     inputFields: {
       "analysis.document": ["text", "keywordLimit", "summarySentences"],
       "analysis.semantic-map": ["text", "neighborsPerUnit", "neighborThreshold", "clusterThreshold", "includeLinguisticGraph", "includeNeighborhoodEvidence"],
+      "analysis.semantic-corpus": ["items", "topTerms", "neighborsPerUnit", "neighborThreshold", "clusterThreshold"],
       "analysis.corpus": ["query", "topK", "includeNearDuplicates", "includeSemanticNeighbors"],
       "analysis.similarity": ["left", "right", "n", "mode"],
       "analysis.describe": [],
@@ -48,8 +49,8 @@ const packageAppConfig: PackageAppConfig = {
     {
       id: "workflow",
       label: "Workflow",
-      description: "Run document, semantic-map, corpus, and text-similarity analysis workflows.",
-      operations: ["analysis.document", "analysis.semantic-map", "analysis.corpus", "analysis.similarity"],
+      description: "Run document, semantic-map, semantic-corpus, retrieval-corpus, and text-similarity analysis workflows.",
+      operations: ["analysis.document", "analysis.semantic-map", "analysis.semantic-corpus", "analysis.corpus", "analysis.similarity"],
     },
     {
       id: "debug",
@@ -89,6 +90,41 @@ const packageAppConfig: PackageAppConfig = {
         clusterThreshold: 0.6,
         includeLinguisticGraph: true,
         includeNeighborhoodEvidence: true,
+      },
+    },
+    {
+      id: "semantic-corpus",
+      label: "Semantic corpus: attributed language profile",
+      operation: "analysis.semantic-corpus",
+      description: "Aggregate vocabulary, author profiles, corpus-wide concepts, and representative source passages across attributed texts.",
+      input: {
+        items: [
+          {
+            id: "alice-letter-1",
+            author: "Alice",
+            source: "letters/alice-1.txt",
+            timestampMillis: 1700000000000,
+            text: "Semantic search improves retrieval. Embedding indexes support semantic search.",
+          },
+          {
+            id: "alice-letter-2",
+            author: "Alice",
+            source: "letters/alice-2.txt",
+            timestampMillis: 1710000000000,
+            text: "Semantic retrieval finds related passages. Vector indexes accelerate retrieval.",
+          },
+          {
+            id: "bob-note-1",
+            author: "Bob",
+            source: "notes/bob-1.txt",
+            timestampMillis: 1720000000000,
+            text: "Tomatoes grow in garden soil. Healthy soil supports tomato roots.",
+          },
+        ],
+        topTerms: 12,
+        neighborsPerUnit: 4,
+        neighborThreshold: 0.25,
+        clusterThreshold: 0.6,
       },
     },
     {
@@ -156,6 +192,13 @@ const packageAppConfig: PackageAppConfig = {
           objectFields: ["semantic.embeddingModel", "semantic.conversationDynamics", "neighborhoodEvidence"],
           explanation: () => "The semantic map keeps source units and deterministic concept structure as the primary evidence, adds typed linguistic graph projections, and can compare exact neighbors with the existing vector-index implementation without silently changing algorithms.",
         },
+        "analysis.semantic-corpus": {
+          title: "Semantic corpus",
+          summaryFields: ["itemCount", "authorCount", "wordCount", "uniqueTermCount", "conceptCount", "semanticUnitCount", "representativePassageCount"],
+          listFields: ["authors", "concepts", "lexical.topTerms", "sources", "semantic.clusters", "semantic.timeline", "semantic.hotspots"],
+          objectFields: ["lexical", "semantic.embeddingModel"],
+          explanation: () => "The corpus profile combines lexical usage with the existing deterministic semantic-map evidence and keeps each representative concept passage tied to its attributed source.",
+        },
         "analysis.corpus": {
           title: "Corpus analysis",
           summaryFields: ["documentCount", "resultCount", "nearDuplicateCount", "semanticNeighborCount"],
@@ -172,6 +215,7 @@ const packageAppConfig: PackageAppConfig = {
       },
     }),
     ...createSemanticMapResultTabs(),
+    ...createSemanticCorpusResultTabs(),
   ],
 };
 
