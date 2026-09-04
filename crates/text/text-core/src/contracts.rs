@@ -1,9 +1,10 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt};
 
 use crate::{OwnedTextSegment, TextSegment};
 use media_core::{Timebase, Timestamp};
 use runtime_core::{MobileCapability, OperationId, OperationMetadata, RuntimeCapabilities};
 use serde::{Deserialize, Serialize};
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{segment_document_id, OwnedTextDocument, TextDocument, TextSpan};
 
@@ -372,5 +373,165 @@ pub fn text_statistics_metadata() -> OperationMetadata {
             requirements: Vec::new(),
             max_recommended_input_bytes: Some(1_000_000),
         },
+    }
+}
+
+/// Explicit UTF-16 code-unit offsets derived from a canonical UTF-8 byte span.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Utf16Span {
+    /// Inclusive UTF-16 code-unit offset.
+    pub start: usize,
+    /// Exclusive UTF-16 code-unit offset.
+    pub end: usize,
+}
+
+/// Explicit grapheme-cluster offsets derived from a canonical UTF-8 byte span.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GraphemeOffsetSpan {
+    /// Inclusive grapheme-cluster offset.
+    pub start: usize,
+    /// Exclusive grapheme-cluster offset.
+    pub end: usize,
+}
+
+/// Errors raised when a canonical UTF-8 byte span cannot be converted safely.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TextSpanConversionError {
+    /// The range is reversed or lies outside the source text.
+    InvalidByteRange {
+        byte_start: usize,
+        byte_end: usize,
+        text_length: usize,
+    },
+    /// One of the offsets splits a UTF-8 scalar value.
+    NonCharacterBoundary { byte_start: usize, byte_end: usize },
+}
+
+impl fmt::Display for TextSpanConversionError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidByteRange {
+                byte_start,
+                byte_end,
+                text_length,
+            } => write!(
+                formatter,
+                "invalid UTF-8 byte range {byte_start}..{byte_end} for text length {text_length}"
+            ),
+            Self::NonCharacterBoundary {
+                byte_start,
+                byte_end,
+            } => write!(
+                formatter,
+                "UTF-8 byte range {byte_start}..{byte_end} does not align to character boundaries"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for TextSpanConversionError {}
+
+impl TextSpan {
+    /// Validates the canonical byte range against the supplied UTF-8 text.
+    pub fn validate_byte_range(self, text: &str) -> Result<(), TextSpanConversionError> {
+        if self.byte_start > self.byte_end || self.byte_end > text.len() {
+            return Err(TextSpanConversionError::InvalidByteRange {
+                byte_start: self.byte_start,
+                byte_end: self.byte_end,
+                text_length: text.len(),
+            });
+        }
+        if !text.is_char_boundary(self.byte_start) || !text.is_char_boundary(self.byte_end) {
+            return Err(TextSpanConversionError::NonCharacterBoundary {
+                byte_start: self.byte_start,
+                byte_end: self.byte_end,
+            });
+        }
+        Ok(())
+    }
+
+    /// Converts the canonical byte range to UTF-16 code-unit offsets.
+    ///
+    /// Legacy `char_start`/`char_end` fields are intentionally ignored: byte
+    /// offsets are the source of truth and alternate coordinates are derived at
+    /// the boundary that needs them.
+    pub fn to_utf16(self, text: &str) -> Result<Utf16Span, TextSpanConversionError> {
+        self.validate_byte_range(text)?;
+        Ok(Utf16Span {
+            start: text[..self.byte_start].encode_utf16().count(),
+            end: text[..self.byte_end].encode_utf16().count(),
+        })
+    }
+
+    /// Converts the canonical byte range to grapheme-cluster offsets.
+    ///
+    /// Legacy `char_start`/`char_end` fields are intentionally ignored.
+    pub fn to_grapheme(self, text: &str) -> Result<GraphemeOffsetSpan, TextSpanConversionError> {
+        self.validate_byte_range(text)?;
+        Ok(GraphemeOffsetSpan {
+            start: text[..self.byte_start].graphemes(true).count(),
+            end: text[..self.byte_end].graphemes(true).count(),
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn span_conversions_use_bytes_as_the_source_of_truth() {
+        let text = "e\u{301}👍🏽a";
+        let span = TextSpan {
+            byte_start: 3,
+            byte_end: 11,
+            char_start: 99,
+            char_end: 100,
+        };
+
+        assert_eq!(span.to_utf16(text).unwrap(), Utf16Span { start: 2, end: 6 });
+        assert_eq!(
+            span.to_grapheme(text).unwrap(),
+            GraphemeOffsetSpan { start: 1, end: 2 }
+        );
+    }
+
+    #[test]
+    fn span_conversions_reject_non_utf8_boundaries() {
+        let text = "é";
+        let span = TextSpan {
+            byte_start: 1,
+            byte_end: 2,
+            char_start: 0,
+            char_end: 1,
+        };
+
+        assert_eq!(
+            span.to_utf16(text),
+            Err(TextSpanConversionError::NonCharacterBoundary {
+                byte_start: 1,
+                byte_end: 2,
+            })
+        );
+    }
+
+    #[test]
+    fn span_conversions_reject_reversed_ranges() {
+        let text = "abc";
+        let span = TextSpan {
+            byte_start: 2,
+            byte_end: 1,
+            char_start: 2,
+            char_end: 1,
+        };
+
+        assert_eq!(
+            span.to_grapheme(text),
+            Err(TextSpanConversionError::InvalidByteRange {
+                byte_start: 2,
+                byte_end: 1,
+                text_length: 3,
+            })
+        );
     }
 }
