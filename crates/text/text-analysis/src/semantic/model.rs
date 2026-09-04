@@ -186,6 +186,39 @@ pub struct RecurringConcept {
     pub last_sequence_index: usize,
 }
 
+/// One contiguous active run of a deterministic conversation concept thread.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConversationSemanticThreadSegment {
+    pub start_sequence_index: usize,
+    pub end_sequence_index: usize,
+    pub unit_count: usize,
+}
+
+/// One deterministic concept tracked as a potentially re-entered conversation thread.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConversationSemanticThread {
+    pub cluster_id: String,
+    pub occurrence_count: usize,
+    pub segment_count: usize,
+    pub reentry_count: usize,
+    pub first_sequence_index: usize,
+    pub last_sequence_index: usize,
+    pub segments: Vec<ConversationSemanticThreadSegment>,
+}
+
+/// Evidence that two deterministic concept threads alternate across nearby turns.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConversationThreadInterleaving {
+    pub left_cluster_id: String,
+    pub right_cluster_id: String,
+    pub alternation_count: usize,
+    pub first_sequence_index: usize,
+    pub last_sequence_index: usize,
+}
+
 /// Observable semantic structure derived from an ordered multi-speaker conversation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -195,6 +228,10 @@ pub struct ConversationSemanticDynamics {
     pub adoptions: Vec<ConceptAdoption>,
     pub handoffs: Vec<ConceptHandoff>,
     pub recurring_concepts: Vec<RecurringConcept>,
+    #[serde(default)]
+    pub threads: Vec<ConversationSemanticThread>,
+    #[serde(default)]
+    pub thread_interleavings: Vec<ConversationThreadInterleaving>,
 }
 
 /// Multi-scale semantic map derived from a document or ordered conversation.

@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::{
     ConceptAdoption, ConceptHandoff, ConceptIntroduction, ConversationSemanticDynamics,
+    ConversationSemanticThread, ConversationSemanticThreadSegment, ConversationThreadInterleaving,
     RecurringConcept, SemanticTimelinePoint, SemanticUnit, SpeakerPairDynamics,
 };
 
@@ -25,6 +26,8 @@ pub(super) fn conversation_dynamics(
         adoptions: concept_adoptions(&primary, &cluster_by_unit),
         handoffs: concept_handoffs(&primary, &cluster_by_unit),
         recurring_concepts: recurring_concepts(&primary, &cluster_by_unit),
+        threads: conversation_threads(&primary, &cluster_by_unit),
+        thread_interleavings: thread_interleavings(&primary, &cluster_by_unit),
     }
 }
 
@@ -188,6 +191,123 @@ fn recurring_concepts(
                 last_sequence_index: *indices.last().unwrap_or(&indices[0]),
             })
         })
+        .collect()
+}
+
+fn conversation_threads(
+    units: &[&SemanticUnit],
+    cluster_by_unit: &BTreeMap<&str, &str>,
+) -> Vec<ConversationSemanticThread> {
+    let mut occurrences = BTreeMap::<String, Vec<usize>>::new();
+    for unit in units {
+        if let Some(cluster_id) = cluster_by_unit.get(unit.id.as_str()) {
+            occurrences
+                .entry((*cluster_id).to_string())
+                .or_default()
+                .push(unit.sequence_index);
+        }
+    }
+
+    occurrences
+        .into_iter()
+        .map(|(cluster_id, mut indices)| {
+            indices.sort_unstable();
+            let segments = contiguous_segments(&indices);
+            ConversationSemanticThread {
+                cluster_id,
+                occurrence_count: indices.len(),
+                segment_count: segments.len(),
+                reentry_count: segments.len().saturating_sub(1),
+                first_sequence_index: indices[0],
+                last_sequence_index: *indices.last().unwrap_or(&indices[0]),
+                segments,
+            }
+        })
+        .collect()
+}
+
+fn contiguous_segments(indices: &[usize]) -> Vec<ConversationSemanticThreadSegment> {
+    let Some(first) = indices.first().copied() else {
+        return Vec::new();
+    };
+    let mut segments = Vec::new();
+    let mut start = first;
+    let mut previous = first;
+    let mut unit_count = 1usize;
+
+    for index in indices.iter().copied().skip(1) {
+        if index == previous.saturating_add(1) {
+            previous = index;
+            unit_count += 1;
+            continue;
+        }
+        segments.push(ConversationSemanticThreadSegment {
+            start_sequence_index: start,
+            end_sequence_index: previous,
+            unit_count,
+        });
+        start = index;
+        previous = index;
+        unit_count = 1;
+    }
+    segments.push(ConversationSemanticThreadSegment {
+        start_sequence_index: start,
+        end_sequence_index: previous,
+        unit_count,
+    });
+    segments
+}
+
+fn thread_interleavings(
+    units: &[&SemanticUnit],
+    cluster_by_unit: &BTreeMap<&str, &str>,
+) -> Vec<ConversationThreadInterleaving> {
+    let mut assignments = units
+        .iter()
+        .filter_map(|unit| {
+            cluster_by_unit
+                .get(unit.id.as_str())
+                .map(|cluster_id| (unit.sequence_index, (*cluster_id).to_string()))
+        })
+        .collect::<Vec<_>>();
+    assignments.sort_by_key(|(sequence_index, _)| *sequence_index);
+
+    let mut interleavings = BTreeMap::<(String, String), (usize, usize, usize)>::new();
+    for window in assignments.windows(3) {
+        let (first_index, first_cluster) = &window[0];
+        let (_, middle_cluster) = &window[1];
+        let (last_index, last_cluster) = &window[2];
+        if first_cluster != last_cluster || first_cluster == middle_cluster {
+            continue;
+        }
+        let pair = if first_cluster <= middle_cluster {
+            (first_cluster.clone(), middle_cluster.clone())
+        } else {
+            (middle_cluster.clone(), first_cluster.clone())
+        };
+        interleavings
+            .entry(pair)
+            .and_modify(|(count, first_seen, last_seen)| {
+                *count += 1;
+                *first_seen = (*first_seen).min(*first_index);
+                *last_seen = (*last_seen).max(*last_index);
+            })
+            .or_insert((1, *first_index, *last_index));
+    }
+
+    interleavings
+        .into_iter()
+        .map(
+            |((left_cluster_id, right_cluster_id), (alternation_count, first, last))| {
+                ConversationThreadInterleaving {
+                    left_cluster_id,
+                    right_cluster_id,
+                    alternation_count,
+                    first_sequence_index: first,
+                    last_sequence_index: last,
+                }
+            },
+        )
         .collect()
 }
 
