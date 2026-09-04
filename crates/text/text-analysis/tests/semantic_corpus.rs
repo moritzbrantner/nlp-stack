@@ -74,10 +74,7 @@ fn corpus_concept_representatives_retain_item_source_and_span_provenance() {
 
     assert_eq!(report.sources.len(), 1);
     assert_eq!(report.sources[0].source.as_deref(), Some("letters/1.txt"));
-    assert_eq!(
-        report.sources[0].timestamp_millis,
-        Some(1_700_000_000_000)
-    );
+    assert_eq!(report.sources[0].timestamp_millis, Some(1_700_000_000_000));
     assert_eq!(report.concepts.len(), 2);
 
     for concept in &report.concepts {
