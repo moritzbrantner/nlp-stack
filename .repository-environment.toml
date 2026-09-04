@@ -16,4 +16,3 @@ commands = ["bun install --frozen-lockfile", "cargo fetch --locked"]
 paths = ["~/.bun/install/cache", "~/.cargo"]
 
 [compatibility_holds]
-
