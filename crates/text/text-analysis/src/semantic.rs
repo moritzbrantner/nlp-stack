@@ -1,3 +1,4 @@
+mod corpus;
 mod derive;
 mod dynamics;
 mod interpretation;
@@ -17,6 +18,12 @@ use crate::invalid_argument;
 use self::derive::build_report;
 use self::units::{conversation_units, document_units};
 
+pub use self::corpus::{
+    analyze_corpus_semantics, analyze_corpus_semantics_with, SemanticCorpusAnalysisOptions,
+    SemanticCorpusAuthorProfile, SemanticCorpusConceptEvidence, SemanticCorpusItem,
+    SemanticCorpusLexicalProfile, SemanticCorpusPassage, SemanticCorpusReport,
+    SemanticCorpusSource,
+};
 pub use self::interpretation::{
     interpret_semantic_report, SemanticConceptInterpretation, SemanticConceptInterpretationContent,
     SemanticConceptInterpretationRequest, SemanticInterpretationBackend,
