@@ -28,6 +28,7 @@ LEGACY_RUNTIME_FILES = {
     Path("src/operations.rs"),
     Path("src/surface.rs"),
 }
+LEGACY_JOBS_FILES = {Path("src/operations.rs")}
 
 # A2 removes the parallel rich *Contract hierarchy. Until that migration is
 # complete, the existing names are a ceiling: no additional mirror contract
@@ -76,9 +77,9 @@ def check_contract(root: Path) -> list[str]:
             errors.append(
                 f"runtime-core usage spread outside grandfathered A2 debt: {relative.as_posix()}"
             )
-        if _contains_import(content, "jobs_core"):
+        if _contains_import(content, "jobs_core") and relative not in LEGACY_JOBS_FILES:
             errors.append(
-                f"jobs-core source usage is not part of the text kernel: {relative.as_posix()}"
+                f"jobs-core usage spread outside grandfathered A2 debt: {relative.as_posix()}"
             )
 
     contracts_path = src / "contracts.rs"
