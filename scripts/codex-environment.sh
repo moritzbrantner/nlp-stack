@@ -139,7 +139,7 @@ for command in data.get(sys.argv[2], {}).get('commands', []):
 PY
 )
 for command in "${environment_commands[@]}"; do
-  (cd "$root" && bash -lc "$command")
+  (cd "$root" && bash -c "$command")
 done
 
 if [[ -n "$desired_bun" && "$(bun --version)" != "$desired_bun" ]]; then
