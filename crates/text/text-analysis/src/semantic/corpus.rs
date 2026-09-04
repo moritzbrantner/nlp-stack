@@ -243,10 +243,7 @@ fn validate_corpus(
     Ok(())
 }
 
-pub(super) fn lexical_profile<'a, I>(
-    items: I,
-    top_terms: usize,
-) -> SemanticCorpusLexicalProfile
+pub(super) fn lexical_profile<'a, I>(items: I, top_terms: usize) -> SemanticCorpusLexicalProfile
 where
     I: IntoIterator<Item = SemanticCorpusItem<'a>>,
 {
