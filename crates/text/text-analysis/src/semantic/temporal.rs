@@ -34,19 +34,10 @@ impl<'a> SemanticCorpusTemporalWindow<'a> {
 }
 
 /// Options for deterministic temporal projection over a semantic corpus.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SemanticCorpusTemporalAnalysisOptions {
     pub corpus: SemanticCorpusAnalysisOptions,
     pub word_sense_target: Option<String>,
-}
-
-impl Default for SemanticCorpusTemporalAnalysisOptions {
-    fn default() -> Self {
-        Self {
-            corpus: SemanticCorpusAnalysisOptions::default(),
-            word_sense_target: None,
-        }
-    }
 }
 
 /// Share of one globally stable corpus concept inside one explicit window.
