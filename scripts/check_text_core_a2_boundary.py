@@ -37,10 +37,21 @@ ORIGINAL_MIRROR_CONTRACTS = {
 CONTRACT_PATTERN = re.compile(
     r"\bpub\s+struct\s+([A-Za-z_][A-Za-z0-9_]*Contract)\b"
 )
+TEXT_SPAN_OPEN_PATTERN = re.compile(r"\bTextSpan\s*\{")
+RETURN_TYPE_PREFIX_PATTERN = re.compile(r"->\s*$")
 
 
 def _contains_import(content: str, crate_name: str) -> bool:
     return f"{crate_name}::" in content or f"use {crate_name}" in content
+
+
+def _contains_direct_text_span_constructor(content: str) -> bool:
+    for match in TEXT_SPAN_OPEN_PATTERN.finditer(content):
+        prefix = content[max(0, match.start() - 80) : match.start()]
+        if RETURN_TYPE_PREFIX_PATTERN.search(prefix):
+            continue
+        return True
+    return False
 
 
 def _display_paths(paths: set[Path]) -> str:
@@ -62,7 +73,8 @@ def _load_debt(root: Path) -> tuple[dict, list[str]]:
 
 def check_contract(root: Path) -> list[str]:
     errors: list[str] = []
-    core = root / "crates" / "text" / "text-core"
+    text_root = root / "crates" / "text"
+    core = text_root / "text-core"
     cargo_path = core / "Cargo.toml"
     src = core / "src"
 
@@ -176,6 +188,24 @@ def check_contract(root: Path) -> list[str]:
                 f"declared {_display_paths(expected_locations)}; "
                 f"actual {_display_paths(actual_locations)}"
             )
+
+    declared_span_constructors = {
+        Path(value) for value in debt.get("legacyTextSpanConstructors", [])
+    }
+    actual_span_constructors: set[Path] = set()
+    for path in sorted(text_root.rglob("*.rs")):
+        if core in path.parents:
+            continue
+        content = path.read_text(encoding="utf-8")
+        if _contains_direct_text_span_constructor(content):
+            actual_span_constructors.add(path.relative_to(root))
+
+    if actual_span_constructors != declared_span_constructors:
+        errors.append(
+            "legacy direct TextSpan construction debt does not match ledger: "
+            f"declared {_display_paths(declared_span_constructors)}; "
+            f"actual {_display_paths(actual_span_constructors)}"
+        )
 
     return errors
 
