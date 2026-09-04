@@ -4,8 +4,9 @@ Read `CONTEXT.md`, `docs/ARCHITECTURE.md`, `docs/PROVENANCE.md`, `docs/SOURCE_DE
 
 ## Agent startup
 
-- Before an implementation run, execute `bash scripts/check-agent-readiness.sh`. It resolves the live `coding-agent-conventions` policy for this repository and validates the current `coding-agent-skills` catalog plus the `standard` profile.
-- Before work that activates the local foundation source graph, execute `bash scripts/check-agent-readiness.sh --with-source`. The outer workspace must provide the exact sibling `moenarch-foundation` revision; the canary verifies activation and Cargo metadata without turning private Git authentication into repository configuration.
+- On a fresh checkout or freshly provisioned trusted base image, execute `bash scripts/codex-environment.sh setup` before repository work. The base environment must already provide the repository's exact Bun version plus `rustup`; environment-v1 installs the recorded dependency state without silently changing pins or lockfiles.
+- Before an implementation run, execute `bash scripts/check-agent-readiness.sh`. It verifies the semantic environment fingerprint, resolves the live `coding-agent-conventions` policy for this repository, and validates the current `coding-agent-skills` catalog plus the `standard` profile.
+- Before work that activates the local foundation source graph, execute `bash scripts/check-agent-readiness.sh --with-source`. The outer workspace must provide the exact sibling `moenarch-foundation` revision; the canary verifies source-development environment identity, activation, and Cargo metadata without turning private Git authentication into repository configuration.
 - Shared engineering policy remains live in `coding-agent-conventions`; do not copy shared rule text into this repository. `.coding-tooling.json` only names stable convention IDs whose continued availability is part of this repository's agent contract.
 
 ## Architecture invariants
