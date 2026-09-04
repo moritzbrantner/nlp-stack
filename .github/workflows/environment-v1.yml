@@ -86,6 +86,7 @@ jobs:
           git diff --exit-code -- \
             package.json \
             bun.lock \
+            .node-version \
             rust-toolchain.toml \
             Cargo.toml \
             Cargo.lock \
