@@ -138,10 +138,6 @@ fn contains_span(outer: TextSpan, inner: TextSpan) -> bool {
 }
 
 fn span_for_text(text: &str) -> TextSpan {
-    TextSpan {
-        byte_start: 0,
-        byte_end: text.len(),
-        char_start: 0,
-        char_end: text.chars().count(),
-    }
+    TextSpan::from_byte_range(text, 0, text.len())
+        .expect("the full UTF-8 text buffer is always a valid byte span")
 }
