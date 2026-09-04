@@ -61,17 +61,39 @@ def check_contract(root: Path) -> list[str]:
             if not patch.get("localPath"):
                 errors.append(f"source patch {patch.get('package', '<unknown>')} is missing localPath")
 
+    environment_path = root / ".repository-environment.toml"
+    if not environment_path.is_file():
+        errors.append("missing .repository-environment.toml")
+    else:
+        environment = environment_path.read_text(encoding="utf-8")
+        if "schema_version = 1" not in environment:
+            errors.append("repository environment must use schema_version 1")
+        if 'track = "latest-stable"' not in environment:
+            errors.append("repository environment must track latest-stable")
+
+    codex_environment_path = root / "scripts" / "codex-environment.sh"
+    if not codex_environment_path.is_file():
+        errors.append("missing scripts/codex-environment.sh")
+
+    readiness_path = root / "scripts" / "check-agent-readiness.sh"
+    if not readiness_path.is_file():
+        errors.append("missing scripts/check-agent-readiness.sh")
+    else:
+        readiness = readiness_path.read_text(encoding="utf-8")
+        if "environment verify" not in readiness:
+            errors.append("agent readiness must verify the semantic repository environment")
+
     agents_path = root / "AGENTS.md"
     agents = agents_path.read_text(encoding="utf-8") if agents_path.is_file() else ""
     if "scripts/check-agent-readiness.sh" not in agents:
         errors.append("AGENTS.md must point implementations at the readiness canary")
+    if "scripts/codex-environment.sh" not in agents:
+        errors.append("AGENTS.md must point fresh environments at environment-v1 setup")
     if "coding-agent-conventions" not in agents:
         errors.append("AGENTS.md must keep shared convention ownership explicit")
 
     if not (root / ".agent-loop.toml").is_file():
         errors.append("missing .agent-loop.toml handoff gate")
-    if not (root / "scripts" / "check-agent-readiness.sh").is_file():
-        errors.append("missing scripts/check-agent-readiness.sh")
 
     return errors
 
