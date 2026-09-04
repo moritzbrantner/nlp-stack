@@ -19,6 +19,7 @@ class TextCoreA2BoundaryTests(unittest.TestCase):
         dependencies: list[str],
         source_files: dict[str, list[str]],
         mirror_contracts: dict[str, str],
+        legacy_span_constructors: list[str] | None = None,
     ) -> None:
         scripts = root / "scripts"
         scripts.mkdir(exist_ok=True)
@@ -29,6 +30,7 @@ class TextCoreA2BoundaryTests(unittest.TestCase):
                     "crossDomainDependencies": dependencies,
                     "crossDomainSourceFiles": source_files,
                     "mirrorContracts": mirror_contracts,
+                    "legacyTextSpanConstructors": legacy_span_constructors or [],
                 },
                 indent=2,
                 sort_keys=True,
@@ -120,6 +122,41 @@ class TextCoreA2BoundaryTests(unittest.TestCase):
         self.assertIn(
             "TextDocumentContract debt does not match ledger: "
             "declared src/contracts.rs; actual src/contracts.rs, src/new_kernel_module.rs",
+            check_contract(root),
+        )
+
+    def test_text_span_return_type_is_not_counted_as_direct_construction(self) -> None:
+        temporary, root = self._fixture()
+        self.addCleanup(temporary.cleanup)
+        consumer = root / "crates" / "text" / "text-analysis" / "src"
+        consumer.mkdir(parents=True)
+        (consumer / "lib.rs").write_text(
+            "fn span_for_text(text: &str) -> TextSpan {\n"
+            "    TextSpan::from_byte_range(text, 0, text.len()).unwrap()\n"
+            "}\n",
+            encoding="utf-8",
+        )
+
+        self.assertEqual(check_contract(root), [])
+
+    def test_direct_text_span_literal_is_guarded(self) -> None:
+        temporary, root = self._fixture()
+        self.addCleanup(temporary.cleanup)
+        consumer = root / "crates" / "text" / "text-analysis" / "src"
+        consumer.mkdir(parents=True)
+        (consumer / "lib.rs").write_text(
+            "let span = TextSpan {\n"
+            "    byte_start: 0,\n"
+            "    byte_end: 1,\n"
+            "    char_start: 0,\n"
+            "    char_end: 1,\n"
+            "};\n",
+            encoding="utf-8",
+        )
+
+        self.assertIn(
+            "legacy direct TextSpan construction debt does not match ledger: "
+            "declared <none>; actual crates/text/text-analysis/src/lib.rs",
             check_contract(root),
         )
 
