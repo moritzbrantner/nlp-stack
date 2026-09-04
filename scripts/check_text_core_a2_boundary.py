@@ -37,16 +37,21 @@ ORIGINAL_MIRROR_CONTRACTS = {
 CONTRACT_PATTERN = re.compile(
     r"\bpub\s+struct\s+([A-Za-z_][A-Za-z0-9_]*Contract)\b"
 )
-# Existing direct literals all initialize the canonical byte fields first. Keep
-# this narrower than `TextSpan {`, which also occurs in function return syntax
-# such as `fn span_for_text(...) -> TextSpan {`.
-LEGACY_TEXT_SPAN_CONSTRUCTOR_PATTERN = re.compile(
-    r"\bTextSpan\s*\{\s*byte_start\s*:"
-)
+TEXT_SPAN_OPEN_PATTERN = re.compile(r"\bTextSpan\s*\{")
+RETURN_TYPE_PREFIX_PATTERN = re.compile(r"->\s*$")
 
 
 def _contains_import(content: str, crate_name: str) -> bool:
     return f"{crate_name}::" in content or f"use {crate_name}" in content
+
+
+def _contains_direct_text_span_constructor(content: str) -> bool:
+    for match in TEXT_SPAN_OPEN_PATTERN.finditer(content):
+        prefix = content[max(0, match.start() - 80) : match.start()]
+        if RETURN_TYPE_PREFIX_PATTERN.search(prefix):
+            continue
+        return True
+    return False
 
 
 def _display_paths(paths: set[Path]) -> str:
@@ -192,7 +197,7 @@ def check_contract(root: Path) -> list[str]:
         if core in path.parents:
             continue
         content = path.read_text(encoding="utf-8")
-        if LEGACY_TEXT_SPAN_CONSTRUCTOR_PATTERN.search(content):
+        if _contains_direct_text_span_constructor(content):
             actual_span_constructors.add(path.relative_to(root))
 
     if actual_span_constructors != declared_span_constructors:
