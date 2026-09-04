@@ -47,7 +47,15 @@ python3 -m evaluation.runner topic-shifts \
   --system your-system
 ```
 
-Semantic similarity reports Spearman rank correlation and mean absolute error. Topic shifts use exact index precision/recall/F1. No minimum semantic-quality threshold is enforced yet: hashed embeddings are useful deterministic interoperability fixtures, but they are not a meaningful quality target for semantic similarity or topic segmentation. Larger labelled corpora and model-backed comparisons should be added with explicit provenance before quality gates are considered.
+Semantic similarity reports Spearman rank correlation and mean absolute error. Topic shifts use exact index precision/recall/F1. No minimum semantic-quality threshold is enforced yet: hashed embeddings are useful deterministic interoperability fixtures, but they are not a meaningful quality target for semantic similarity or topic segmentation.
+
+### Grouped and multilingual evidence
+
+Semantic-similarity and topic-shift gold cases may include an optional non-empty `group` string. Group metadata is owned by the gold corpus: it does not participate in case identity, prediction matching, or score calculation. When at least one gold case is grouped, the report adds a deterministic `groups` section with per-group case counts and the same metrics used by the aggregate report. Ungrouped cases continue to contribute to aggregate metrics but are intentionally absent from the grouped breakdown.
+
+`semantic_similarity_multilingual_v1.jsonl` adds small English, German, Spanish, and cross-language pairs. Its groups separate monolingual language pairs from English–German, English–Spanish, and German–Spanish comparisons. `topic_shift_multilingual_v1.jsonl` adds monolingual topic trajectories plus language-switch cases, including a language switch that keeps the same topic so systems can expose language sensitivity rather than silently treating every language change as a semantic topic boundary.
+
+These fixtures are still calibration evidence, not production benchmarks. They make language-specific regressions visible without introducing a preferred embedding model or a minimum quality threshold. Larger labelled corpora and model-backed comparisons should be added with explicit provenance before semantic quality gates are considered.
 
 ## Adding a capability suite
 
