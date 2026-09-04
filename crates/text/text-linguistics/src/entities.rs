@@ -642,27 +642,14 @@ fn build_model_entity(
 ) -> Option<NamedEntity> {
     let first = parts.first()?;
     let last = parts.last()?;
-    if last.byte_end > text.len()
-        || !text.is_char_boundary(first.byte_start)
-        || !text.is_char_boundary(last.byte_end)
-    {
-        return None;
-    }
+    let span = TextSpan::from_byte_range(text, first.byte_start, last.byte_end).ok()?;
     let token_start = tokens
         .iter()
-        .position(|token| byte_ranges_overlap(first.byte_start, last.byte_end, token.span))?;
+        .position(|token| byte_ranges_overlap(span.byte_start, span.byte_end, token.span))?;
     let token_end = tokens
         .iter()
-        .rposition(|token| byte_ranges_overlap(first.byte_start, last.byte_end, token.span))?
+        .rposition(|token| byte_ranges_overlap(span.byte_start, span.byte_end, token.span))?
         + 1;
-    let char_start = text[..first.byte_start].chars().count();
-    let char_end = text[..last.byte_end].chars().count();
-    let span = TextSpan {
-        byte_start: first.byte_start,
-        byte_end: last.byte_end,
-        char_start,
-        char_end,
-    };
     let mention_text = text[span.byte_start..span.byte_end].to_string();
     let sentence_index = sentences
         .iter()
@@ -726,12 +713,8 @@ fn classify_capitalized_entity(tokens: &[Token]) -> EntityType {
         is_date_token(&Token {
             text: (*token).to_string(),
             normalized: (*token).to_string(),
-            span: TextSpan {
-                byte_start: 0,
-                byte_end: token.len(),
-                char_start: 0,
-                char_end: token.chars().count(),
-            },
+            span: TextSpan::from_byte_range(token, 0, token.len())
+                .expect("whole-token byte range is valid UTF-8"),
             kind: TokenKind::Word,
         })
     }) {
@@ -754,12 +737,12 @@ fn build_entity(
 ) -> NamedEntity {
     let token_start = token_range.start;
     let token_end = token_range.end;
-    let span = TextSpan {
-        byte_start: tokens[token_start].span.byte_start,
-        byte_end: tokens[token_end - 1].span.byte_end,
-        char_start: tokens[token_start].span.char_start,
-        char_end: tokens[token_end - 1].span.char_end,
-    };
+    let span = TextSpan::from_byte_range(
+        text,
+        tokens[token_start].span.byte_start,
+        tokens[token_end - 1].span.byte_end,
+    )
+    .expect("token spans define valid UTF-8 byte boundaries");
     let mention_text = text[span.byte_start..span.byte_end].to_string();
     NamedEntity {
         id: format!("mention-{index}"),
