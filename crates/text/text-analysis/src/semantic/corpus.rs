@@ -243,7 +243,10 @@ fn validate_corpus(
     Ok(())
 }
 
-fn lexical_profile<'a, I>(items: I, top_terms: usize) -> SemanticCorpusLexicalProfile
+pub(super) fn lexical_profile<'a, I>(
+    items: I,
+    top_terms: usize,
+) -> SemanticCorpusLexicalProfile
 where
     I: IntoIterator<Item = SemanticCorpusItem<'a>>,
 {
@@ -352,7 +355,10 @@ fn concept_evidence(
         .collect()
 }
 
-fn passage(unit: &SemanticUnit, source: Option<&SemanticCorpusSource>) -> SemanticCorpusPassage {
+pub(super) fn passage(
+    unit: &SemanticUnit,
+    source: Option<&SemanticCorpusSource>,
+) -> SemanticCorpusPassage {
     SemanticCorpusPassage {
         unit_id: unit.id.clone(),
         source_id: unit.source_id.clone(),
