@@ -85,7 +85,7 @@ describe("SemanticCorpusPanel", () => {
     expect(screen.getByText("Author profiles")).toBeTruthy();
     expect(screen.getByText("Concept evidence")).toBeTruthy();
     expect(screen.getByText("semantic")).toBeTruthy();
-    expect(screen.getByText("Alice")).toBeTruthy();
+    expect(screen.getAllByText("Alice")).toHaveLength(2);
     expect(screen.getByText("Semantic search improves retrieval.")).toBeTruthy();
     expect(screen.getByText("letters/alice-1.txt")).toBeTruthy();
   });
