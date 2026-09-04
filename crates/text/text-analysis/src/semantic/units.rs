@@ -1,5 +1,6 @@
 use text_core::{split_paragraphs, split_sentence_spans, TextDocument, TextSpan};
 
+use super::corpus::SemanticCorpusItem;
 use super::{ConversationTurn, SemanticAnalysisOptions, SemanticUnit, SemanticUnitKind};
 
 pub(super) fn document_units(
@@ -61,6 +62,30 @@ pub(super) fn document_units(
         text: document.text.to_string(),
         embedding: Vec::new(),
     });
+
+    units
+}
+
+pub(super) fn corpus_units(
+    items: &[SemanticCorpusItem<'_>],
+    options: &SemanticAnalysisOptions,
+) -> Vec<SemanticUnit> {
+    let mut units = Vec::new();
+    let mut sentence_sequence_index = 0usize;
+
+    for item in items {
+        let document = TextDocument::new(item.id, item.text);
+        let author = item.author.map(str::trim).map(ToString::to_string);
+        let mut item_units = document_units(&document, options);
+        for unit in &mut item_units {
+            unit.speaker = author.clone();
+            if unit.kind == SemanticUnitKind::Sentence {
+                unit.sequence_index = sentence_sequence_index;
+                sentence_sequence_index += 1;
+            }
+        }
+        units.extend(item_units);
+    }
 
     units
 }
