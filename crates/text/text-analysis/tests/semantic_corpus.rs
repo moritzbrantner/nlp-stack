@@ -37,7 +37,10 @@ fn corpus_profiles_aggregate_lexical_and_semantic_evidence_by_author() {
     assert_eq!(report.item_count, 4);
     assert_eq!(report.author_count, 2);
     assert_eq!(report.lexical.word_count, 16);
-    assert_eq!(report.semantic.primary_unit_kind, SemanticUnitKind::Sentence);
+    assert_eq!(
+        report.semantic.primary_unit_kind,
+        SemanticUnitKind::Sentence
+    );
     assert_eq!(report.semantic.timeline.len(), 4);
     assert_eq!(report.semantic.clusters.len(), 2);
 
@@ -71,7 +74,10 @@ fn corpus_concept_representatives_retain_item_source_and_span_provenance() {
 
     assert_eq!(report.sources.len(), 1);
     assert_eq!(report.sources[0].source.as_deref(), Some("letters/1.txt"));
-    assert_eq!(report.sources[0].timestamp_millis, Some(1_700_000_000_000));
+    assert_eq!(
+        report.sources[0].timestamp_millis,
+        Some(1_700_000_000_000)
+    );
     assert_eq!(report.concepts.len(), 2);
 
     for concept in &report.concepts {
@@ -95,5 +101,7 @@ fn corpus_rejects_duplicate_item_identity() {
     ];
 
     let error = analyze_corpus_semantics(&items, &strict_options()).unwrap_err();
-    assert!(error.to_string().contains("duplicate semantic corpus item id"));
+    assert!(error
+        .to_string()
+        .contains("duplicate semantic corpus item id"));
 }
