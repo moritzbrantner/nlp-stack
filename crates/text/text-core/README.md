@@ -1,21 +1,54 @@
 # text-core
 
-Shared text documents, tokenization, spans, and statistics for `moritzbrantner-video-analysis`.
+Shared deterministic text documents, tokenization, spans, and statistics for the
+NLP stack.
 
-Default builds are deterministic, local-first, and do not download models or
-invoke native inference/runtime tools.
+Default builds are local-first and do not download models or invoke native
+inference/runtime tools.
 
 ## Feature flags
 
 - No optional feature flags today.
 
-## Stable contract
+## Stable kernel contract
 
 `TextDocument`, `OwnedTextDocument`, `TextSpan`, token/sentence/paragraph
-records, text processing options, and the portable document/segment contracts
-are the stable data boundary for other crates. The portable contracts also
-carry optional rich metadata: source references, media timing, provenance, and
-annotation spans.
+records, and text processing options are the intended text-kernel boundary.
+
+A2 is actively removing extraction-era responsibilities that do not belong in
+the kernel. `TextDocumentContract` / `TextSegmentContract`, media timing,
+analysis-event/error re-exports, analyzer lifecycle, and package-surface/JSON
+dispatch remain compatibility debt during that migration; do not add new
+consumers or new parallel contract types to those seams.
+
+### Span coordinates
+
+UTF-8 half-open byte offsets are authoritative. The current `char_start` /
+`char_end` members remain only as migration compatibility fields and must not be
+used as a second source of truth.
+
+When a boundary needs another coordinate system, derive it from the byte range:
+
+```rust,no_run
+use text_core::{TextProcessingOptions, TextSpan};
+
+let text = "e\u{301}👍🏽a";
+let span = TextSpan {
+    byte_start: 3,
+    byte_end: 11,
+    // Legacy compatibility values are ignored by explicit conversions.
+    char_start: 0,
+    char_end: 0,
+};
+
+let utf16 = span.to_utf16(text)?;
+let graphemes = span.to_grapheme(text)?;
+assert_eq!((utf16.start, utf16.end), (2, 6));
+assert_eq!((graphemes.start, graphemes.end), (1, 2));
+
+# let _ = TextProcessingOptions::default();
+# Ok::<(), text_core::contracts::TextSpanConversionError>(())
+```
 
 ## Quality and limits
 
@@ -34,21 +67,18 @@ assert!(!graph.tokens.is_empty());
 assert_eq!(graph.sentences.len(), 1);
 ```
 
-## Package surface
+## Migration status
 
-- Primary workflow: `text.tokenize` returns tokens, spans, script profile, and
-  text statistics.
-- Workflow operations: `text.statistics`, `text.normalize`, `text.tokenize`,
-  and `text.boundaries`.
-- Debug operations: `describe` inspects package metadata and operation support.
-- Runtime support: pure Rust, available through library, CLI, server, and WASM
-  wrappers.
-- Sample output includes `title`, `message`, `summary`, `result`, and the
-  operation-specific fields such as `tokens`, `stats`, `text`, or `words`.
-- This crate does not download models, run native inference, or scan files.
+The extraction-era package surface still exposes `text.statistics`,
+`text.normalize`, `text.tokenize`, `text.boundaries`, and `describe` through the
+existing adapters. Those erased transport operations are not part of the target
+kernel API and will move outward as the architecture migration proceeds.
+
+The repository-level A2 boundary check is monotonic: current media/runtime/
+transport debt may shrink, but new dependencies, new cross-domain source uses,
+or new mirror `*Contract` types are rejected.
 
 ## Related crates
 
 - `text-lexical`
 - `text-linguistics`
-- `media-core`
