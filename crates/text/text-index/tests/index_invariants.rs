@@ -13,10 +13,7 @@ fn index() -> MemoryTextIndex {
 #[test]
 fn repeated_upsert_preserves_index_state_and_search_results() {
     let mut index = index();
-    let document = IndexDocument::new(
-        "doc-1",
-        "alpha beta gamma delta epsilon zeta eta theta",
-    );
+    let document = IndexDocument::new("doc-1", "alpha beta gamma delta epsilon zeta eta theta");
 
     let first = index
         .upsert_documents(std::slice::from_ref(&document))
