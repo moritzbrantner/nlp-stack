@@ -166,10 +166,7 @@ fn semantic_corpus_surface_preserves_author_and_source_evidence() {
     assert_eq!(result["authors"][0]["itemCount"], 2);
     assert_eq!(result["sources"][0]["source"], "letters/1.txt");
     assert_eq!(result["concepts"].as_array().unwrap().len(), 1);
-    assert_eq!(
-        result["concepts"][0]["representative"]["author"],
-        "Alice"
-    );
+    assert_eq!(result["concepts"][0]["representative"]["author"], "Alice");
     assert!(result["lexical"]["wordCount"].as_u64().unwrap() > 0);
     assert_eq!(value["summary"]["itemCount"], 2);
     assert_eq!(value["summary"]["authorCount"], 1);
