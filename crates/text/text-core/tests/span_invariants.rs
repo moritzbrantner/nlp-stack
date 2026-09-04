@@ -1,4 +1,5 @@
 use text_core::TextSpan;
+use unicode_segmentation::UnicodeSegmentation;
 
 const UNICODE_CASES: &[&str] = &[
     "",
@@ -104,7 +105,11 @@ fn alternate_coordinates_are_derived_only_from_canonical_bytes() {
                 assert_eq!(utf16.end, text[..byte_end].encode_utf16().count());
 
                 let graphemes = canonical.to_grapheme(text).unwrap();
-                assert!(graphemes.start <= graphemes.end);
+                assert_eq!(
+                    graphemes.start,
+                    text[..byte_start].graphemes(true).count()
+                );
+                assert_eq!(graphemes.end, text[..byte_end].graphemes(true).count());
             }
         }
     }
