@@ -94,9 +94,7 @@ pub struct SemanticCorpusTemporalWindowReport {
 }
 
 /// Exact structural classification of one adjacent-window distribution change.
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum SemanticTemporalChangeKind {
     Emerging,
@@ -345,9 +343,7 @@ fn window_report<'a>(
                 .filter_map(|unit_id| unit_by_id.get(unit_id.as_str()).copied())
                 .filter(|unit| selected.contains(unit.source_id.as_str()))
                 .min_by_key(|unit| unit.sequence_index)?;
-            let source = source_by_id
-                .get(evidence_unit.source_id.as_str())
-                .copied();
+            let source = source_by_id.get(evidence_unit.source_id.as_str()).copied();
             Some(SemanticCorpusTemporalConceptShare {
                 cluster_id: cluster.id.clone(),
                 unit_count,
@@ -359,7 +355,11 @@ fn window_report<'a>(
 
     SemanticCorpusTemporalWindowReport {
         id: window.id.to_string(),
-        item_ids: window.item_ids.iter().map(|item_id| (*item_id).to_string()).collect(),
+        item_ids: window
+            .item_ids
+            .iter()
+            .map(|item_id| (*item_id).to_string())
+            .collect(),
         item_count: selected_items.len(),
         semantic_unit_count,
         lexical,
@@ -398,12 +398,14 @@ fn word_sense_window(
         .sum::<usize>();
     let senses = selected_senses
         .into_iter()
-        .map(|(cluster_id, count, evidence)| SemanticCorpusTemporalSenseShare {
-            cluster_id,
-            occurrence_count: count,
-            share: count as f32 / occurrence_count as f32,
-            evidence,
-        })
+        .map(
+            |(cluster_id, count, evidence)| SemanticCorpusTemporalSenseShare {
+                cluster_id,
+                occurrence_count: count,
+                share: count as f32 / occurrence_count as f32,
+                evidence,
+            },
+        )
         .collect();
 
     SemanticCorpusTemporalWordSenseWindow {
@@ -435,9 +437,11 @@ fn concept_changes(
             if !should_report_change(previous_state.0, current_state.0) {
                 continue;
             }
-            let prior_presence = windows[..index - 1]
-                .iter()
-                .any(|window| concept_state(window, cluster_id).0.is_some_and(|count| count > 0));
+            let prior_presence = windows[..index - 1].iter().any(|window| {
+                concept_state(window, cluster_id)
+                    .0
+                    .is_some_and(|count| count > 0)
+            });
             let prior_missing = windows[..index - 1]
                 .iter()
                 .any(|window| window.item_count == 0);
@@ -488,9 +492,11 @@ fn sense_changes(
             if !should_report_change(previous_state.0, current_state.0) {
                 continue;
             }
-            let prior_presence = windows[..index - 1]
-                .iter()
-                .any(|window| sense_state(window, cluster_id).0.is_some_and(|count| count > 0));
+            let prior_presence = windows[..index - 1].iter().any(|window| {
+                sense_state(window, cluster_id)
+                    .0
+                    .is_some_and(|count| count > 0)
+            });
             let prior_missing = windows[..index - 1]
                 .iter()
                 .any(|window| window.item_count == 0);
@@ -524,7 +530,11 @@ fn sense_changes(
 fn concept_state<'a>(
     window: &'a SemanticCorpusTemporalWindowReport,
     cluster_id: &str,
-) -> (Option<usize>, Option<f32>, Option<&'a SemanticCorpusPassage>) {
+) -> (
+    Option<usize>,
+    Option<f32>,
+    Option<&'a SemanticCorpusPassage>,
+) {
     if window.item_count == 0 {
         return (None, None, None);
     }
@@ -542,19 +552,20 @@ fn concept_state<'a>(
 fn sense_state<'a>(
     window: &'a SemanticCorpusTemporalWindowReport,
     cluster_id: &str,
-) -> (Option<usize>, Option<f32>, Option<&'a SemanticWordOccurrence>) {
+) -> (
+    Option<usize>,
+    Option<f32>,
+    Option<&'a SemanticWordOccurrence>,
+) {
     if window.item_count == 0 {
         return (None, None, None);
     }
-    let share = window
-        .word_senses
-        .as_ref()
-        .and_then(|word_senses| {
-            word_senses
-                .senses
-                .iter()
-                .find(|sense| sense.cluster_id == cluster_id)
-        });
+    let share = window.word_senses.as_ref().and_then(|word_senses| {
+        word_senses
+            .senses
+            .iter()
+            .find(|sense| sense.cluster_id == cluster_id)
+    });
     (
         Some(share.map_or(0, |sense| sense.occurrence_count)),
         Some(share.map_or(0.0, |sense| sense.share)),
