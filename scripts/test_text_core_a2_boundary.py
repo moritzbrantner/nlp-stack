@@ -69,7 +69,22 @@ class TextCoreA2BoundaryTests(unittest.TestCase):
         )
 
         self.assertIn(
-            "text-core gained new parallel *Contract types during A2: ExtraContract",
+            "text-core gained new parallel *Contract type during A2: ExtraContract",
+            check_contract(root),
+        )
+
+    def test_existing_mirror_contract_cannot_spread_to_new_source_file(self) -> None:
+        temporary, root = self._fixture()
+        self.addCleanup(temporary.cleanup)
+        src = root / "crates" / "text" / "text-core" / "src"
+        (src / "new_kernel_module.rs").write_text(
+            "pub struct TextDocumentContract {}\n",
+            encoding="utf-8",
+        )
+
+        self.assertIn(
+            "text-core mirror contract spread outside grandfathered A2 debt: "
+            "TextDocumentContract in src/new_kernel_module.rs",
             check_contract(root),
         )
 
