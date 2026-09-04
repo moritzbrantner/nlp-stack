@@ -25,6 +25,11 @@ fn describe_alias_reports_operation_inventory() {
         .unwrap()
         .iter()
         .any(|operation| operation == "analysis.semantic-map"));
+    assert!(value["operations"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|operation| operation == "analysis.semantic-corpus"));
 }
 
 #[test]
@@ -126,6 +131,52 @@ fn corpus_surface_generates_missing_ids_and_honors_toggles() {
 }
 
 #[test]
+fn semantic_corpus_surface_preserves_author_and_source_evidence() {
+    let value = run(
+        "analysis.semantic-corpus",
+        serde_json::json!({
+            "items": [
+                {
+                    "id": "alice-1",
+                    "author": "Alice",
+                    "source": "letters/1.txt",
+                    "timestampMillis": 1700000000000_i64,
+                    "text": "Semantic search improves retrieval."
+                },
+                {
+                    "id": "alice-2",
+                    "author": "Alice",
+                    "source": "letters/2.txt",
+                    "timestampMillis": 1710000000000_i64,
+                    "text": "Semantic search improves retrieval."
+                }
+            ],
+            "topTerms": 6,
+            "neighborsPerUnit": 2,
+            "neighborThreshold": 0.80,
+            "clusterThreshold": 0.90
+        }),
+    )
+    .unwrap();
+
+    let result = &value["result"];
+    assert_eq!(result["itemCount"], 2);
+    assert_eq!(result["authorCount"], 1);
+    assert_eq!(result["authors"][0]["author"], "Alice");
+    assert_eq!(result["authors"][0]["itemCount"], 2);
+    assert_eq!(result["sources"][0]["source"], "letters/1.txt");
+    assert_eq!(result["concepts"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        result["concepts"][0]["representative"]["author"],
+        "Alice"
+    );
+    assert!(result["lexical"]["wordCount"].as_u64().unwrap() > 0);
+    assert_eq!(value["summary"]["itemCount"], 2);
+    assert_eq!(value["summary"]["authorCount"], 1);
+    assert_eq!(value["summary"]["conceptCount"], 1);
+}
+
+#[test]
 fn similarity_surface_supports_character_alias_and_clamps_n() {
     let value = run(
         "analysis.similarity",
@@ -168,6 +219,7 @@ fn workflow_operation_examples_return_structured_values() {
     for operation_id in [
         "analysis.document",
         "analysis.semantic-map",
+        "analysis.semantic-corpus",
         "analysis.corpus",
         "analysis.similarity",
     ] {
