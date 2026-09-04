@@ -15,7 +15,10 @@ const UNICODE_CASES: &[&str] = &[
 ];
 
 fn char_boundaries(text: &str) -> Vec<usize> {
-    let mut boundaries = text.char_indices().map(|(index, _)| index).collect::<Vec<_>>();
+    let mut boundaries = text
+        .char_indices()
+        .map(|(index, _)| index)
+        .collect::<Vec<_>>();
     if boundaries.last().copied() != Some(text.len()) {
         boundaries.push(text.len());
     }
@@ -91,7 +94,10 @@ fn alternate_coordinates_are_derived_only_from_canonical_bytes() {
                 };
 
                 assert_eq!(canonical.to_utf16(text), poisoned_legacy.to_utf16(text));
-                assert_eq!(canonical.to_grapheme(text), poisoned_legacy.to_grapheme(text));
+                assert_eq!(
+                    canonical.to_grapheme(text),
+                    poisoned_legacy.to_grapheme(text)
+                );
 
                 let utf16 = canonical.to_utf16(text).unwrap();
                 assert_eq!(utf16.start, text[..byte_start].encode_utf16().count());
