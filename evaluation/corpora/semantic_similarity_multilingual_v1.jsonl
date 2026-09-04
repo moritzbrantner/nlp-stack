@@ -1,0 +1,12 @@
+{"id":"en-identical","group":"monolingual-en","languagePair":"en-en","left":"Semantic search improves retrieval.","right":"Semantic search improves retrieval.","similarity":1.0}
+{"id":"en-unrelated","group":"monolingual-en","languagePair":"en-en","left":"Semantic search improves retrieval.","right":"Tomatoes grow in garden soil.","similarity":0.05}
+{"id":"de-identical","group":"monolingual-de","languagePair":"de-de","left":"Semantische Suche verbessert den Abruf.","right":"Semantische Suche verbessert den Abruf.","similarity":1.0}
+{"id":"de-unrelated","group":"monolingual-de","languagePair":"de-de","left":"Semantische Suche verbessert den Abruf.","right":"Tomaten wachsen in Gartenerde.","similarity":0.05}
+{"id":"es-identical","group":"monolingual-es","languagePair":"es-es","left":"La búsqueda semántica mejora la recuperación.","right":"La búsqueda semántica mejora la recuperación.","similarity":1.0}
+{"id":"es-unrelated","group":"monolingual-es","languagePair":"es-es","left":"La búsqueda semántica mejora la recuperación.","right":"Los tomates crecen en la tierra del jardín.","similarity":0.05}
+{"id":"en-de-translation","group":"cross-en-de","languagePair":"en-de","left":"Semantic search improves retrieval.","right":"Semantische Suche verbessert den Abruf.","similarity":0.95}
+{"id":"en-de-unrelated","group":"cross-en-de","languagePair":"en-de","left":"Semantic search improves retrieval.","right":"Tomaten wachsen in Gartenerde.","similarity":0.05}
+{"id":"en-es-translation","group":"cross-en-es","languagePair":"en-es","left":"Embedding models map text to vectors.","right":"Los modelos de embeddings convierten texto en vectores.","similarity":0.95}
+{"id":"en-es-unrelated","group":"cross-en-es","languagePair":"en-es","left":"Embedding models map text to vectors.","right":"Los tomates crecen en la tierra del jardín.","similarity":0.05}
+{"id":"de-es-translation","group":"cross-de-es","languagePair":"de-es","left":"Vektorindizes beschleunigen die Suche nach ähnlichen Elementen.","right":"Los índices vectoriales aceleran la búsqueda de elementos similares.","similarity":0.95}
+{"id":"de-es-unrelated","group":"cross-de-es","languagePair":"de-es","left":"Vektorindizes beschleunigen die Suche nach ähnlichen Elementen.","right":"Las plantas necesitan tierra saludable.","similarity":0.05}
