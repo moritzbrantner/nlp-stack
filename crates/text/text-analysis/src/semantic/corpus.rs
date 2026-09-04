@@ -211,7 +211,9 @@ fn validate_corpus(
     let mut seen = BTreeSet::new();
     for item in items {
         if item.id.trim().is_empty() {
-            return Err(invalid_argument("semantic corpus item id must not be empty"));
+            return Err(invalid_argument(
+                "semantic corpus item id must not be empty",
+            ));
         }
         if !seen.insert(item.id) {
             return Err(invalid_argument(format!(
@@ -241,10 +243,7 @@ fn validate_corpus(
     Ok(())
 }
 
-fn lexical_profile<'a, I>(
-    items: I,
-    top_terms: usize,
-) -> SemanticCorpusLexicalProfile
+fn lexical_profile<'a, I>(items: I, top_terms: usize) -> SemanticCorpusLexicalProfile
 where
     I: IntoIterator<Item = SemanticCorpusItem<'a>>,
 {
@@ -325,7 +324,9 @@ fn concept_evidence(
         .clusters
         .iter()
         .filter_map(|cluster| {
-            let representative = units.get(cluster.representative_unit_id.as_str()).copied()?;
+            let representative = units
+                .get(cluster.representative_unit_id.as_str())
+                .copied()?;
             let source = source_by_id.get(representative.source_id.as_str()).copied();
             let mut source_item_ids = BTreeSet::new();
             let mut authors = BTreeSet::new();
@@ -351,10 +352,7 @@ fn concept_evidence(
         .collect()
 }
 
-fn passage(
-    unit: &SemanticUnit,
-    source: Option<&SemanticCorpusSource>,
-) -> SemanticCorpusPassage {
+fn passage(unit: &SemanticUnit, source: Option<&SemanticCorpusSource>) -> SemanticCorpusPassage {
     SemanticCorpusPassage {
         unit_id: unit.id.clone(),
         source_id: unit.source_id.clone(),
