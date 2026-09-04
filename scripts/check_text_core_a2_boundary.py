@@ -31,14 +31,18 @@ LEGACY_RUNTIME_FILES = {
 LEGACY_JOBS_FILES = {Path("src/operations.rs")}
 
 # A2 removes the parallel rich *Contract hierarchy. Until that migration is
-# complete, the existing names are a ceiling: no additional mirror contract
-# type may be introduced in text-core.
-LEGACY_CONTRACT_NAMES = {
-    "TextDocumentContract",
-    "TextSegmentContract",
-    "TimebaseContract",
-    "TimestampContract",
+# complete, each existing mirror type is grandfathered only in its current
+# source file. The migration may delete it; it may not add another mirror type
+# or move/copy an existing mirror into a different text-core module.
+LEGACY_CONTRACT_LOCATIONS = {
+    "TextDocumentContract": Path("src/contracts.rs"),
+    "TextSegmentContract": Path("src/contracts.rs"),
+    "TimebaseContract": Path("src/contracts.rs"),
+    "TimestampContract": Path("src/contracts.rs"),
 }
+CONTRACT_PATTERN = re.compile(
+    r"\bpub\s+struct\s+([A-Za-z_][A-Za-z0-9_]*Contract)\b"
+)
 
 
 def _contains_import(content: str, crate_name: str) -> bool:
@@ -82,20 +86,17 @@ def check_contract(root: Path) -> list[str]:
                 f"jobs-core usage spread outside grandfathered A2 debt: {relative.as_posix()}"
             )
 
-    contracts_path = src / "contracts.rs"
-    if contracts_path.is_file():
-        contract_names = set(
-            re.findall(
-                r"\bpub\s+struct\s+([A-Za-z_][A-Za-z0-9_]*Contract)\b",
-                contracts_path.read_text(encoding="utf-8"),
-            )
-        )
-        new_contract_names = sorted(contract_names - LEGACY_CONTRACT_NAMES)
-        if new_contract_names:
-            errors.append(
-                "text-core gained new parallel *Contract types during A2: "
-                + ", ".join(new_contract_names)
-            )
+        for contract_name in CONTRACT_PATTERN.findall(content):
+            expected_location = LEGACY_CONTRACT_LOCATIONS.get(contract_name)
+            if expected_location is None:
+                errors.append(
+                    f"text-core gained new parallel *Contract type during A2: {contract_name}"
+                )
+            elif relative != expected_location:
+                errors.append(
+                    "text-core mirror contract spread outside grandfathered A2 debt: "
+                    f"{contract_name} in {relative.as_posix()}"
+                )
 
     return errors
 
