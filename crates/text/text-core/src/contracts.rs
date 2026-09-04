@@ -404,10 +404,7 @@ pub enum TextSpanConversionError {
         text_length: usize,
     },
     /// One of the offsets splits a UTF-8 scalar value.
-    NonCharacterBoundary {
-        byte_start: usize,
-        byte_end: usize,
-    },
+    NonCharacterBoundary { byte_start: usize, byte_end: usize },
 }
 
 impl fmt::Display for TextSpanConversionError {
