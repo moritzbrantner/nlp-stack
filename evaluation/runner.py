@@ -66,6 +66,34 @@ def _float_value(record: Mapping[str, Any], field: str) -> float:
     return float(value)
 
 
+def _group_value(record: Mapping[str, Any]) -> Optional[str]:
+    value = record.get("group")
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(
+            f"{record.get('id', '<unknown>')}: group must be a non-empty string when present"
+        )
+    return value.strip()
+
+
+def _semantic_similarity_metrics(
+    gold_scores: Sequence[float], predicted_scores: Sequence[float]
+) -> Dict[str, float]:
+    if len(gold_scores) != len(predicted_scores):
+        raise ValueError("semantic similarity metrics require equal-length score lists")
+    mean_absolute_error = (
+        sum(abs(gold - predicted) for gold, predicted in zip(gold_scores, predicted_scores))
+        / len(gold_scores)
+        if gold_scores
+        else 0.0
+    )
+    return {
+        "spearman": spearman_correlation(gold_scores, predicted_scores),
+        "meanAbsoluteError": mean_absolute_error,
+    }
+
+
 def boundary_report(
     gold_records: Sequence[Mapping[str, Any]],
     prediction_records: Sequence[Mapping[str, Any]],
@@ -125,24 +153,28 @@ def semantic_similarity_report(
     gold_scores: List[float] = []
     predicted_scores: List[float] = []
     cases: List[Dict[str, Any]] = []
+    grouped_scores: Dict[str, Dict[str, List[float]]] = {}
 
     for case_id in gold_by_id:
-        gold_score = _float_value(gold_by_id[case_id], "similarity")
+        gold_record = gold_by_id[case_id]
+        gold_score = _float_value(gold_record, "similarity")
         predicted_score = _float_value(predictions_by_id[case_id], "similarity")
+        group = _group_value(gold_record)
         gold_scores.append(gold_score)
         predicted_scores.append(predicted_score)
-        cases.append(
-            {
-                "id": case_id,
-                "goldSimilarity": gold_score,
-                "predictedSimilarity": predicted_score,
-                "absoluteError": abs(gold_score - predicted_score),
-            }
-        )
+        case: Dict[str, Any] = {
+            "id": case_id,
+            "goldSimilarity": gold_score,
+            "predictedSimilarity": predicted_score,
+            "absoluteError": abs(gold_score - predicted_score),
+        }
+        if group is not None:
+            case["group"] = group
+            grouped = grouped_scores.setdefault(group, {"gold": [], "predicted": []})
+            grouped["gold"].append(gold_score)
+            grouped["predicted"].append(predicted_score)
+        cases.append(case)
 
-    mean_absolute_error = (
-        sum(case["absoluteError"] for case in cases) / len(cases) if cases else 0.0
-    )
     result: Dict[str, Any] = {
         "schemaVersion": 1,
         "suite": {
@@ -151,12 +183,20 @@ def semantic_similarity_report(
             "caseCount": len(gold_records),
         },
         "system": system,
-        "metrics": {
-            "spearman": spearman_correlation(gold_scores, predicted_scores),
-            "meanAbsoluteError": mean_absolute_error,
-        },
+        "metrics": _semantic_similarity_metrics(gold_scores, predicted_scores),
         "cases": cases,
     }
+    if grouped_scores:
+        result["groups"] = [
+            {
+                "group": group,
+                "caseCount": len(grouped_scores[group]["gold"]),
+                "metrics": _semantic_similarity_metrics(
+                    grouped_scores[group]["gold"], grouped_scores[group]["predicted"]
+                ),
+            }
+            for group in sorted(grouped_scores)
+        ]
     if source_revision is not None:
         result["sourceRevision"] = source_revision
     return result
@@ -175,21 +215,30 @@ def topic_shift_report(
     gold_events: List[Tuple[str, int]] = []
     predicted_events: List[Tuple[str, int]] = []
     cases: List[Dict[str, Any]] = []
+    grouped_events: Dict[str, Dict[str, List[Tuple[str, int]]]] = {}
+    group_case_counts: Dict[str, int] = {}
 
     for case_id in gold_by_id:
-        gold_indices = _integer_list(gold_by_id[case_id], "shiftIndices")
+        gold_record = gold_by_id[case_id]
+        gold_indices = _integer_list(gold_record, "shiftIndices")
         predicted_indices = _integer_list(predictions_by_id[case_id], "shiftIndices")
+        group = _group_value(gold_record)
         case_metrics = precision_recall_f1(gold_indices, predicted_indices)
-        gold_events.extend((case_id, index) for index in gold_indices)
-        predicted_events.extend((case_id, index) for index in predicted_indices)
-        cases.append(
-            {
-                "id": case_id,
-                "metrics": case_metrics.as_dict(),
-                "goldShiftIndices": gold_indices,
-                "predictedShiftIndices": predicted_indices,
-            }
-        )
+        gold_events.extend((case_id, end) for end in gold_indices)
+        predicted_events.extend((case_id, end) for end in predicted_indices)
+        case: Dict[str, Any] = {
+            "id": case_id,
+            "metrics": case_metrics.as_dict(),
+            "goldShiftIndices": gold_indices,
+            "predictedShiftIndices": predicted_indices,
+        }
+        if group is not None:
+            case["group"] = group
+            grouped = grouped_events.setdefault(group, {"gold": [], "predicted": []})
+            grouped["gold"].extend((case_id, index) for index in gold_indices)
+            grouped["predicted"].extend((case_id, index) for index in predicted_indices)
+            group_case_counts[group] = group_case_counts.get(group, 0) + 1
+        cases.append(case)
 
     result: Dict[str, Any] = {
         "schemaVersion": 1,
@@ -202,6 +251,17 @@ def topic_shift_report(
         "metrics": precision_recall_f1(gold_events, predicted_events).as_dict(),
         "cases": cases,
     }
+    if grouped_events:
+        result["groups"] = [
+            {
+                "group": group,
+                "caseCount": group_case_counts[group],
+                "metrics": precision_recall_f1(
+                    grouped_events[group]["gold"], grouped_events[group]["predicted"]
+                ).as_dict(),
+            }
+            for group in sorted(grouped_events)
+        ]
     if source_revision is not None:
         result["sourceRevision"] = source_revision
     return result
