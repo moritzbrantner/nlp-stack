@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "crossDomainDependencies": [
+    "jobs-core",
+    "media-core",
+    "runtime-core"
+  ],
+  "crossDomainSourceFiles": {
+    "jobs_core": [
+      "src/operations.rs"
+    ],
+    "media_core": [
+      "src/contracts.rs",
+      "src/lib.rs"
+    ],
+    "runtime_core": [
+      "src/contracts.rs",
+      "src/operations.rs",
+      "src/surface.rs"
+    ]
+  },
+  "mirrorContracts": {
+    "TextDocumentContract": "src/contracts.rs",
+    "TextSegmentContract": "src/contracts.rs",
+    "TimebaseContract": "src/contracts.rs",
+    "TimestampContract": "src/contracts.rs"
+  }
+}
