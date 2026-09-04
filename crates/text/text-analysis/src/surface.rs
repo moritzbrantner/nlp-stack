@@ -1,3 +1,4 @@
+mod semantic_corpus;
 mod semantic_map;
 
 use std::path::PathBuf;
@@ -51,6 +52,7 @@ pub fn package_surface() -> PackageSurface {
                 }),
             ),
             semantic_map::operation(),
+            semantic_corpus::operation(),
             operation(
                 "analysis.corpus",
                 "Analyze corpus",
@@ -102,6 +104,7 @@ pub fn run_surface_operation(request: SurfaceRequest) -> Result<SurfaceResponse,
             )
         }
         "analysis.semantic-map" => (semantic_map::run(request.input)?, Vec::new()),
+        "analysis.semantic-corpus" => (semantic_corpus::run(request.input)?, Vec::new()),
         "analysis.corpus" => {
             let input = parse_input::<CorpusRequest>(request.input)?;
             let options = input.options();
@@ -240,6 +243,7 @@ fn annotated_value(operation: &OperationId, value: serde_json::Value) -> serde_j
             }),
         ),
         "analysis.semantic-map" => semantic_map::annotation(&value),
+        "analysis.semantic-corpus" => semantic_corpus::annotation(&value),
         "analysis.corpus" => (
             "Corpus analysis result",
             "Analyzed a transient corpus with lexical statistics, search reports, near duplicates, and semantic neighbors.",
