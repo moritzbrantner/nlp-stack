@@ -42,7 +42,13 @@ fn alternating_concepts_form_reentered_threads_and_interleaving_evidence() {
     let mut occurrence_counts = dynamics
         .threads
         .iter()
-        .map(|thread| (thread.occurrence_count, thread.segment_count, thread.reentry_count))
+        .map(|thread| {
+            (
+                thread.occurrence_count,
+                thread.segment_count,
+                thread.reentry_count,
+            )
+        })
         .collect::<Vec<_>>();
     occurrence_counts.sort_unstable();
     assert_eq!(occurrence_counts, vec![(2, 2, 1), (3, 3, 2)]);
@@ -68,11 +74,7 @@ fn contiguous_concept_stays_one_thread_segment() {
             Some("Alice"),
             "Semantic search improves retrieval.",
         ),
-        ConversationTurn::new(
-            "turn-2",
-            Some("Bob"),
-            "Semantic search improves retrieval.",
-        ),
+        ConversationTurn::new("turn-2", Some("Bob"), "Semantic search improves retrieval."),
         ConversationTurn::new(
             "turn-3",
             Some("Alice"),

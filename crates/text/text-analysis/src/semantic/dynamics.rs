@@ -272,8 +272,7 @@ fn thread_interleavings(
         .collect::<Vec<_>>();
     assignments.sort_by_key(|(sequence_index, _)| *sequence_index);
 
-    let mut interleavings =
-        BTreeMap::<(String, String), (usize, usize, usize)>::new();
+    let mut interleavings = BTreeMap::<(String, String), (usize, usize, usize)>::new();
     for window in assignments.windows(3) {
         let (first_index, first_cluster) = &window[0];
         let (_, middle_cluster) = &window[1];
