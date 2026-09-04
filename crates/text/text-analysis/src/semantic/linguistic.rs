@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use text_core::TextSpan;
 use text_linguistics::LinguisticAnalysis;
 
-use super::{SemanticAnalysisReport, SemanticUnit};
+use super::SemanticAnalysisReport;
 
 /// Node kinds in the composed linguistic semantic graph.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
