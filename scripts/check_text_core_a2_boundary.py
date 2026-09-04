@@ -37,7 +37,12 @@ ORIGINAL_MIRROR_CONTRACTS = {
 CONTRACT_PATTERN = re.compile(
     r"\bpub\s+struct\s+([A-Za-z_][A-Za-z0-9_]*Contract)\b"
 )
-LEGACY_TEXT_SPAN_CONSTRUCTOR_PATTERN = re.compile(r"\bTextSpan\s*\{")
+# Existing direct literals all initialize the canonical byte fields first. Keep
+# this narrower than `TextSpan {`, which also occurs in function return syntax
+# such as `fn span_for_text(...) -> TextSpan {`.
+LEGACY_TEXT_SPAN_CONSTRUCTOR_PATTERN = re.compile(
+    r"\bTextSpan\s*\{\s*byte_start\s*:"
+)
 
 
 def _contains_import(content: str, crate_name: str) -> bool:
