@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "policy": {
+    "blocking": "structure-only",
+    "description": "Statuses describe evidence maturity. Missing or partial evidence is valid and must not become a merge threshold without a separate policy change.",
+    "statusSemantics": {
+      "present": "Capability-specific evidence exists and is directly exercised or reproducible.",
+      "partial": "Some relevant evidence exists, but important risks, environments, datasets, or consumers are not yet covered.",
+      "missing": "No durable evidence is recorded for this category yet.",
+      "not_applicable": "The category does not materially apply to this capability boundary."
+    }
+  },
+  "capabilities": [
+    {
+      "id": "text-core",
+      "package": "moenarch-text-core",
+      "path": "crates/text/text-core",
+      "targetDisposition": "retain",
+      "evidence": {
+        "tests": {"status": "present", "paths": ["crates/text/text-core/src"], "commands": ["cargo test -p moenarch-text-core"], "note": "Kernel behavior has focused Rust regression tests, including canonical span conversion behavior."},
+        "invariants": {"status": "partial", "paths": ["crates/text/text-core/src/contracts.rs"], "commands": [], "note": "UTF-8 boundary and coordinate-conversion invariants are covered by examples, but broad generated Unicode/property coverage is not yet present."},
+        "evaluation": {"status": "partial", "paths": ["evaluation/corpora/sentence-boundaries-v1.jsonl", "scripts/check-nlp-evaluation.sh"], "commands": ["bash scripts/check-nlp-evaluation.sh"], "note": "Sentence-boundary evaluation is authoritative for that behavior only; it is not a general text-core quality benchmark."},
+        "performance": {"status": "present", "paths": ["crates/text/text-core/benches/segmentation.rs"], "commands": ["cargo bench -p moenarch-text-core"], "note": "Criterion exercises segmentation/annotation-graph throughput, including a larger text case."},
+        "cross_runtime": {"status": "partial", "paths": [], "commands": ["bun run text-wasm:test:all"], "note": "Aggregate WASM smoke exists, but the matrix does not yet record capability-specific native-versus-browser parity evidence."},
+        "external_consumer": {"status": "missing", "paths": [], "commands": [], "note": "Known source consumers are checked during migration slices, but no durable per-capability consumer receipt is recorded here yet."},
+        "coverage": {"status": "missing", "paths": [], "commands": [], "note": "No committed descriptive line/branch coverage baseline is recorded."},
+        "mutation": {"status": "missing", "paths": [], "commands": [], "note": "No mutation-testing evidence is recorded."}
+      }
+    },
+    {
+      "id": "text-lexical",
+      "package": "moenarch-text-lexical",
+      "path": "crates/text/text-lexical",
+      "targetDisposition": "retain",
+      "evidence": {
+        "tests": {"status": "partial", "paths": ["crates/text/text-lexical/src"], "commands": ["cargo test -p moenarch-text-lexical"], "note": "Package tests run in workspace CI; test-depth and edge-case coverage have not been audited into this matrix."},
+        "invariants": {"status": "missing", "paths": [], "commands": [], "note": "No dedicated generated/property invariant suite is recorded for lexical statistics, n-grams, stemming, or readability."},
+        "evaluation": {"status": "missing", "paths": [], "commands": [], "note": "No versioned lexical-quality corpus is currently recorded."},
+        "performance": {"status": "present", "paths": ["crates/text/text-lexical/benches/lexical_corpus.rs"], "commands": ["cargo bench -p moenarch-text-lexical"], "note": "Criterion benchmark coverage exists for lexical corpus analysis."},
+        "cross_runtime": {"status": "partial", "paths": [], "commands": ["bun run text-wasm:test:all"], "note": "Aggregate WASM smoke exists without a capability-specific parity receipt."},
+        "external_consumer": {"status": "missing", "paths": [], "commands": [], "note": "No durable independent-consumer evidence is recorded."},
+        "coverage": {"status": "missing", "paths": [], "commands": [], "note": "No descriptive coverage baseline is recorded."},
+        "mutation": {"status": "missing", "paths": [], "commands": [], "note": "No mutation-testing evidence is recorded."}
+      }
+    },
+    {
+      "id": "text-classification",
+      "package": "moenarch-text-classification",
+      "path": "crates/text/text-classification",
+      "targetDisposition": "retain",
+      "evidence": {
+        "tests": {"status": "partial", "paths": ["crates/text/text-classification/src"], "commands": ["cargo test -p moenarch-text-classification"], "note": "Package tests run in workspace CI, but model-output failure cases and backend conformance are not yet represented as a dedicated suite."},
+        "invariants": {"status": "missing", "paths": [], "commands": [], "note": "No generated invariant suite is recorded for label ordering, score normalization, or malformed backend output."},
+        "evaluation": {"status": "missing", "paths": [], "commands": [], "note": "Reusable classification metrics exist, but no versioned classification gold corpus is recorded."},
+        "performance": {"status": "missing", "paths": [], "commands": [], "note": "No capability-specific latency/throughput benchmark is recorded."},
+        "cross_runtime": {"status": "partial", "paths": [], "commands": ["bun run text-wasm:test:all"], "note": "Aggregate WASM smoke exists without model/backend parity evidence."},
+        "external_consumer": {"status": "missing", "paths": [], "commands": [], "note": "No durable independent-consumer receipt is recorded."},
+        "coverage": {"status": "missing", "paths": [], "commands": [], "note": "No descriptive coverage baseline is recorded."},
+        "mutation": {"status": "missing", "paths": [], "commands": [], "note": "No mutation-testing evidence is recorded."}
+      }
+    },
+    {
+      "id": "text-linguistics",
+      "package": "moenarch-text-linguistics",
+      "path": "crates/text/text-linguistics",
+      "targetDisposition": "retain",
+      "evidence": {
+        "tests": {"status": "present", "paths": ["crates/text/text-linguistics/src/tests.rs"], "commands": ["cargo test -p moenarch-text-linguistics"], "note": "Focused linguistics tests cover the current deterministic/model-backed capability surface and are exercised by workspace CI."},
+        "invariants": {"status": "partial", "paths": ["crates/text/text-linguistics/src/tests.rs"], "commands": [], "note": "Span/provenance assertions exist, but broad generated BIO/dependency/coreference invariants are not yet recorded."},
+        "evaluation": {"status": "missing", "paths": [], "commands": [], "note": "No direct gold NER, relation, event, coreference, morphology, syntax, or discourse corpus is recorded."},
+        "performance": {"status": "present", "paths": ["crates/text/text-linguistics/benches/pipeline.rs"], "commands": ["cargo bench -p moenarch-text-linguistics"], "note": "Criterion covers the current rich linguistics pipeline, though per-operation scaling evidence remains limited."},
+        "cross_runtime": {"status": "partial", "paths": [], "commands": ["bun run text-wasm:test:all"], "note": "Aggregate WASM smoke exists; native/browser output parity is not recorded per linguistic operation."},
+        "external_consumer": {"status": "partial", "paths": ["scripts/check-agent-readiness.sh"], "commands": [], "note": "Repository source-mode readiness exists, but affected external consumers are currently verified slice-by-slice rather than through a permanent receipt."},
+        "coverage": {"status": "missing", "paths": [], "commands": [], "note": "No descriptive coverage baseline is recorded."},
+        "mutation": {"status": "missing", "paths": [], "commands": [], "note": "No mutation-testing evidence is recorded for extraction heuristics or graph projection contracts."}
+      }
+    },
+    {
+      "id": "text-embeddings",
+      "package": "moenarch-text-embeddings",
+      "path": "crates/text/text-embeddings",
+      "targetDisposition": "retain",
+      "evidence": {
+        "tests": {"status": "partial", "paths": ["crates/text/text-embeddings/src"], "commands": ["cargo test -p moenarch-text-embeddings"], "note": "Package tests run in workspace CI; backend conformance and failure-mode coverage are not yet a dedicated contract suite."},
+        "invariants": {"status": "partial", "paths": ["crates/text/text-embeddings/src"], "commands": [], "note": "Deterministic similarity/index behavior has regression coverage, but generated dimension/normalization/batching invariants are not recorded."},
+        "evaluation": {"status": "partial", "paths": ["evaluation/corpora/semantic_similarity_multilingual_v1.jsonl"], "commands": [], "note": "Multilingual semantic-similarity calibration exists, but the committed fixture is explicitly not a production model-quality benchmark."},
+        "performance": {"status": "present", "paths": ["crates/text/text-embeddings/benches/semantic_index.rs"], "commands": ["cargo bench -p moenarch-text-embeddings"], "note": "Criterion covers semantic indexing/search behavior; larger crossover and memory measurements remain follow-up work."},
+        "cross_runtime": {"status": "partial", "paths": [], "commands": ["bun run text-wasm:test:all"], "note": "Aggregate WASM smoke exists without a stable model-backed native/browser parity matrix."},
+        "external_consumer": {"status": "missing", "paths": [], "commands": [], "note": "No durable independent-consumer receipt is recorded."},
+        "coverage": {"status": "missing", "paths": [], "commands": [], "note": "No descriptive coverage baseline is recorded."},
+        "mutation": {"status": "missing", "paths": [], "commands": [], "note": "No mutation-testing evidence is recorded."}
+      }
+    },
+    {
+      "id": "text-index",
+      "package": "moenarch-text-index",
+      "path": "crates/text/text-index",
+      "targetDisposition": "retain",
+      "evidence": {
+        "tests": {"status": "partial", "paths": ["crates/text/text-index/src"], "commands": ["cargo test -p moenarch-text-index"], "note": "Index tests run in workspace CI, but materialization/update/delete persistence invariants have not been audited into a dedicated matrix."},
+        "invariants": {"status": "missing", "paths": [], "commands": [], "note": "No dedicated idempotence/update/delete/property suite is recorded."},
+        "evaluation": {"status": "missing", "paths": [], "commands": [], "note": "No index-specific quality evaluation should be inferred from retrieval metrics; correctness evidence is currently test-only."},
+        "performance": {"status": "missing", "paths": [], "commands": [], "note": "No benchmark owned specifically by the post-A5 index materialization boundary is recorded."},
+        "cross_runtime": {"status": "partial", "paths": [], "commands": ["bun run text-wasm:test:all"], "note": "Aggregate WASM smoke exists while A5 still needs to finalize the index/retrieval seam."},
+        "external_consumer": {"status": "missing", "paths": [], "commands": [], "note": "Foundation corpus adapter dogfood is intentionally gated on A5 and a valid dependency path."},
+        "coverage": {"status": "missing", "paths": [], "commands": [], "note": "No descriptive coverage baseline is recorded."},
+        "mutation": {"status": "missing", "paths": [], "commands": [], "note": "No mutation-testing evidence is recorded."}
+      }
+    },
+    {
+      "id": "text-retrieval",
+      "package": "moenarch-text-retrieval",
+      "path": "crates/text/text-retrieval",
+      "targetDisposition": "retain",
+      "evidence": {
+        "tests": {"status": "partial", "paths": ["crates/text/text-retrieval/src"], "commands": ["cargo test -p moenarch-text-retrieval"], "note": "Retrieval tests run in workspace CI; ranking/fusion/filter/reranking coverage has not yet been classified by risk."},
+        "invariants": {"status": "missing", "paths": [], "commands": [], "note": "No generated ranking stability, filter, tie-break, or update interaction suite is recorded."},
+        "evaluation": {"status": "missing", "paths": ["evaluation/metrics.py"], "commands": [], "note": "MRR/Recall@n/nDCG metrics exist, but no versioned retrieval gold corpus is recorded yet."},
+        "performance": {"status": "present", "paths": ["crates/text/text-retrieval/benches/retrieval_index.rs"], "commands": ["cargo bench -p moenarch-text-retrieval"], "note": "Criterion covers retrieval/index query behavior on the current boundary; A5 may relocate responsibilities."},
+        "cross_runtime": {"status": "partial", "paths": [], "commands": ["bun run text-wasm:test:all"], "note": "Aggregate WASM smoke exists without a dedicated ranking parity receipt."},
+        "external_consumer": {"status": "missing", "paths": [], "commands": [], "note": "Foundation corpus retrieval dogfood remains gated on the final A5 seam."},
+        "coverage": {"status": "missing", "paths": [], "commands": [], "note": "No descriptive coverage baseline is recorded."},
+        "mutation": {"status": "missing", "paths": [], "commands": [], "note": "No mutation-testing evidence is recorded for ranking/fusion behavior."}
+      }
+    },
+    {
+      "id": "text-generation",
+      "package": "moenarch-text-generation",
+      "path": "crates/text/text-generation",
+      "targetDisposition": "rename_concrete",
+      "evidence": {
+        "tests": {"status": "partial", "paths": ["crates/text/text-generation/src"], "commands": ["cargo test -p moenarch-text-generation"], "note": "Current Markov behavior is tested through the extraction-era package; A6 will rename the concrete capability."},
+        "invariants": {"status": "missing", "paths": [], "commands": [], "note": "No generated deterministic Markov training/prediction/perplexity invariant suite is recorded."},
+        "evaluation": {"status": "missing", "paths": [], "commands": [], "note": "No versioned generation/perplexity corpus is recorded."},
+        "performance": {"status": "missing", "paths": [], "commands": [], "note": "No dedicated performance evidence is recorded."},
+        "cross_runtime": {"status": "partial", "paths": [], "commands": ["bun run text-wasm:test:all"], "note": "Aggregate WASM smoke exists; A6 will decide the retained concrete outer surface."},
+        "external_consumer": {"status": "missing", "paths": [], "commands": [], "note": "No independent consumer justifies a generic generation facade today."},
+        "coverage": {"status": "missing", "paths": [], "commands": [], "note": "No descriptive coverage baseline is recorded."},
+        "mutation": {"status": "missing", "paths": [], "commands": [], "note": "No mutation-testing evidence is recorded."}
+      }
+    },
+    {
+      "id": "text-question-answering",
+      "package": "moenarch-text-question-answering",
+      "path": "crates/text/text-question-answering",
+      "targetDisposition": "rename_concrete",
+      "evidence": {
+        "tests": {"status": "partial", "paths": ["crates/text/text-question-answering/src"], "commands": ["cargo test -p moenarch-text-question-answering"], "note": "Current extractive-QA tests run in workspace CI; A6 will narrow the package to supplied-context answer spans."},
+        "invariants": {"status": "missing", "paths": [], "commands": [], "note": "No generated span-validity, malformed-model-output, or context-boundary invariant suite is recorded."},
+        "evaluation": {"status": "missing", "paths": [], "commands": [], "note": "No versioned extractive-QA gold corpus is recorded."},
+        "performance": {"status": "missing", "paths": [], "commands": [], "note": "No dedicated latency/throughput evidence is recorded."},
+        "cross_runtime": {"status": "partial", "paths": [], "commands": ["bun run text-wasm:test:all"], "note": "Aggregate WASM smoke exists without model-backed native/browser parity evidence."},
+        "external_consumer": {"status": "missing", "paths": [], "commands": [], "note": "No durable independent-consumer receipt is recorded for the future concrete extractive-QA contract."},
+        "coverage": {"status": "missing", "paths": [], "commands": [], "note": "No descriptive coverage baseline is recorded."},
+        "mutation": {"status": "missing", "paths": [], "commands": [], "note": "No mutation-testing evidence is recorded."}
+      }
+    },
+    {
+      "id": "text-analysis",
+      "package": "moenarch-text-analysis",
+      "path": "crates/text/text-analysis",
+      "targetDisposition": "conditional_recipe",
+      "evidence": {
+        "tests": {"status": "present", "paths": ["crates/text/text-analysis/src"], "commands": ["cargo test -p moenarch-text-analysis"], "note": "Semantic-map, corpus, conversation, provenance, and composition regressions are exercised by package/workspace tests."},
+        "invariants": {"status": "partial", "paths": ["crates/text/text-analysis/src/semantic"], "commands": [], "note": "Deterministic IDs/tie-breaking/provenance have regression coverage, but generated graph/clustering/corpus invariants are not yet a dedicated suite."},
+        "evaluation": {"status": "partial", "paths": ["evaluation/corpora/semantic_similarity_multilingual_v1.jsonl", "evaluation/corpora/topic_shift_multilingual_v1.jsonl"], "commands": [], "note": "Semantic similarity and topic-shift calibration exists, but the fixtures are intentionally small and non-blocking."},
+        "performance": {"status": "present", "paths": ["crates/text/text-analysis/benches/document_and_corpus.rs"], "commands": ["cargo bench -p moenarch-text-analysis"], "note": "Criterion covers document/corpus semantic analysis; larger geometric scaling and memory evidence remain follow-up work."},
+        "cross_runtime": {"status": "partial", "paths": [], "commands": ["bun run nlp-app-ui:test", "bun run text-wasm:test:all"], "note": "Workbench and WASM integration are exercised, but A8 must first decide which recipes remain reusable."},
+        "external_consumer": {"status": "missing", "paths": [], "commands": [], "note": "A8 requires two independent consumers before treating a composition as a durable reusable recipe; that evidence is not recorded yet."},
+        "coverage": {"status": "missing", "paths": [], "commands": [], "note": "No descriptive coverage baseline is recorded."},
+        "mutation": {"status": "missing", "paths": [], "commands": [], "note": "No mutation-testing evidence is recorded for clustering, trajectories, or composition logic."}
+      }
+    },
+    {
+      "id": "nlp-package-registry",
+      "package": "moenarch-nlp-package-registry",
+      "path": "crates/text/nlp-package-registry",
+      "targetDisposition": "outer_boundary",
+      "evidence": {
+        "tests": {"status": "partial", "paths": ["crates/text/nlp-package-registry/src"], "commands": ["cargo test -p moenarch-nlp-package-registry"], "note": "Aggregate registry tests run in workspace CI; A9 will make this the authoritative erased-operation boundary."},
+        "invariants": {"status": "missing", "paths": [], "commands": [], "note": "No dedicated namespace/schema/malformed-input invariant suite is recorded for the post-A9 registry contract."},
+        "evaluation": {"status": "not_applicable", "paths": [], "commands": [], "note": "Semantic quality evaluation belongs to typed capabilities, not the transport/discovery registry."},
+        "performance": {"status": "missing", "paths": [], "commands": [], "note": "No adapter/dispatch overhead baseline is recorded."},
+        "cross_runtime": {"status": "present", "paths": [], "commands": ["bun run text-wasm:test:all", "bun run nlp-app-ui:test"], "note": "Aggregate WASM and UI integration smoke exercises the registry-facing boundary."},
+        "external_consumer": {"status": "partial", "paths": ["crates/text/nlp-package-registry-cli", "crates/text/nlp-package-registry-server"], "commands": [], "note": "Repository-owned aggregate adapters consume the registry, but A10 still needs to prove which outer adapters are independently earned."},
+        "coverage": {"status": "missing", "paths": [], "commands": [], "note": "No descriptive coverage baseline is recorded."},
+        "mutation": {"status": "missing", "paths": [], "commands": [], "note": "No mutation-testing evidence is recorded for dispatch/error adaptation."}
+      }
+    }
+  ]
+}
