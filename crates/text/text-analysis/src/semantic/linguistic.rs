@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use text_core::TextSpan;
 use text_linguistics::LinguisticAnalysis;
 
-use super::{SemanticAnalysisReport, SemanticUnit};
+use super::SemanticAnalysisReport;
 
 /// Node kinds in the composed linguistic semantic graph.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -233,7 +233,7 @@ pub fn compose_linguistic_semantic_graph(
             id: event_id.clone(),
             kind: SemanticGraphNodeKind::Event,
             label: event.predicate.clone(),
-            span: None,
+            span: Some(event.predicate_span),
             sequence_index: Some(event.sentence_index),
             confidence: Some(event.confidence),
         });
@@ -252,7 +252,7 @@ pub fn compose_linguistic_semantic_graph(
                 id: argument_id.clone(),
                 kind: SemanticGraphNodeKind::EventArgument,
                 label: argument.text.clone(),
-                span: None,
+                span: Some(argument.span),
                 sequence_index: Some(event.sentence_index),
                 confidence: Some(argument.confidence),
             });
@@ -284,13 +284,11 @@ pub fn compose_linguistic_semantic_graph(
                 "{} {} {}",
                 relation.subject, relation.relation, relation.object
             ),
-            span: None,
-            sequence_index: None,
+            span: Some(relation.relation_span),
+            sequence_index: Some(relation.sentence_index),
             confidence: Some(relation.confidence),
         });
-        if let Some(unit) =
-            unit_containing_relation(&primary_units, &relation.subject, &relation.object)
-        {
+        if let Some(unit) = unit_by_sequence.get(&relation.sentence_index) {
             edges.push(SemanticGraphEdge {
                 source_id: unit.id.clone(),
                 target_id: relation_id.clone(),
@@ -306,6 +304,8 @@ pub fn compose_linguistic_semantic_graph(
             &relation_id,
             "subject",
             &relation.subject,
+            relation.subject_span,
+            relation.sentence_index,
             SemanticGraphEdgeKind::RelationSubject,
             relation.confidence,
         );
@@ -316,6 +316,8 @@ pub fn compose_linguistic_semantic_graph(
             &relation_id,
             "object",
             &relation.object,
+            relation.object_span,
+            relation.sentence_index,
             SemanticGraphEdgeKind::RelationObject,
             relation.confidence,
         );
@@ -399,19 +401,6 @@ fn token_range_span(
     })
 }
 
-fn unit_containing_relation<'a>(
-    units: &[&'a SemanticUnit],
-    subject: &str,
-    object: &str,
-) -> Option<&'a SemanticUnit> {
-    let subject = subject.to_lowercase();
-    let object = object.to_lowercase();
-    units.iter().copied().find(|unit| {
-        let text = unit.text.to_lowercase();
-        text.contains(&subject) && text.contains(&object)
-    })
-}
-
 #[allow(clippy::too_many_arguments)]
 fn add_relation_endpoint(
     nodes: &mut Vec<SemanticGraphNode>,
@@ -420,6 +409,8 @@ fn add_relation_endpoint(
     relation_id: &str,
     role: &str,
     text: &str,
+    span: TextSpan,
+    sequence_index: usize,
     edge_kind: SemanticGraphEdgeKind,
     confidence: f32,
 ) {
@@ -428,8 +419,8 @@ fn add_relation_endpoint(
         id: endpoint_id.clone(),
         kind: SemanticGraphNodeKind::RelationEndpoint,
         label: text.to_string(),
-        span: None,
-        sequence_index: None,
+        span: Some(span),
+        sequence_index: Some(sequence_index),
         confidence: Some(confidence),
     });
     edges.push(SemanticGraphEdge {

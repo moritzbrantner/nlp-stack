@@ -80,7 +80,7 @@ Implemented baseline:
 - typed edges retain distinctions such as concept membership, semantic neighbor, mention-to-canonical, coreference, event arguments, relation subject/object, discourse transition, and topic membership;
 - source spans are retained wherever the underlying linguistic output exposes them.
 
-`text-analysis` performs graph projection only. Extraction remains owned by `text-linguistics`. Next work should improve explicit span/provenance on event/relation outputs themselves rather than reconstructing information in the composition layer.
+`text-analysis` performs graph projection only. Extraction remains owned by `text-linguistics`. Event predicates/arguments and relation subjects/predicates/objects now carry explicit source spans and sentence provenance from dependency extraction, so graph composition no longer guesses relation ownership from text matching. Further work can extend the same provenance discipline to richer model-backed event/relation extractors.
 
 ### H6: conversation dynamics
 
