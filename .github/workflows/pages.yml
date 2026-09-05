@@ -6,8 +6,10 @@ on:
       - "web/**"
       - "packages/nlp-app-ui/**"
       - "packages/text-core-wasm/**"
+      - "packages/text-analysis-wasm/**"
       - "crates/bindings/text-core-wasm/**"
-      - "crates/text/text-core/**"
+      - "crates/bindings/text-analysis-wasm/**"
+      - "crates/text/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - "rust-toolchain.toml"
@@ -18,8 +20,10 @@ on:
       - "web/**"
       - "packages/nlp-app-ui/**"
       - "packages/text-core-wasm/**"
+      - "packages/text-analysis-wasm/**"
       - "crates/bindings/text-core-wasm/**"
-      - "crates/text/text-core/**"
+      - "crates/bindings/text-analysis-wasm/**"
+      - "crates/text/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - "rust-toolchain.toml"
@@ -57,7 +61,7 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Build shared React package
         run: bun run nlp-app-ui:build
-      - name: Build text-core Wasm assets
+      - name: Build browser Wasm assets
         run: bash web/scripts/build-wasm-assets.sh
       - name: Install Pages dependencies
         working-directory: web
