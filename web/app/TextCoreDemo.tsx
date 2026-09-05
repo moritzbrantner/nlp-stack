@@ -6,7 +6,7 @@ import {
   type PackageSurface,
   type SurfaceRequest,
   type SurfaceResponse,
-} from "../../packages/nlp-app-ui/src/package-surface/index";
+} from "../../packages/nlp-app-ui/dist/package-surface/index.js";
 
 type TextCoreRuntime = {
   packageSurface: () => PackageSurface;
