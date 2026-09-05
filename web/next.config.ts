@@ -1,3 +1,5 @@
+import { resolve } from "node:path";
+
 import type { NextConfig } from "next";
 
 const isGitHubActions = process.env.GITHUB_ACTIONS === "true";
@@ -12,6 +14,9 @@ const nextConfig: NextConfig = {
   basePath,
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath,
+  },
+  turbopack: {
+    root: resolve(process.cwd(), ".."),
   },
   ...(basePath ? { assetPrefix: `${basePath}/` } : {}),
 };
