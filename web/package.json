@@ -5,9 +5,10 @@
   "type": "module",
   "packageManager": "bun@1.3.14",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "typecheck": "tsc --noEmit",
+    "shared-ui:build": "bun run --cwd ../packages/nlp-app-ui build",
+    "dev": "bun run shared-ui:build && next dev",
+    "build": "bun run shared-ui:build && next build",
+    "typecheck": "bun run shared-ui:build && tsc --noEmit",
     "test": "vitest run",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
