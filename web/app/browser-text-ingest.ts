@@ -104,7 +104,10 @@ export function normalizeExtractedText(text: string): string {
     .trim();
 }
 
-export function extractMarkupText(markup: string, mimeType = "text/html"): string {
+export function extractMarkupText(
+  markup: string,
+  mimeType: DOMParserSupportedType = "text/html",
+): string {
   const documentNode = new DOMParser().parseFromString(markup, mimeType);
   if (mimeType === "text/html") {
     for (const node of documentNode.querySelectorAll("script, style, noscript, template")) {
@@ -147,7 +150,7 @@ export async function ingestBrowserFile(
   if (MARKUP_EXTENSIONS.has(extension) || file.type === "text/html" || file.type.includes("xml")) {
     reportProgress(`Parsing ${file.name}…`);
     const source = await file.text();
-    const mimeType = extension === "xml" || extension === "xhtml" || file.type.includes("xml")
+    const mimeType: DOMParserSupportedType = extension === "xml" || extension === "xhtml" || file.type.includes("xml")
       ? "application/xml"
       : "text/html";
     const text = extractMarkupText(source, mimeType);
