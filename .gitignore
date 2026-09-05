@@ -39,6 +39,12 @@ prototypes/web/*/playwright-report/
 prototypes/web/*/test-results/
 prototypes/web/video-analysis-web/dist/
 prototypes/web/video-analysis-web/public/workspace-architecture.json
+web/.next/
+web/out/
+web/storybook-static/
+web/playwright-report/
+web/test-results/
+web/public/wasm/
 use-case-output/**/*.mp4
 use-case-output/**/*.mov
 use-case-output/**/*.mkv
