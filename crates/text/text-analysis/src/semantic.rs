@@ -6,6 +6,7 @@ mod linguistic;
 mod model;
 mod scaling;
 mod senses;
+mod temporal;
 mod units;
 
 use std::collections::BTreeSet;
@@ -45,6 +46,14 @@ pub use self::scaling::{compare_semantic_neighborhoods, SemanticNeighborhoodEvid
 pub use self::senses::{
     analyze_word_senses, analyze_word_senses_with, SemanticWordOccurrence, SemanticWordSense,
     SemanticWordSenseAnalysisOptions, SemanticWordSenseReport,
+};
+pub use self::temporal::{
+    analyze_corpus_temporal, analyze_corpus_temporal_with, SemanticCorpusTemporalAnalysisOptions,
+    SemanticCorpusTemporalConceptChange, SemanticCorpusTemporalConceptShare,
+    SemanticCorpusTemporalReport, SemanticCorpusTemporalSenseChange,
+    SemanticCorpusTemporalSenseShare, SemanticCorpusTemporalWindow,
+    SemanticCorpusTemporalWindowReport, SemanticCorpusTemporalWordSenseWindow,
+    SemanticTemporalChangeKind,
 };
 
 /// Analyzes one document with the deterministic hashed embedding baseline.
