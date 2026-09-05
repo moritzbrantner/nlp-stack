@@ -13,7 +13,7 @@ export default function Home() {
               Text analysis studio
             </h2>
             <p className="mt-3 text-base leading-7 text-muted">
-              Paste text directly or upload a document. Text-bearing files are parsed locally; scanned PDFs and images can be OCRed before the extracted text is handed to the same deterministic text-analysis surface used elsewhere in the workspace.
+              Paste text directly or upload a document. Text-bearing files are parsed locally; scanned PDFs and images can be OCRed before the extracted text is handed to the deterministic text-analysis surface for document analysis, a ranked word corpus, and a provenance-preserving semantic corpus.
             </p>
           </div>
           <TextAnalysisStudio />
@@ -23,7 +23,7 @@ export default function Home() {
           <h2 id="architecture-heading" className="text-lg font-semibold text-ink">Ownership boundary</h2>
           <ul className="mt-4 grid gap-3 text-sm leading-6 text-muted md:grid-cols-3">
             <li className="border-l-2 border-line pl-4">The browser owns file selection, PDF text extraction, rendering, and OCR adaptation.</li>
-            <li className="border-l-2 border-line pl-4">Rust text-analysis owns summaries, lexical evidence, linguistic analysis, embeddings, and semantic structure.</li>
+            <li className="border-l-2 border-line pl-4">Rust text-analysis owns summaries, lexical evidence, word-corpus statistics, linguistic analysis, embeddings, and semantic corpus structure.</li>
             <li className="border-l-2 border-line pl-4">GitHub Pages remains a static host; analysis does not depend on an nlp-stack API server.</li>
           </ul>
         </section>
