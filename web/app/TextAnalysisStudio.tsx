@@ -25,7 +25,15 @@ type TextAnalysisRuntime = {
 type RuntimeHandle = { ready: Promise<TextAnalysisRuntime> };
 type RuntimeWindow = Window & { nlpStackTextAnalysis?: RuntimeHandle };
 type JsonRecord = Record<string, unknown>;
-type ResultTab = "overview" | "keywords" | "entities" | "linguistics" | "semantics" | "technical";
+type ResultTab =
+  | "word-corpus"
+  | "semantic-corpus"
+  | "overview"
+  | "keywords"
+  | "entities"
+  | "linguistics"
+  | "semantic-map"
+  | "technical";
 
 const runtimeReadyEvent = "nlp-stack-text-analysis-ready";
 const runtimeErrorEvent = "nlp-stack-text-analysis-error";
@@ -46,7 +54,8 @@ export function TextAnalysisStudio() {
   const [error, setError] = useState<string | null>(null);
   const [documentReport, setDocumentReport] = useState<JsonRecord | null>(null);
   const [semanticReport, setSemanticReport] = useState<JsonRecord | null>(null);
-  const [activeTab, setActiveTab] = useState<ResultTab>("overview");
+  const [corpusReport, setCorpusReport] = useState<JsonRecord | null>(null);
+  const [activeTab, setActiveTab] = useState<ResultTab>("word-corpus");
 
   async function analyze(nextText = text, sourceLabel = source?.sourceLabel ?? "pasted-text") {
     const trimmed = nextText.trim();
@@ -61,8 +70,8 @@ export function TextAnalysisStudio() {
     try {
       const runtime = await loadRuntime();
       const id = documentId(sourceLabel);
-      setPhase("Running document and semantic analysis in Rust/Wasm…");
-      const [documentResponse, semanticResponse] = await Promise.all([
+      setPhase("Running document, semantic-map, and semantic-corpus analysis in Rust/Wasm…");
+      const [documentResponse, semanticResponse, corpusResponse] = await Promise.all([
         Promise.resolve(
           runtime.runOperation({
             operation: "analysis.document",
@@ -93,11 +102,24 @@ export function TextAnalysisStudio() {
             },
           }),
         ),
+        Promise.resolve(
+          runtime.runOperation({
+            operation: "analysis.semantic-corpus",
+            input: {
+              items: [{ id, source: sourceLabel, text: trimmed }],
+              topTerms: Math.max(64, Math.min(trimmed.length, 5000)),
+              neighborsPerUnit: 4,
+              neighborThreshold: 0.25,
+              clusterThreshold: 0.6,
+            },
+          }),
+        ),
       ]);
 
       setDocumentReport(surfaceResult(documentResponse));
       setSemanticReport(surfaceResult(semanticResponse));
-      setActiveTab("overview");
+      setCorpusReport(surfaceResult(corpusResponse));
+      setActiveTab("word-corpus");
       setPhase("Analysis ready. Results were produced locally by text-analysis Wasm.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to analyze this text.");
@@ -112,6 +134,7 @@ export function TextAnalysisStudio() {
     setError(null);
     setDocumentReport(null);
     setSemanticReport(null);
+    setCorpusReport(null);
     try {
       const result = await ingestBrowserFile(
         file,
@@ -133,9 +156,7 @@ export function TextAnalysisStudio() {
   function onDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     const file = event.dataTransfer.files?.[0];
-    if (file) {
-      void ingest(file);
-    }
+    if (file) void ingest(file);
   }
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -148,6 +169,7 @@ export function TextAnalysisStudio() {
   const enrichedStats = asRecord(documentReport?.enrichedStats);
   const linguistic = asRecord(documentReport?.linguistic);
   const semantic = asRecord(semanticReport?.semantic);
+  const corpusLexical = asRecord(corpusReport?.lexical);
   const keywords = asRecordArray(lexical?.keywords);
   const phraseKeywords = asRecordArray(lexical?.phraseKeywords);
   const topTerms = asRecordArray(lexical?.topTerms);
@@ -191,9 +213,7 @@ export function TextAnalysisStudio() {
             disabled={busy}
             onChange={(event) => {
               const file = event.target.files?.[0];
-              if (file) {
-                void ingest(file);
-              }
+              if (file) void ingest(file);
               event.target.value = "";
             }}
           />
@@ -246,9 +266,7 @@ export function TextAnalysisStudio() {
           <p className="text-sm text-muted" aria-live="polite">{phase}</p>
         </div>
         {error ? (
-          <p className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900" role="alert">
-            {error}
-          </p>
+          <p className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900" role="alert">{error}</p>
         ) : null}
       </form>
 
@@ -259,16 +277,18 @@ export function TextAnalysisStudio() {
               <p className="text-sm font-semibold uppercase tracking-[0.12em] text-accent">Local Rust result</p>
               <h3 id="analysis-results-heading" className="mt-1 text-2xl font-semibold text-ink">Analysis</h3>
             </div>
-            <p className="text-sm text-muted">No text-analysis API request is required.</p>
+            <p className="text-sm text-muted">Document, word-corpus, and semantic-corpus evidence all come from text-analysis Wasm.</p>
           </div>
 
           <div className="mt-5 flex gap-1 overflow-x-auto border-b border-line" role="tablist" aria-label="Analysis sections">
             {([
+              ["word-corpus", "Word corpus"],
+              ["semantic-corpus", "Semantic corpus"],
               ["overview", "Overview"],
               ["keywords", "Keywords"],
               ["entities", "Entities"],
               ["linguistics", "Linguistics"],
-              ["semantics", "Semantics"],
+              ["semantic-map", "Semantic map"],
               ["technical", "Technical"],
             ] as const).map(([id, label]) => (
               <button
@@ -285,6 +305,8 @@ export function TextAnalysisStudio() {
           </div>
 
           <div className="pt-6">
+            {activeTab === "word-corpus" ? <WordCorpusPanel lexical={corpusLexical} /> : null}
+            {activeTab === "semantic-corpus" ? <SemanticCorpusPanel report={corpusReport} /> : null}
             {activeTab === "overview" ? (
               <OverviewPanel
                 documentReport={documentReport}
@@ -295,17 +317,11 @@ export function TextAnalysisStudio() {
                 clusters={clusters}
               />
             ) : null}
-            {activeTab === "keywords" ? (
-              <KeywordsPanel keywords={keywords} phraseKeywords={phraseKeywords} topTerms={topTerms} />
-            ) : null}
+            {activeTab === "keywords" ? <KeywordsPanel keywords={keywords} phraseKeywords={phraseKeywords} topTerms={topTerms} /> : null}
             {activeTab === "entities" ? <EntitiesPanel entities={entities} /> : null}
             {activeTab === "linguistics" ? <LinguisticsPanel linguistic={linguistic} /> : null}
-            {activeTab === "semantics" ? (
-              <SemanticsPanel clusters={clusters} timeline={timeline} unitsById={unitsById} semantic={semantic} />
-            ) : null}
-            {activeTab === "technical" ? (
-              <TechnicalPanel documentReport={documentReport} semanticReport={semanticReport} />
-            ) : null}
+            {activeTab === "semantic-map" ? <SemanticMapPanel clusters={clusters} timeline={timeline} unitsById={unitsById} semantic={semantic} /> : null}
+            {activeTab === "technical" ? <TechnicalPanel documentReport={documentReport} semanticReport={semanticReport} corpusReport={corpusReport} /> : null}
           </div>
         </section>
       ) : null}
@@ -313,180 +329,105 @@ export function TextAnalysisStudio() {
   );
 }
 
-function OverviewPanel({
-  documentReport,
-  core,
-  lexical,
-  enrichedStats,
-  summary,
-  clusters,
-}: {
-  documentReport: JsonRecord;
-  core: JsonRecord | null;
-  lexical: JsonRecord | null;
-  enrichedStats: JsonRecord | null;
-  summary: JsonRecord[];
-  clusters: JsonRecord[];
-}) {
-  const tokens = asArray(core?.tokens).length;
-  const sentences = asArray(core?.sentences).length;
-  const paragraphs = asArray(core?.paragraphs).length;
-  const scriptProfile = asRecord(core?.scriptProfile);
-  const readability = asRecord(lexical?.readability);
-  const sentiment = asRecord(lexical?.sentiment);
+function WordCorpusPanel({ lexical }: { lexical: JsonRecord | null }) {
+  const terms = asRecordArray(lexical?.topTerms);
+  const uniqueTerms = numberValue(lexical?.uniqueTerms);
+  return (
+    <div className="grid gap-7">
+      <section>
+        <h4 className="text-lg font-semibold text-ink">Word corpus</h4>
+        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
+          Corpus-wide normalized term frequencies from Rust. This is lexical evidence over the submitted source, not a browser-generated word cloud.
+        </p>
+        <dl className="mt-4 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <Fact label="Corpus items" value={formatInteger(lexical?.itemCount)} />
+          <Fact label="Words" value={formatInteger(lexical?.wordCount)} />
+          <Fact label="Unique terms" value={formatInteger(lexical?.uniqueTerms)} />
+          <Fact label="Lexical diversity" value={formatNumber(lexical?.lexicalDiversity)} />
+        </dl>
+        {uniqueTerms > terms.length ? (
+          <p className="mt-3 text-xs text-muted">Showing the {terms.length.toLocaleString()} highest-frequency terms of {uniqueTerms.toLocaleString()} unique terms.</p>
+        ) : null}
+      </section>
+
+      <section>
+        <h4 className="text-lg font-semibold text-ink">Ranked corpus terms</h4>
+        {terms.length ? (
+          <div className="mt-3 max-h-[36rem] overflow-auto rounded-md border border-line bg-surface">
+            <table className="w-full min-w-[32rem] border-collapse text-left text-sm">
+              <thead className="sticky top-0 bg-surface">
+                <tr className="border-b border-line text-muted">
+                  <th className="px-3 py-2 font-medium">#</th>
+                  <th className="px-3 py-2 font-medium">Term</th>
+                  <th className="px-3 py-2 text-right font-medium">Count</th>
+                  <th className="px-3 py-2 text-right font-medium">Frequency</th>
+                </tr>
+              </thead>
+              <tbody>
+                {terms.map((term, index) => (
+                  <tr key={`${stringValue(term.term)}-${index}`} className="border-b border-line/70 last:border-0">
+                    <td className="px-3 py-2 text-muted">{index + 1}</td>
+                    <td className="px-3 py-2 font-medium text-ink">{stringValue(term.term)}</td>
+                    <td className="px-3 py-2 text-right text-ink">{formatInteger(term.count)}</td>
+                    <td className="px-3 py-2 text-right text-muted">{formatPercent(term.frequency)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <p className="mt-3 text-sm text-muted">No corpus terms were produced.</p>}
+      </section>
+    </div>
+  );
+}
+
+function SemanticCorpusPanel({ report }: { report: JsonRecord | null }) {
+  const concepts = asRecordArray(report?.concepts);
+  const sources = asRecordArray(report?.sources);
+  const semantic = asRecord(report?.semantic);
+  const units = asRecordArray(semantic?.units);
+  const timeline = asRecordArray(semantic?.timeline);
+  const unitsById = new Map(units.map((unit) => [stringValue(unit.id), unit]));
 
   return (
     <div className="grid gap-8">
-      <section aria-labelledby="summary-heading">
-        <h4 id="summary-heading" className="text-lg font-semibold text-ink">Extractive summary</h4>
-        {summary.length ? (
-          <ol className="mt-3 grid gap-3">
-            {summary.map((item, index) => (
-              <li key={`${stringValue(item.index)}-${index}`} className="border-l-2 border-line pl-4 text-sm leading-6 text-ink">
-                {stringValue(item.text)}
-              </li>
-            ))}
-          </ol>
-        ) : <p className="mt-2 text-sm text-muted">No summary sentences were produced.</p>}
-      </section>
-
-      <section aria-labelledby="facts-heading">
-        <h4 id="facts-heading" className="text-lg font-semibold text-ink">Document facts</h4>
-        <dl className="mt-3 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
-          <Fact label="Language" value={stringValue(documentReport.language, "undetermined")} />
-          <Fact label="Dominant script" value={stringValue(scriptProfile?.dominantScript, "undetermined")} />
-          <Fact label="Tokens" value={String(tokens)} />
-          <Fact label="Sentences" value={String(sentences)} />
-          <Fact label="Paragraphs" value={String(paragraphs)} />
-          <Fact label="Lexical density" value={formatNumber(enrichedStats?.lexicalDensity)} />
-          <Fact label="Shannon entropy" value={formatNumber(enrichedStats?.shannonEntropy)} />
-          <Fact label="Average sentence words" value={formatNumber(readability?.averageSentenceWords)} />
-          <Fact label="Average word characters" value={formatNumber(readability?.averageWordChars)} />
+      <section>
+        <h4 className="text-lg font-semibold text-ink">Semantic corpus</h4>
+        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
+          Deterministic concepts aggregated across corpus items, with representative passages and source provenance retained by the Rust semantic-corpus analysis.
+        </p>
+        <dl className="mt-4 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <Fact label="Corpus items" value={formatInteger(report?.itemCount)} />
+          <Fact label="Sources" value={String(sources.length)} />
+          <Fact label="Concepts" value={String(concepts.length)} />
+          <Fact label="Semantic units" value={String(timeline.length)} />
         </dl>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div>
-          <h4 className="text-lg font-semibold text-ink">Sentiment evidence</h4>
-          <JsonTable value={sentiment} empty="No lexical sentiment evidence." />
-        </div>
-        <div>
-          <h4 className="text-lg font-semibold text-ink">Leading semantic concepts</h4>
-          {clusters.length ? (
-            <ul className="mt-3 grid gap-3">
-              {clusters.slice(0, 6).map((cluster) => (
-                <li key={stringValue(cluster.id)} className="text-sm leading-6">
-                  <span className="font-medium text-ink">{stringValue(cluster.representativeText)}</span>
-                  <span className="ml-2 text-muted">mean similarity {formatNumber(cluster.meanSimilarity)}</span>
-                </li>
-              ))}
-            </ul>
-          ) : <p className="mt-2 text-sm text-muted">No semantic clusters were produced.</p>}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function KeywordsPanel({ keywords, phraseKeywords, topTerms }: { keywords: JsonRecord[]; phraseKeywords: JsonRecord[]; topTerms: JsonRecord[] }) {
-  return (
-    <div className="grid gap-8 lg:grid-cols-3">
-      <RankedTextList title="Keywords" items={keywords} />
-      <RankedTextList title="Phrase keywords" items={phraseKeywords} />
-      <RankedTextList title="Top terms" items={topTerms} />
-    </div>
-  );
-}
-
-function RankedTextList({ title, items }: { title: string; items: JsonRecord[] }) {
-  return (
-    <section>
-      <h4 className="text-lg font-semibold text-ink">{title}</h4>
-      {items.length ? (
-        <ol className="mt-3 grid gap-2">
-          {items.map((item, index) => (
-            <li key={`${stringValue(item.text ?? item.term)}-${index}`} className="flex items-baseline justify-between gap-3 border-b border-line py-2 text-sm">
-              <span className="font-medium text-ink">{stringValue(item.text ?? item.term ?? item.terms)}</span>
-              <span className="shrink-0 text-muted">
-                {typeof item.score === "number" ? formatNumber(item.score) : typeof item.count === "number" ? `${item.count}×` : ""}
-              </span>
-            </li>
-          ))}
-        </ol>
-      ) : <p className="mt-2 text-sm text-muted">No items.</p>}
-    </section>
-  );
-}
-
-function EntitiesPanel({ entities }: { entities: JsonRecord[] }) {
-  return (
-    <section>
-      <h4 className="text-lg font-semibold text-ink">Rule-based entity evidence</h4>
-      <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">These are deterministic mentions from the lexical analysis, not claims about a person or organization beyond the source text.</p>
-      {entities.length ? (
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[32rem] border-collapse text-left text-sm">
-            <thead><tr className="border-b border-line text-muted"><th className="py-2 pr-4 font-medium">Mention</th><th className="py-2 pr-4 font-medium">Kind</th><th className="py-2 font-medium">Span</th></tr></thead>
-            <tbody>
-              {entities.map((entity, index) => (
-                <tr key={`${stringValue(entity.text)}-${index}`} className="border-b border-line/70">
-                  <td className="py-3 pr-4 font-medium text-ink">{stringValue(entity.text)}</td>
-                  <td className="py-3 pr-4 text-muted">{stringValue(entity.kind)}</td>
-                  <td className="py-3 text-muted"><JsonInline value={entity.span} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : <p className="mt-3 text-sm text-muted">No rule-based entity mentions were found.</p>}
-    </section>
-  );
-}
-
-function LinguisticsPanel({ linguistic }: { linguistic: JsonRecord | null }) {
-  const sections = [
-    ["language", "Language"], ["tokenizer", "Tokenizer"], ["lemmas", "Lemmas"], ["morphology", "Morphology"],
-    ["pos", "Part of speech"], ["chunks", "Chunks"], ["dependencies", "Dependencies"], ["entities", "Linguistic entities"],
-    ["canonicalEntities", "Canonical entities"], ["coreference", "Coreference"], ["events", "Events"], ["relations", "Relations"],
-    ["discourse", "Discourse"], ["outline", "Outline"], ["topics", "Topics"], ["style", "Style"],
-  ] as const;
-
-  if (!linguistic) {
-    return <p className="text-sm text-muted">No linguistic section was produced.</p>;
-  }
-
-  return (
-    <div className="grid gap-3">
-      {sections.map(([key, label]) => (
-        <details key={key} className="rounded-md border border-line bg-surface px-4 py-3" open={key === "topics" || key === "style" || key === "outline"}>
-          <summary className="cursor-pointer text-sm font-semibold text-ink">{label}</summary>
-          <JsonBlock value={linguistic[key]} />
-        </details>
-      ))}
-    </div>
-  );
-}
-
-function SemanticsPanel({ clusters, timeline, unitsById, semantic }: { clusters: JsonRecord[]; timeline: JsonRecord[]; unitsById: Map<string, JsonRecord>; semantic: JsonRecord | null }) {
-  return (
-    <div className="grid gap-8">
       <section>
-        <h4 className="text-lg font-semibold text-ink">Concept clusters</h4>
-        <div className="mt-3 grid gap-4 lg:grid-cols-2">
-          {clusters.map((cluster) => (
-            <article key={stringValue(cluster.id)} className="border-l-2 border-line pl-4">
-              <p className="text-sm font-semibold text-ink">{stringValue(cluster.representativeText)}</p>
-              <p className="mt-1 text-xs leading-5 text-muted">
-                {stringValue(cluster.id)} · {asArray(cluster.memberUnitIds).length} units · mean similarity {formatNumber(cluster.meanSimilarity)}
-              </p>
-            </article>
-          ))}
-        </div>
+        <h4 className="text-lg font-semibold text-ink">Concept evidence</h4>
+        {concepts.length ? (
+          <div className="mt-3 grid gap-4 lg:grid-cols-2">
+            {concepts.map((concept) => {
+              const representative = asRecord(concept.representative);
+              return (
+                <article key={stringValue(concept.clusterId)} className="rounded-md border border-line bg-surface p-4">
+                  <p className="text-sm font-semibold leading-6 text-ink">{stringValue(representative?.text)}</p>
+                  <dl className="mt-3 grid gap-2 text-xs text-muted">
+                    <div className="flex justify-between gap-3"><dt>Concept</dt><dd className="text-right">{stringValue(concept.clusterId)}</dd></div>
+                    <div className="flex justify-between gap-3"><dt>Member units</dt><dd>{formatInteger(concept.memberUnitCount)}</dd></div>
+                    <div className="flex justify-between gap-3"><dt>Source items</dt><dd>{formatInteger(concept.sourceItemCount)}</dd></div>
+                    <div className="flex justify-between gap-3"><dt>Source</dt><dd className="text-right">{stringValue(representative?.source, stringValue(representative?.sourceId))}</dd></div>
+                  </dl>
+                </article>
+              );
+            })}
+          </div>
+        ) : <p className="mt-3 text-sm text-muted">No semantic corpus concepts were produced.</p>}
       </section>
 
       <section>
-        <h4 className="text-lg font-semibold text-ink">Semantic trajectory</h4>
-        <p className="mt-1 text-sm leading-6 text-muted">Ordered source units with their deterministic concept assignment and change from the preceding semantic state.</p>
+        <h4 className="text-lg font-semibold text-ink">Corpus semantic trajectory</h4>
         {timeline.length ? (
           <ol className="mt-4 grid gap-3">
             {timeline.map((point, index) => {
@@ -499,28 +440,139 @@ function SemanticsPanel({ clusters, timeline, unitsById, semantic }: { clusters:
               );
             })}
           </ol>
-        ) : <p className="mt-3 text-sm text-muted">No semantic timeline was produced.</p>}
-      </section>
-
-      <section>
-        <h4 className="text-lg font-semibold text-ink">Hotspots and neighborhood evidence</h4>
-        <JsonBlock value={{ hotspots: semantic?.hotspots, neighbors: semantic?.neighbors }} />
+        ) : <p className="mt-3 text-sm text-muted">No semantic corpus timeline was produced.</p>}
       </section>
     </div>
   );
 }
 
-function TechnicalPanel({ documentReport, semanticReport }: { documentReport: JsonRecord; semanticReport: JsonRecord | null }) {
+function OverviewPanel({ documentReport, core, lexical, enrichedStats, summary, clusters }: {
+  documentReport: JsonRecord;
+  core: JsonRecord | null;
+  lexical: JsonRecord | null;
+  enrichedStats: JsonRecord | null;
+  summary: JsonRecord[];
+  clusters: JsonRecord[];
+}) {
+  const scriptProfile = asRecord(core?.scriptProfile);
+  const readability = asRecord(lexical?.readability);
+  const sentiment = asRecord(lexical?.sentiment);
+  return (
+    <div className="grid gap-8">
+      <section>
+        <h4 className="text-lg font-semibold text-ink">Extractive summary</h4>
+        {summary.length ? (
+          <ol className="mt-3 grid gap-3">
+            {summary.map((item, index) => (
+              <li key={`${stringValue(item.index)}-${index}`} className="border-l-2 border-line pl-4 text-sm leading-6 text-ink">{stringValue(item.text)}</li>
+            ))}
+          </ol>
+        ) : <p className="mt-2 text-sm text-muted">No summary sentences were produced.</p>}
+      </section>
+      <section>
+        <h4 className="text-lg font-semibold text-ink">Document facts</h4>
+        <dl className="mt-3 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <Fact label="Language" value={stringValue(documentReport.language, "undetermined")} />
+          <Fact label="Dominant script" value={stringValue(scriptProfile?.dominantScript, "undetermined")} />
+          <Fact label="Tokens" value={String(asArray(core?.tokens).length)} />
+          <Fact label="Sentences" value={String(asArray(core?.sentences).length)} />
+          <Fact label="Paragraphs" value={String(asArray(core?.paragraphs).length)} />
+          <Fact label="Lexical density" value={formatNumber(enrichedStats?.lexicalDensity)} />
+          <Fact label="Shannon entropy" value={formatNumber(enrichedStats?.shannonEntropy)} />
+          <Fact label="Average sentence words" value={formatNumber(readability?.averageSentenceWords)} />
+          <Fact label="Average word characters" value={formatNumber(readability?.averageWordChars)} />
+        </dl>
+      </section>
+      <section className="grid gap-6 lg:grid-cols-2">
+        <div><h4 className="text-lg font-semibold text-ink">Sentiment evidence</h4><JsonTable value={sentiment} empty="No lexical sentiment evidence." /></div>
+        <div>
+          <h4 className="text-lg font-semibold text-ink">Leading semantic concepts</h4>
+          {clusters.length ? (
+            <ul className="mt-3 grid gap-3">{clusters.slice(0, 6).map((cluster) => (
+              <li key={stringValue(cluster.id)} className="text-sm leading-6"><span className="font-medium text-ink">{stringValue(cluster.representativeText)}</span><span className="ml-2 text-muted">mean similarity {formatNumber(cluster.meanSimilarity)}</span></li>
+            ))}</ul>
+          ) : <p className="mt-2 text-sm text-muted">No semantic clusters were produced.</p>}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function KeywordsPanel({ keywords, phraseKeywords, topTerms }: { keywords: JsonRecord[]; phraseKeywords: JsonRecord[]; topTerms: JsonRecord[] }) {
+  return <div className="grid gap-8 lg:grid-cols-3"><RankedTextList title="Keywords" items={keywords} /><RankedTextList title="Phrase keywords" items={phraseKeywords} /><RankedTextList title="Top terms" items={topTerms} /></div>;
+}
+
+function RankedTextList({ title, items }: { title: string; items: JsonRecord[] }) {
+  return (
+    <section>
+      <h4 className="text-lg font-semibold text-ink">{title}</h4>
+      {items.length ? <ol className="mt-3 grid gap-2">{items.map((item, index) => (
+        <li key={`${stringValue(item.text ?? item.term)}-${index}`} className="flex items-baseline justify-between gap-3 border-b border-line py-2 text-sm">
+          <span className="font-medium text-ink">{stringValue(item.text ?? item.term ?? item.terms)}</span>
+          <span className="shrink-0 text-muted">{typeof item.score === "number" ? formatNumber(item.score) : typeof item.count === "number" ? `${item.count}×` : ""}</span>
+        </li>
+      ))}</ol> : <p className="mt-2 text-sm text-muted">No items.</p>}
+    </section>
+  );
+}
+
+function EntitiesPanel({ entities }: { entities: JsonRecord[] }) {
+  return (
+    <section>
+      <h4 className="text-lg font-semibold text-ink">Rule-based entity evidence</h4>
+      <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">These are deterministic mentions from the lexical analysis, not claims beyond the source text.</p>
+      {entities.length ? (
+        <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[32rem] border-collapse text-left text-sm">
+          <thead><tr className="border-b border-line text-muted"><th className="py-2 pr-4 font-medium">Mention</th><th className="py-2 pr-4 font-medium">Kind</th><th className="py-2 font-medium">Span</th></tr></thead>
+          <tbody>{entities.map((entity, index) => (
+            <tr key={`${stringValue(entity.text)}-${index}`} className="border-b border-line/70"><td className="py-3 pr-4 font-medium text-ink">{stringValue(entity.text)}</td><td className="py-3 pr-4 text-muted">{stringValue(entity.kind)}</td><td className="py-3 text-muted"><JsonInline value={entity.span} /></td></tr>
+          ))}</tbody>
+        </table></div>
+      ) : <p className="mt-3 text-sm text-muted">No rule-based entity mentions were found.</p>}
+    </section>
+  );
+}
+
+function LinguisticsPanel({ linguistic }: { linguistic: JsonRecord | null }) {
+  const sections = [
+    ["language", "Language"], ["tokenizer", "Tokenizer"], ["lemmas", "Lemmas"], ["morphology", "Morphology"],
+    ["pos", "Part of speech"], ["chunks", "Chunks"], ["dependencies", "Dependencies"], ["entities", "Linguistic entities"],
+    ["canonicalEntities", "Canonical entities"], ["coreference", "Coreference"], ["events", "Events"], ["relations", "Relations"],
+    ["discourse", "Discourse"], ["outline", "Outline"], ["topics", "Topics"], ["style", "Style"],
+  ] as const;
+  if (!linguistic) return <p className="text-sm text-muted">No linguistic section was produced.</p>;
+  return <div className="grid gap-3">{sections.map(([key, label]) => (
+    <details key={key} className="rounded-md border border-line bg-surface px-4 py-3" open={key === "topics" || key === "style" || key === "outline"}><summary className="cursor-pointer text-sm font-semibold text-ink">{label}</summary><JsonBlock value={linguistic[key]} /></details>
+  ))}</div>;
+}
+
+function SemanticMapPanel({ clusters, timeline, unitsById, semantic }: { clusters: JsonRecord[]; timeline: JsonRecord[]; unitsById: Map<string, JsonRecord>; semantic: JsonRecord | null }) {
+  return (
+    <div className="grid gap-8">
+      <section>
+        <h4 className="text-lg font-semibold text-ink">Concept clusters</h4>
+        <div className="mt-3 grid gap-4 lg:grid-cols-2">{clusters.map((cluster) => (
+          <article key={stringValue(cluster.id)} className="border-l-2 border-line pl-4"><p className="text-sm font-semibold text-ink">{stringValue(cluster.representativeText)}</p><p className="mt-1 text-xs leading-5 text-muted">{stringValue(cluster.id)} · {asArray(cluster.memberUnitIds).length} units · mean similarity {formatNumber(cluster.meanSimilarity)}</p></article>
+        ))}</div>
+      </section>
+      <section>
+        <h4 className="text-lg font-semibold text-ink">Semantic trajectory</h4>
+        {timeline.length ? <ol className="mt-4 grid gap-3">{timeline.map((point, index) => {
+          const unit = unitsById.get(stringValue(point.unitId));
+          return <li key={`${stringValue(point.unitId)}-${index}`} className="grid gap-1 border-l-2 border-line pl-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-4"><span className="text-sm leading-6 text-ink">{stringValue(unit?.text, stringValue(point.unitId))}</span><span className="text-xs text-muted">{stringValue(point.clusterId)} · shift {formatNumber(point.semanticShift)}</span></li>;
+        })}</ol> : <p className="mt-3 text-sm text-muted">No semantic timeline was produced.</p>}
+      </section>
+      <section><h4 className="text-lg font-semibold text-ink">Hotspots and neighborhood evidence</h4><JsonBlock value={{ hotspots: semantic?.hotspots, neighbors: semantic?.neighbors }} /></section>
+    </div>
+  );
+}
+
+function TechnicalPanel({ documentReport, semanticReport, corpusReport }: { documentReport: JsonRecord; semanticReport: JsonRecord | null; corpusReport: JsonRecord | null }) {
   return (
     <div className="grid gap-4">
-      <details className="rounded-md border border-line bg-surface px-4 py-3" open>
-        <summary className="cursor-pointer text-sm font-semibold text-ink">Document analysis JSON</summary>
-        <JsonBlock value={documentReport} />
-      </details>
-      <details className="rounded-md border border-line bg-surface px-4 py-3">
-        <summary className="cursor-pointer text-sm font-semibold text-ink">Semantic analysis JSON</summary>
-        <JsonBlock value={semanticReport} />
-      </details>
+      <details className="rounded-md border border-line bg-surface px-4 py-3" open><summary className="cursor-pointer text-sm font-semibold text-ink">Document analysis JSON</summary><JsonBlock value={documentReport} /></details>
+      <details className="rounded-md border border-line bg-surface px-4 py-3"><summary className="cursor-pointer text-sm font-semibold text-ink">Semantic map JSON</summary><JsonBlock value={semanticReport} /></details>
+      <details className="rounded-md border border-line bg-surface px-4 py-3"><summary className="cursor-pointer text-sm font-semibold text-ink">Semantic corpus JSON</summary><JsonBlock value={corpusReport} /></details>
     </div>
   );
 }
@@ -530,19 +582,10 @@ function Fact({ label, value }: { label: string; value: string }) {
 }
 
 function JsonTable({ value, empty }: { value: JsonRecord | null; empty: string }) {
-  if (!value || Object.keys(value).length === 0) {
-    return <p className="mt-2 text-sm text-muted">{empty}</p>;
-  }
-  return (
-    <dl className="mt-3 grid gap-2 text-sm">
-      {Object.entries(value).map(([key, entry]) => (
-        <div key={key} className="flex items-start justify-between gap-4 border-b border-line py-2">
-          <dt className="text-muted">{humanize(key)}</dt>
-          <dd className="max-w-[65%] text-right font-medium text-ink"><JsonInline value={entry} /></dd>
-        </div>
-      ))}
-    </dl>
-  );
+  if (!value || Object.keys(value).length === 0) return <p className="mt-2 text-sm text-muted">{empty}</p>;
+  return <dl className="mt-3 grid gap-2 text-sm">{Object.entries(value).map(([key, entry]) => (
+    <div key={key} className="flex items-start justify-between gap-4 border-b border-line py-2"><dt className="text-muted">{humanize(key)}</dt><dd className="max-w-[65%] text-right font-medium text-ink"><JsonInline value={entry} /></dd></div>
+  ))}</dl>;
 }
 
 function JsonInline({ value }: { value: unknown }) {
@@ -553,11 +596,7 @@ function JsonInline({ value }: { value: unknown }) {
 }
 
 function JsonBlock({ value }: { value: unknown }) {
-  return (
-    <pre className="mt-3 max-h-[36rem] overflow-auto whitespace-pre-wrap break-words rounded-md bg-zinc-950 p-4 text-xs leading-5 text-zinc-100">
-      {JSON.stringify(value ?? null, null, 2)}
-    </pre>
-  );
+  return <pre className="mt-3 max-h-[36rem] overflow-auto whitespace-pre-wrap break-words rounded-md bg-zinc-950 p-4 text-xs leading-5 text-zinc-100">{JSON.stringify(value ?? null, null, 2)}</pre>;
 }
 
 async function loadRuntime(): Promise<TextAnalysisRuntime> {
@@ -567,7 +606,6 @@ async function loadRuntime(): Promise<TextAnalysisRuntime> {
     runtimePromise = runtimeWindow.nlpStackTextAnalysis.ready;
     return runtimePromise;
   }
-
   runtimePromise = waitForRuntimeRegistration().then(() => {
     const registered = (window as RuntimeWindow).nlpStackTextAnalysis?.ready;
     if (!registered) throw new Error("The text-analysis Wasm runtime registered without a ready promise.");
@@ -624,9 +662,23 @@ function stringValue(value: unknown, fallback = "—"): string {
   return fallback;
 }
 
+function numberValue(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
 function formatNumber(value: unknown): string {
   return typeof value === "number" && Number.isFinite(value)
     ? new Intl.NumberFormat(undefined, { maximumFractionDigits: 3 }).format(value)
+    : "—";
+}
+
+function formatInteger(value: unknown): string {
+  return typeof value === "number" && Number.isFinite(value) ? Math.trunc(value).toLocaleString() : "—";
+}
+
+function formatPercent(value: unknown): string {
+  return typeof value === "number" && Number.isFinite(value)
+    ? new Intl.NumberFormat(undefined, { style: "percent", maximumFractionDigits: 2 }).format(value)
     : "—";
 }
 
