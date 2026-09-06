@@ -17,6 +17,12 @@ import {
   type BrowserTextIngestResult,
   type OcrLanguage,
 } from "./browser-text-ingest";
+import {
+  defaultTextAnalysisExample,
+  textAnalysisExamples,
+  type ExampleResultView,
+  type TextAnalysisExample,
+} from "./text-analysis-examples";
 
 type TextAnalysisRuntime = {
   runOperation: (request: SurfaceRequest) => SurfaceResponse;
@@ -25,39 +31,76 @@ type TextAnalysisRuntime = {
 type RuntimeHandle = { ready: Promise<TextAnalysisRuntime> };
 type RuntimeWindow = Window & { nlpStackTextAnalysis?: RuntimeHandle };
 type JsonRecord = Record<string, unknown>;
-type ResultTab =
-  | "word-corpus"
-  | "semantic-corpus"
-  | "overview"
-  | "keywords"
-  | "entities"
-  | "linguistics"
-  | "semantic-map"
-  | "technical";
+type ResultTab = ExampleResultView | "entities" | "technical";
 
 const runtimeReadyEvent = "nlp-stack-text-analysis-ready";
 const runtimeErrorEvent = "nlp-stack-text-analysis-error";
 const runtimeScriptId = "nlp-stack-text-analysis-runtime";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-const sampleText =
-  "Alice presented the semantic search roadmap in Berlin. Rust text analysis extracts keywords, entities, linguistic evidence, and deterministic semantic structure. Bob asked how retrieval scales to larger corpora. Alice explained that exact similarity remains the deterministic baseline. The team agreed to keep browser decoding separate from NLP ownership.";
+const resultGroups: { label: string; tabs: [ResultTab, string][] }[] = [
+  {
+    label: "Corpus",
+    tabs: [
+      ["word-corpus", "Word corpus"],
+      ["semantic-corpus", "Semantic corpus"],
+    ],
+  },
+  {
+    label: "Document",
+    tabs: [
+      ["overview", "Overview"],
+      ["keywords", "Keywords"],
+      ["entities", "Entities"],
+      ["linguistics", "Linguistics"],
+      ["semantic-map", "Semantic map"],
+    ],
+  },
+  { label: "Inspect", tabs: [["technical", "Technical"]] },
+];
 
 let runtimePromise: Promise<TextAnalysisRuntime> | null = null;
 
 export function TextAnalysisStudio() {
   const fileInput = useRef<HTMLInputElement>(null);
-  const [text, setText] = useState(sampleText);
+  const [text, setText] = useState(defaultTextAnalysisExample.text);
+  const [selectedExampleId, setSelectedExampleId] = useState<string | null>(defaultTextAnalysisExample.id);
   const [source, setSource] = useState<BrowserTextIngestResult | null>(null);
+  const [analysisSourceLabel, setAnalysisSourceLabel] = useState<string | null>(null);
   const [ocrLanguage, setOcrLanguage] = useState<OcrLanguage>("eng+deu");
-  const [phase, setPhase] = useState("Ready for text or a document.");
+  const [phase, setPhase] = useState("Choose an example, paste text, or upload a document.");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [documentReport, setDocumentReport] = useState<JsonRecord | null>(null);
   const [semanticReport, setSemanticReport] = useState<JsonRecord | null>(null);
   const [corpusReport, setCorpusReport] = useState<JsonRecord | null>(null);
-  const [activeTab, setActiveTab] = useState<ResultTab>("word-corpus");
+  const [activeTab, setActiveTab] = useState<ResultTab>(defaultTextAnalysisExample.focus);
 
-  async function analyze(nextText = text, sourceLabel = source?.sourceLabel ?? "pasted-text") {
+  const selectedExample = selectedExampleId
+    ? textAnalysisExamples.find((example) => example.id === selectedExampleId) ?? null
+    : null;
+
+  function clearResults() {
+    setDocumentReport(null);
+    setSemanticReport(null);
+    setCorpusReport(null);
+    setAnalysisSourceLabel(null);
+  }
+
+  function selectExample(example: TextAnalysisExample) {
+    setSelectedExampleId(example.id);
+    setText(example.text);
+    setSource(null);
+    setError(null);
+    clearResults();
+    setActiveTab(example.focus);
+    setPhase(`${example.label} loaded. Run analysis to inspect ${example.demonstrates}.`);
+  }
+
+  async function analyze(
+    nextText = text,
+    sourceLabel = source?.sourceLabel ?? selectedExample?.label ?? "pasted-text",
+    focus: ResultTab = selectedExample?.focus ?? "word-corpus",
+  ) {
     const trimmed = nextText.trim();
     if (!trimmed) {
       setError("Add text or upload a document before running analysis.");
@@ -119,7 +162,8 @@ export function TextAnalysisStudio() {
       setDocumentReport(surfaceResult(documentResponse));
       setSemanticReport(surfaceResult(semanticResponse));
       setCorpusReport(surfaceResult(corpusResponse));
-      setActiveTab("word-corpus");
+      setAnalysisSourceLabel(sourceLabel);
+      setActiveTab(focus);
       setPhase("Analysis ready. Results were produced locally by text-analysis Wasm.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to analyze this text.");
@@ -132,9 +176,8 @@ export function TextAnalysisStudio() {
   async function ingest(file: File) {
     setBusy(true);
     setError(null);
-    setDocumentReport(null);
-    setSemanticReport(null);
-    setCorpusReport(null);
+    setSelectedExampleId(null);
+    clearResults();
     try {
       const result = await ingestBrowserFile(
         file,
@@ -145,7 +188,7 @@ export function TextAnalysisStudio() {
       setSource(result);
       setPhase(`Extracted text from ${result.sourceLabel}.`);
       setBusy(false);
-      await analyze(result.text, result.sourceLabel);
+      await analyze(result.text, result.sourceLabel, "word-corpus");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to read this file.");
       setPhase("Document ingestion stopped.");
@@ -183,6 +226,12 @@ export function TextAnalysisStudio() {
   return (
     <div className="grid gap-8">
       <form className="grid gap-5" onSubmit={onSubmit}>
+        <ExampleSelector
+          selectedExampleId={selectedExampleId}
+          disabled={busy}
+          onSelect={selectExample}
+        />
+
         <div
           className="rounded-lg border border-dashed border-line bg-surface px-5 py-6"
           onDragOver={(event) => event.preventDefault()}
@@ -190,7 +239,7 @@ export function TextAnalysisStudio() {
         >
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h3 className="text-base font-semibold text-ink">Drop a document or image</h3>
+              <h3 className="text-base font-semibold text-ink">Or use your own document</h3>
               <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
                 Text, Markdown, CSV, JSON, XML and HTML are parsed directly. PDFs use their text layer and fall back to OCR for scanned pages. Images are OCRed in the browser.
               </p>
@@ -242,7 +291,10 @@ export function TextAnalysisStudio() {
         </div>
 
         <label className="grid gap-2" htmlFor="analysis-text">
-          <span className="text-sm font-semibold text-ink">Text to analyze</span>
+          <span className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-ink">
+            <span>Text to analyze</span>
+            {selectedExample ? <span className="font-normal text-muted">Example: {selectedExample.label}</span> : null}
+          </span>
           <textarea
             id="analysis-text"
             className="min-h-64 w-full resize-y rounded-lg border border-line bg-surface px-4 py-3 text-base leading-7 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft"
@@ -250,7 +302,10 @@ export function TextAnalysisStudio() {
             disabled={busy}
             onChange={(event) => {
               setText(event.target.value);
+              setSelectedExampleId(null);
               setSource(null);
+              clearResults();
+              setPhase("Edited text ready for analysis.");
             }}
           />
         </label>
@@ -276,33 +331,12 @@ export function TextAnalysisStudio() {
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.12em] text-accent">Local Rust result</p>
               <h3 id="analysis-results-heading" className="mt-1 text-2xl font-semibold text-ink">Analysis</h3>
+              {analysisSourceLabel ? <p className="mt-1 text-sm text-muted">Source: {analysisSourceLabel}</p> : null}
             </div>
-            <p className="text-sm text-muted">Document, word-corpus, and semantic-corpus evidence all come from text-analysis Wasm.</p>
+            <p className="max-w-xl text-sm leading-6 text-muted">Corpus evidence, document evidence, and semantic structure all come from text-analysis Wasm; the browser only presents them.</p>
           </div>
 
-          <div className="mt-5 flex gap-1 overflow-x-auto border-b border-line" role="tablist" aria-label="Analysis sections">
-            {([
-              ["word-corpus", "Word corpus"],
-              ["semantic-corpus", "Semantic corpus"],
-              ["overview", "Overview"],
-              ["keywords", "Keywords"],
-              ["entities", "Entities"],
-              ["linguistics", "Linguistics"],
-              ["semantic-map", "Semantic map"],
-              ["technical", "Technical"],
-            ] as const).map(([id, label]) => (
-              <button
-                key={id}
-                className={`min-h-11 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-semibold ${activeTab === id ? "border-accent text-accent" : "border-transparent text-muted hover:text-ink"}`}
-                type="button"
-                role="tab"
-                aria-selected={activeTab === id}
-                onClick={() => setActiveTab(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <ResultNavigation activeTab={activeTab} onSelect={setActiveTab} />
 
           <div className="pt-6">
             {activeTab === "word-corpus" ? <WordCorpusPanel lexical={corpusLexical} /> : null}
@@ -329,15 +363,85 @@ export function TextAnalysisStudio() {
   );
 }
 
+function ExampleSelector({
+  selectedExampleId,
+  disabled,
+  onSelect,
+}: {
+  selectedExampleId: string | null;
+  disabled: boolean;
+  onSelect: (example: TextAnalysisExample) => void;
+}) {
+  return (
+    <section aria-labelledby="examples-heading">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h3 id="examples-heading" className="text-base font-semibold text-ink">Try an example</h3>
+          <p className="mt-1 text-sm leading-6 text-muted">Each sample stresses a different part of the NLP surface. Select one, then run analysis.</p>
+        </div>
+        <span className="text-xs text-muted">{textAnalysisExamples.length} examples</span>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {textAnalysisExamples.map((example) => {
+          const selected = selectedExampleId === example.id;
+          return (
+            <button
+              key={example.id}
+              className={`min-h-32 rounded-lg border p-4 text-left transition ${selected ? "border-accent bg-accent-soft" : "border-line bg-surface hover:border-zinc-400"}`}
+              type="button"
+              disabled={disabled}
+              aria-pressed={selected}
+              onClick={() => onSelect(example)}
+            >
+              <span className="text-xs font-semibold uppercase tracking-[0.1em] text-muted">{example.category}</span>
+              <span className="mt-1 block text-base font-semibold text-ink">{example.label}</span>
+              <span className="mt-2 block text-sm leading-5 text-muted">{example.description}</span>
+              <span className="mt-3 block text-xs font-medium text-accent">Shows: {example.demonstrates}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function ResultNavigation({ activeTab, onSelect }: { activeTab: ResultTab; onSelect: (tab: ResultTab) => void }) {
+  return (
+    <div className="mt-6 flex gap-7 overflow-x-auto border-b border-line pb-1" role="tablist" aria-label="Analysis sections">
+      {resultGroups.map((group) => (
+        <div key={group.label} className="min-w-max" role="group" aria-label={group.label}>
+          <p className="px-2 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-muted">{group.label}</p>
+          <div className="mt-1 flex gap-1">
+            {group.tabs.map(([id, label]) => (
+              <button
+                key={id}
+                className={`min-h-11 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-semibold ${activeTab === id ? "border-accent text-accent" : "border-transparent text-muted hover:text-ink"}`}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === id}
+                onClick={() => onSelect(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function WordCorpusPanel({ lexical }: { lexical: JsonRecord | null }) {
   const terms = asRecordArray(lexical?.topTerms);
   const uniqueTerms = numberValue(lexical?.uniqueTerms);
+  const maxFrequency = terms.reduce((max, term) => Math.max(max, numberValue(term.frequency)), 0);
   return (
     <div className="grid gap-7">
       <section>
-        <h4 className="text-lg font-semibold text-ink">Word corpus</h4>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Corpus view</p>
+        <h4 className="mt-1 text-xl font-semibold text-ink">Word corpus</h4>
         <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
-          Corpus-wide normalized term frequencies from Rust. This is lexical evidence over the submitted source, not a browser-generated word cloud.
+          Corpus-wide normalized term frequencies from Rust. Bars compare relative frequency within this result; they do not introduce a second scoring algorithm.
         </p>
         <dl className="mt-4 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <Fact label="Corpus items" value={formatInteger(lexical?.itemCount)} />
@@ -353,9 +457,9 @@ function WordCorpusPanel({ lexical }: { lexical: JsonRecord | null }) {
       <section>
         <h4 className="text-lg font-semibold text-ink">Ranked corpus terms</h4>
         {terms.length ? (
-          <div className="mt-3 max-h-[36rem] overflow-auto rounded-md border border-line bg-surface">
-            <table className="w-full min-w-[32rem] border-collapse text-left text-sm">
-              <thead className="sticky top-0 bg-surface">
+          <div className="mt-3 max-h-[38rem] overflow-auto rounded-md border border-line bg-surface">
+            <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
+              <thead className="sticky top-0 z-10 bg-surface">
                 <tr className="border-b border-line text-muted">
                   <th className="px-3 py-2 font-medium">#</th>
                   <th className="px-3 py-2 font-medium">Term</th>
@@ -364,14 +468,22 @@ function WordCorpusPanel({ lexical }: { lexical: JsonRecord | null }) {
                 </tr>
               </thead>
               <tbody>
-                {terms.map((term, index) => (
-                  <tr key={`${stringValue(term.term)}-${index}`} className="border-b border-line/70 last:border-0">
-                    <td className="px-3 py-2 text-muted">{index + 1}</td>
-                    <td className="px-3 py-2 font-medium text-ink">{stringValue(term.term)}</td>
-                    <td className="px-3 py-2 text-right text-ink">{formatInteger(term.count)}</td>
-                    <td className="px-3 py-2 text-right text-muted">{formatPercent(term.frequency)}</td>
-                  </tr>
-                ))}
+                {terms.map((term, index) => {
+                  const relative = maxFrequency > 0 ? numberValue(term.frequency) / maxFrequency : 0;
+                  return (
+                    <tr key={`${stringValue(term.term)}-${index}`} className="border-b border-line/70 last:border-0">
+                      <td className="px-3 py-2 text-muted">{index + 1}</td>
+                      <td className="px-3 py-2">
+                        <span className="font-medium text-ink">{stringValue(term.term)}</span>
+                        <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-zinc-100" aria-hidden="true">
+                          <span className="block h-full rounded-full bg-accent" style={{ width: `${Math.max(2, relative * 100)}%` }} />
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right text-ink">{formatInteger(term.count)}</td>
+                      <td className="px-3 py-2 text-right text-muted">{formatPercent(term.frequency)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -388,13 +500,15 @@ function SemanticCorpusPanel({ report }: { report: JsonRecord | null }) {
   const units = asRecordArray(semantic?.units);
   const timeline = asRecordArray(semantic?.timeline);
   const unitsById = new Map(units.map((unit) => [stringValue(unit.id), unit]));
+  const maxMembers = concepts.reduce((max, concept) => Math.max(max, numberValue(concept.memberUnitCount)), 0);
 
   return (
     <div className="grid gap-8">
       <section>
-        <h4 className="text-lg font-semibold text-ink">Semantic corpus</h4>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Corpus view</p>
+        <h4 className="mt-1 text-xl font-semibold text-ink">Semantic corpus</h4>
         <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
-          Deterministic concepts aggregated across corpus items, with representative passages and source provenance retained by the Rust semantic-corpus analysis.
+          Concepts aggregated across the corpus with representative passages and provenance retained by Rust. The evidence bar shows relative concept size by member-unit count.
         </p>
         <dl className="mt-4 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <Fact label="Corpus items" value={formatInteger(report?.itemCount)} />
@@ -410,14 +524,20 @@ function SemanticCorpusPanel({ report }: { report: JsonRecord | null }) {
           <div className="mt-3 grid gap-4 lg:grid-cols-2">
             {concepts.map((concept) => {
               const representative = asRecord(concept.representative);
+              const relativeSize = maxMembers > 0 ? numberValue(concept.memberUnitCount) / maxMembers : 0;
               return (
-                <article key={stringValue(concept.clusterId)} className="rounded-md border border-line bg-surface p-4">
-                  <p className="text-sm font-semibold leading-6 text-ink">{stringValue(representative?.text)}</p>
+                <article key={stringValue(concept.clusterId)} className="rounded-lg border border-line bg-surface p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <span className="text-xs font-semibold text-accent">{stringValue(concept.clusterId)}</span>
+                    <span className="text-xs text-muted">{formatInteger(concept.memberUnitCount)} units · {formatInteger(concept.sourceItemCount)} sources</span>
+                  </div>
+                  <p className="mt-3 text-sm font-semibold leading-6 text-ink">{stringValue(representative?.text)}</p>
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-100" aria-hidden="true">
+                    <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max(3, relativeSize * 100)}%` }} />
+                  </div>
                   <dl className="mt-3 grid gap-2 text-xs text-muted">
-                    <div className="flex justify-between gap-3"><dt>Concept</dt><dd className="text-right">{stringValue(concept.clusterId)}</dd></div>
-                    <div className="flex justify-between gap-3"><dt>Member units</dt><dd>{formatInteger(concept.memberUnitCount)}</dd></div>
-                    <div className="flex justify-between gap-3"><dt>Source items</dt><dd>{formatInteger(concept.sourceItemCount)}</dd></div>
-                    <div className="flex justify-between gap-3"><dt>Source</dt><dd className="text-right">{stringValue(representative?.source, stringValue(representative?.sourceId))}</dd></div>
+                    <div className="flex justify-between gap-3"><dt>Representative source</dt><dd className="text-right">{stringValue(representative?.source, stringValue(representative?.sourceId))}</dd></div>
+                    {asArray(concept.authors).length ? <div className="flex justify-between gap-3"><dt>Authors</dt><dd className="text-right">{stringValue(concept.authors)}</dd></div> : null}
                   </dl>
                 </article>
               );
@@ -428,6 +548,7 @@ function SemanticCorpusPanel({ report }: { report: JsonRecord | null }) {
 
       <section>
         <h4 className="text-lg font-semibold text-ink">Corpus semantic trajectory</h4>
+        <p className="mt-1 text-sm leading-6 text-muted">Read the source in order and see where the deterministic concept assignment changes.</p>
         {timeline.length ? (
           <ol className="mt-4 grid gap-3">
             {timeline.map((point, index) => {
@@ -460,7 +581,8 @@ function OverviewPanel({ documentReport, core, lexical, enrichedStats, summary, 
   return (
     <div className="grid gap-8">
       <section>
-        <h4 className="text-lg font-semibold text-ink">Extractive summary</h4>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Document view</p>
+        <h4 className="mt-1 text-xl font-semibold text-ink">Extractive summary</h4>
         {summary.length ? (
           <ol className="mt-3 grid gap-3">
             {summary.map((item, index) => (
@@ -547,13 +669,24 @@ function LinguisticsPanel({ linguistic }: { linguistic: JsonRecord | null }) {
 }
 
 function SemanticMapPanel({ clusters, timeline, unitsById, semantic }: { clusters: JsonRecord[]; timeline: JsonRecord[]; unitsById: Map<string, JsonRecord>; semantic: JsonRecord | null }) {
+  const maxMembers = clusters.reduce((max, cluster) => Math.max(max, asArray(cluster.memberUnitIds).length), 0);
   return (
     <div className="grid gap-8">
       <section>
-        <h4 className="text-lg font-semibold text-ink">Concept clusters</h4>
-        <div className="mt-3 grid gap-4 lg:grid-cols-2">{clusters.map((cluster) => (
-          <article key={stringValue(cluster.id)} className="border-l-2 border-line pl-4"><p className="text-sm font-semibold text-ink">{stringValue(cluster.representativeText)}</p><p className="mt-1 text-xs leading-5 text-muted">{stringValue(cluster.id)} · {asArray(cluster.memberUnitIds).length} units · mean similarity {formatNumber(cluster.meanSimilarity)}</p></article>
-        ))}</div>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Document view</p>
+        <h4 className="mt-1 text-xl font-semibold text-ink">Semantic map</h4>
+        <p className="mt-1 text-sm leading-6 text-muted">Concepts and trajectory for this document only. Use Semantic corpus for corpus-level evidence and provenance.</p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">{clusters.map((cluster) => {
+          const members = asArray(cluster.memberUnitIds).length;
+          const relativeSize = maxMembers > 0 ? members / maxMembers : 0;
+          return (
+            <article key={stringValue(cluster.id)} className="rounded-md border border-line bg-surface p-4">
+              <p className="text-sm font-semibold text-ink">{stringValue(cluster.representativeText)}</p>
+              <p className="mt-1 text-xs leading-5 text-muted">{stringValue(cluster.id)} · {members} units · mean similarity {formatNumber(cluster.meanSimilarity)}</p>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-100" aria-hidden="true"><div className="h-full rounded-full bg-accent" style={{ width: `${Math.max(3, relativeSize * 100)}%` }} /></div>
+            </article>
+          );
+        })}</div>
       </section>
       <section>
         <h4 className="text-lg font-semibold text-ink">Semantic trajectory</h4>
