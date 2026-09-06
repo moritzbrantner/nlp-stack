@@ -27,7 +27,7 @@ jobs:
         run: python3 scripts/check_agent_readiness_contract.py --check
 
       - name: Run release-control unit tests
-        run: python3 -m unittest scripts.test_publish_release scripts.test_check_release_plan
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
 
       - name: Commit migration result
         run: |
