@@ -13,6 +13,7 @@ const corpusResponse: SurfaceResponse = {
     result: {
       itemCount: 3,
       authorCount: 2,
+      nonConceptUnitCount: 1,
       lexical: {
         wordCount: 18,
         uniqueTerms: 12,
@@ -41,6 +42,9 @@ const corpusResponse: SurfaceResponse = {
       concepts: [
         {
           clusterId: "concept-1",
+          label: "semantic · retrieval · search",
+          keyTerms: ["semantic", "retrieval", "search"],
+          coherence: 0.91,
           memberUnitCount: 4,
           sourceItemCount: 2,
           authorCount: 1,
@@ -53,6 +57,12 @@ const corpusResponse: SurfaceResponse = {
         },
       ],
       semantic: {
+        embeddingModel: {
+          modelName: "hashed-tfidf-sentence-baseline",
+          backend: "hashed",
+          dimensions: 512,
+          normalized: true,
+        },
         timeline: [
           {
             unitId: "alice-1:sentence:0",
@@ -77,14 +87,16 @@ const corpusResponse: SurfaceResponse = {
 };
 
 describe("SemanticCorpusPanel", () => {
-  it("renders vocabulary, author profiles, and source-backed concept evidence", () => {
+  it("renders vocabulary, authors, and source-backed supported theme evidence", () => {
     render(<SemanticCorpusPanel response={corpusResponse} />);
 
-    expect(screen.getByText("Language and meaning across sources")).toBeTruthy();
+    expect(screen.getByText("Recurring evidence across supplied texts")).toBeTruthy();
     expect(screen.getByText("Vocabulary profile")).toBeTruthy();
     expect(screen.getByText("Author profiles")).toBeTruthy();
-    expect(screen.getByText("Concept evidence")).toBeTruthy();
-    expect(screen.getByText("semantic")).toBeTruthy();
+    expect(screen.getByText("Theme evidence")).toBeTruthy();
+    expect(screen.getByText("semantic · retrieval · search")).toBeTruthy();
+    expect(screen.getByText(/hashed-tfidf-sentence-baseline/)).toBeTruthy();
+    expect(screen.getByText("1 low-support units")).toBeTruthy();
     expect(screen.getAllByText("Alice")).toHaveLength(2);
     expect(screen.getByText("Semantic search improves retrieval.")).toBeTruthy();
     expect(screen.getByText("letters/alice-1.txt")).toBeTruthy();
@@ -99,7 +111,7 @@ describe("SemanticCorpusPanel", () => {
 
     expect(
       screen.getByText(
-        "Run semantic corpus analysis to inspect vocabulary, authors, and concept evidence.",
+        "Run semantic corpus analysis to inspect vocabulary, authors, and recurring theme evidence.",
       ),
     ).toBeTruthy();
   });
