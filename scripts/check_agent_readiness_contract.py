@@ -20,6 +20,8 @@ REQUIRED_CONVENTION_REFS = {
     "RUST-002",
     "RUST-003",
 }
+HANDOFF_TIER = ["package:check"]
+HANDOFF_COMMAND = ["bun", "run", "check"]
 
 
 def _load_json(path: Path) -> dict:
@@ -40,6 +42,15 @@ def check_contract(root: Path) -> list[str]:
         missing = sorted(REQUIRED_CONVENTION_REFS - refs)
         if missing:
             errors.append(f"missing required convention refs: {', '.join(missing)}")
+        if tooling.get("tiers", {}).get("handoff") != HANDOFF_TIER:
+            errors.append("coding-tooling handoff tier must contain only package:check")
+        if (
+            tooling.get("capabilityCommands", {})
+            .get(".", {})
+            .get("package:check")
+            != HANDOFF_COMMAND
+        ):
+            errors.append("coding-tooling package:check must delegate to bun run check")
 
     source_path = root / ".coding-tooling.source-deps.json"
     if not source_path.is_file():
@@ -92,8 +103,8 @@ def check_contract(root: Path) -> list[str]:
     if "coding-agent-conventions" not in agents:
         errors.append("AGENTS.md must keep shared convention ownership explicit")
 
-    if not (root / ".agent-loop.toml").is_file():
-        errors.append("missing .agent-loop.toml handoff gate")
+    if (root / ".agent-loop.toml").exists():
+        errors.append("legacy .agent-loop.toml must not duplicate the coding-tooling handoff gate")
 
     return errors
 
