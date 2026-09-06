@@ -13,7 +13,7 @@ export default function Home() {
               Text analysis studio
             </h2>
             <p className="mt-3 text-base leading-7 text-muted">
-              Start from a curated example, paste text directly, or upload a document. The examples highlight different strengths of the stack; your own text-bearing files are parsed locally, with OCR available for scanned PDFs and images before Rust/Wasm produces document, word-corpus, and semantic-corpus evidence.
+              Start from a curated example, paste text directly, upload one document for document analysis, or select several files together for cross-source corpus themes. Text-bearing files are parsed locally, with OCR available for scanned PDFs and images before Rust/Wasm produces the analysis evidence.
             </p>
           </div>
           <TextAnalysisStudio />
@@ -22,8 +22,8 @@ export default function Home() {
         <section className="border-t border-line pt-8" aria-labelledby="architecture-heading">
           <h2 id="architecture-heading" className="text-lg font-semibold text-ink">Ownership boundary</h2>
           <ul className="mt-4 grid gap-3 text-sm leading-6 text-muted md:grid-cols-3">
-            <li className="border-l-2 border-line pl-4">The browser owns example selection, file selection, PDF text extraction, rendering, OCR adaptation, and presentation.</li>
-            <li className="border-l-2 border-line pl-4">Rust text-analysis owns summaries, lexical evidence, word-corpus statistics, linguistic analysis, embeddings, and semantic corpus structure.</li>
+            <li className="border-l-2 border-line pl-4">The browser owns example selection, multi-file selection, PDF text extraction, rendering, OCR adaptation, and presentation.</li>
+            <li className="border-l-2 border-line pl-4">Rust text-analysis owns summaries, lexical evidence, linguistic analysis, embedding evidence, cohesion-preserving theme structure, and source provenance.</li>
             <li className="border-l-2 border-line pl-4">GitHub Pages remains a static host; analysis does not depend on an nlp-stack API server.</li>
           </ul>
         </section>
