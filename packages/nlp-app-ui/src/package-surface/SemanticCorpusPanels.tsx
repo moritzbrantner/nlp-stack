@@ -19,6 +19,9 @@ interface AuthorProfile {
 
 interface ConceptEvidence {
   clusterId: string;
+  label: string;
+  keyTerms: string[];
+  coherence: number;
   memberUnitCount: number;
   sourceItemCount: number;
   authorCount: number;
@@ -55,13 +58,15 @@ export function SemanticCorpusPanel({
   if (!response || response.operation !== operation) {
     return (
       <div className="mt-4">
-        <EmptyState>Run semantic corpus analysis to inspect vocabulary, authors, and concept evidence.</EmptyState>
+        <EmptyState>Run semantic corpus analysis to inspect vocabulary, authors, and recurring theme evidence.</EmptyState>
       </div>
     );
   }
 
   const report = corpusPayload(response.value);
   const lexical = asRecord(report.lexical);
+  const semantic = asRecord(report.semantic);
+  const embeddingModel = asRecord(semantic.embeddingModel);
   const terms = termFrequencies(lexical.topTerms);
   const authors = authorProfiles(report.authors);
   const concepts = conceptEvidence(report.concepts);
@@ -69,25 +74,39 @@ export function SemanticCorpusPanel({
   const authorCount = numberValue(report.authorCount);
   const wordCount = numberValue(lexical.wordCount);
   const uniqueTerms = numberValue(lexical.uniqueTerms);
+  const nonConceptUnitCount = numberValue(report.nonConceptUnitCount);
+  const modelName = stringValue(embeddingModel.modelName);
+  const dimensions = numberValue(embeddingModel.dimensions);
 
   return (
     <div className="mt-4 space-y-5">
       <section className="rounded-md border border-zinc-200 bg-zinc-50 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Semantic corpus</p>
-            <h2 className="mt-1 text-lg font-semibold text-zinc-950">Language and meaning across sources</h2>
+            <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Corpus themes</p>
+            <h2 className="mt-1 text-lg font-semibold text-zinc-950">Recurring evidence across supplied texts</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
-              Aggregate lexical usage and deterministic concept structure across attributed texts while retaining the passages and sources behind every concept.
+              Aggregate lexical usage and cohesion-preserving recurring themes while retaining the passages and sources behind every result. Low-support clusters remain inspectable in the raw semantic report instead of being promoted as themes.
             </p>
+            {modelName ? (
+              <p className="mt-2 text-xs text-zinc-500">
+                Embedding evidence: {modelName}{dimensions > 0 ? ` · ${dimensions} dimensions` : ""}.
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
             <Badge>{itemCount} items</Badge>
             <Badge>{authorCount} authors</Badge>
             <Badge>{wordCount} words</Badge>
-            <Badge>{concepts.length} concepts</Badge>
+            <Badge>{concepts.length} themes</Badge>
+            {nonConceptUnitCount > 0 ? <Badge>{nonConceptUnitCount} low-support units</Badge> : null}
           </div>
         </div>
+        {itemCount < 2 ? (
+          <p className="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+            Only one corpus item was supplied. These clusters describe recurrence inside that item; use multiple items for cross-source corpus evidence.
+          </p>
+        ) : null}
       </section>
 
       <section className="overflow-hidden rounded-md border border-zinc-200 bg-white">
@@ -123,7 +142,7 @@ export function SemanticCorpusPanel({
       <section className="overflow-hidden rounded-md border border-zinc-200 bg-white">
         <SectionHeader
           title="Author profiles"
-          detail="Compare how much source material and semantic evidence each attributed author contributes."
+          detail="Compare how much source material and supported recurring evidence each attributed author contributes."
         />
         {authors.length === 0 ? (
           <p className="px-4 py-5 text-sm text-zinc-500">No attributed authors were supplied.</p>
@@ -135,7 +154,7 @@ export function SemanticCorpusPanel({
                 <Metric label="items" value={author.itemCount} />
                 <Metric label="semantic units" value={author.semanticUnitCount} />
                 <Metric label="words" value={author.wordCount} />
-                <Metric label="concepts" value={author.conceptCount} />
+                <Metric label="themes" value={author.conceptCount} />
               </div>
             ))}
           </div>
@@ -144,20 +163,28 @@ export function SemanticCorpusPanel({
 
       <section className="overflow-hidden rounded-md border border-zinc-200 bg-white">
         <SectionHeader
-          title="Concept evidence"
-          detail="Each corpus concept keeps its deterministic representative passage and source provenance."
+          title="Theme evidence"
+          detail="Each supported theme has a corpus-derived key-term label, a cohesion score, and representative source provenance."
         />
         {concepts.length === 0 ? (
-          <p className="px-4 py-5 text-sm text-zinc-500">No concept clusters were returned.</p>
+          <p className="px-4 py-5 text-sm text-zinc-500">No recurring theme met the minimum support threshold.</p>
         ) : (
           <div className="divide-y divide-zinc-100">
             {concepts.slice(0, 12).map((concept) => (
-              <article className="grid gap-3 px-4 py-4 lg:grid-cols-[10rem_minmax(0,1fr)_15rem]" key={concept.clusterId}>
+              <article className="grid gap-3 px-4 py-4 lg:grid-cols-[13rem_minmax(0,1fr)_15rem]" key={concept.clusterId}>
                 <div>
-                  <p className="text-sm font-semibold text-zinc-950">{concept.clusterId}</p>
+                  <p className="text-sm font-semibold text-zinc-950">{concept.label}</p>
                   <p className="mt-1 text-xs text-zinc-500">
-                    {concept.memberUnitCount} units · {concept.sourceItemCount} sources · {concept.authorCount} authors
+                    {concept.clusterId} · {concept.memberUnitCount} units · {concept.sourceItemCount} sources
                   </p>
+                  <p className="mt-1 text-xs tabular-nums text-zinc-500">coherence {concept.coherence.toFixed(3)}</p>
+                  {concept.keyTerms.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {concept.keyTerms.map((term) => (
+                        <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[0.68rem] text-zinc-600" key={term}>{term}</span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 <blockquote className="text-sm leading-6 text-zinc-700">{concept.representativeText}</blockquote>
                 <div className="min-w-0 text-xs leading-5 text-zinc-500">
@@ -165,6 +192,7 @@ export function SemanticCorpusPanel({
                     {concept.representativeSource ?? concept.representativeSourceId}
                   </p>
                   {concept.representativeAuthor ? <p>{concept.representativeAuthor}</p> : null}
+                  {concept.authorCount > 0 ? <p>{concept.authorCount} attributed authors</p> : null}
                 </div>
               </article>
             ))}
@@ -239,9 +267,16 @@ function conceptEvidence(value: unknown): ConceptEvidence[] {
     const clusterId = stringValue(record.clusterId);
     if (!clusterId) return [];
     const representative = asRecord(record.representative);
+    const label = stringValue(record.label) || clusterId;
     return [
       {
         clusterId,
+        label,
+        keyTerms: asArray(record.keyTerms).flatMap((term) => {
+          const valueString = stringValue(term);
+          return valueString ? [valueString] : [];
+        }),
+        coherence: numberValue(record.coherence),
         memberUnitCount: numberValue(record.memberUnitCount),
         sourceItemCount: numberValue(record.sourceItemCount),
         authorCount: numberValue(record.authorCount),
