@@ -196,13 +196,11 @@ fn concept_clusters(
                 let average = average_similarity_to_cluster(candidate, members, similarities);
                 (average >= threshold).then_some((cluster_index, average))
             })
-            .max_by(
-                |(left_index, left_score), (right_index, right_score)| {
-                    left_score
-                        .total_cmp(right_score)
-                        .then_with(|| right_index.cmp(left_index))
-                },
-            )
+            .max_by(|(left_index, left_score), (right_index, right_score)| {
+                left_score
+                    .total_cmp(right_score)
+                    .then_with(|| right_index.cmp(left_index))
+            })
             .map(|(cluster_index, _)| cluster_index);
 
         if let Some(cluster_index) = best_cluster {
