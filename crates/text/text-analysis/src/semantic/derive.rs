@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 
 use text_core::Result;
 use text_embeddings::TextEmbeddingBackend;
@@ -183,41 +183,64 @@ fn concept_clusters(
     similarities: &[Vec<f32>],
     threshold: f32,
 ) -> Vec<SemanticCluster> {
-    let mut visited = vec![false; primary_indices.len()];
-    let mut clusters = Vec::new();
+    // Assign each unit to the most cohesive existing cluster whose average-link similarity
+    // remains above the configured threshold. Unlike connected components, this does not let
+    // one bridging sentence pull two otherwise unrelated regions into a giant transitive cluster.
+    let mut member_clusters = Vec::<Vec<usize>>::new();
 
-    for seed in 0..primary_indices.len() {
-        if visited[seed] {
-            continue;
-        }
-        visited[seed] = true;
-        let mut queue = VecDeque::from([seed]);
-        let mut members = Vec::new();
-        while let Some(current) = queue.pop_front() {
-            members.push(current);
-            for candidate in 0..primary_indices.len() {
-                if !visited[candidate] && similarities[current][candidate] >= threshold {
-                    visited[candidate] = true;
-                    queue.push_back(candidate);
-                }
-            }
-        }
-        members.sort_unstable();
+    for candidate in 0..primary_indices.len() {
+        let best_cluster = member_clusters
+            .iter()
+            .enumerate()
+            .filter_map(|(cluster_index, members)| {
+                let average = average_similarity_to_cluster(candidate, members, similarities);
+                (average >= threshold).then_some((cluster_index, average))
+            })
+            .max_by(
+                |(left_index, left_score), (right_index, right_score)| {
+                    left_score
+                        .total_cmp(right_score)
+                        .then_with(|| right_index.cmp(left_index))
+                },
+            )
+            .map(|(cluster_index, _)| cluster_index);
 
-        let representative = cluster_medoid(&members, similarities);
-        clusters.push(SemanticCluster {
-            id: format!("concept-{}", clusters.len() + 1),
-            member_unit_ids: members
-                .iter()
-                .map(|member| units[primary_indices[*member]].id.clone())
-                .collect(),
-            representative_unit_id: units[primary_indices[representative]].id.clone(),
-            representative_text: units[primary_indices[representative]].text.clone(),
-            mean_similarity: cluster_mean_similarity(&members, similarities),
-        });
+        if let Some(cluster_index) = best_cluster {
+            member_clusters[cluster_index].push(candidate);
+        } else {
+            member_clusters.push(vec![candidate]);
+        }
     }
 
-    clusters
+    member_clusters
+        .into_iter()
+        .enumerate()
+        .map(|(cluster_index, members)| {
+            let representative = cluster_medoid(&members, similarities);
+            SemanticCluster {
+                id: format!("concept-{}", cluster_index + 1),
+                member_unit_ids: members
+                    .iter()
+                    .map(|member| units[primary_indices[*member]].id.clone())
+                    .collect(),
+                representative_unit_id: units[primary_indices[representative]].id.clone(),
+                representative_text: units[primary_indices[representative]].text.clone(),
+                mean_similarity: cluster_mean_similarity(&members, similarities),
+            }
+        })
+        .collect()
+}
+
+fn average_similarity_to_cluster(
+    candidate: usize,
+    members: &[usize],
+    similarities: &[Vec<f32>],
+) -> f32 {
+    members
+        .iter()
+        .map(|member| similarities[candidate][*member])
+        .sum::<f32>()
+        / members.len().max(1) as f32
 }
 
 fn cluster_medoid(members: &[usize], similarities: &[Vec<f32>]) -> usize {
