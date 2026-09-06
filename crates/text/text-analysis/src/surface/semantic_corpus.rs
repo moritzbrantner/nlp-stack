@@ -9,7 +9,7 @@ pub(super) fn operation() -> SurfaceOperation {
     super::operation(
         "analysis.semantic-corpus",
         "Build semantic corpus profile",
-        "Aggregates lexical statistics and deterministic semantic concepts across attributed corpus items while retaining author and source provenance.",
+        "Aggregates lexical statistics and deterministic corpus themes across attributed items, retaining source provenance and explicit embedding evidence.",
         serde_json::json!({
             "items": [
                 {
@@ -35,6 +35,7 @@ pub(super) fn operation() -> SurfaceOperation {
                 }
             ],
             "topTerms": 12,
+            "minConceptUnits": 2,
             "neighborsPerUnit": 4,
             "neighborThreshold": 0.25,
             "clusterThreshold": 0.60
@@ -65,7 +66,7 @@ pub(super) fn annotation(
 ) -> (&'static str, &'static str, serde_json::Value) {
     (
         "Semantic corpus profile",
-        "Aggregated lexical and semantic evidence across attributed corpus items while retaining representative source passages.",
+        "Corpus-aware deterministic theme evidence across attributed items, retaining representative passages and explicit embedding provenance.",
         serde_json::json!({
             "status": "ok",
             "itemCount": value["itemCount"],
@@ -73,6 +74,7 @@ pub(super) fn annotation(
             "wordCount": value["lexical"]["wordCount"],
             "uniqueTermCount": value["lexical"]["uniqueTerms"],
             "conceptCount": value["concepts"].as_array().map(Vec::len).unwrap_or(0),
+            "nonConceptUnitCount": value["nonConceptUnitCount"],
             "semanticUnitCount": value["semantic"]["timeline"].as_array().map(Vec::len).unwrap_or(0),
             "representativePassageCount": value["concepts"].as_array().map(Vec::len).unwrap_or(0)
         }),
@@ -86,6 +88,8 @@ struct SemanticCorpusRequest {
     #[serde(default)]
     top_terms: Option<usize>,
     #[serde(default)]
+    min_concept_units: Option<usize>,
+    #[serde(default)]
     neighbors_per_unit: Option<usize>,
     #[serde(default)]
     neighbor_threshold: Option<f32>,
@@ -98,6 +102,9 @@ impl SemanticCorpusRequest {
         let mut options = SemanticCorpusAnalysisOptions::default();
         if let Some(top_terms) = self.top_terms {
             options.top_terms = top_terms;
+        }
+        if let Some(min_concept_units) = self.min_concept_units {
+            options.min_concept_units = min_concept_units;
         }
         if let Some(neighbors_per_unit) = self.neighbors_per_unit {
             options.semantic.neighbors_per_unit = neighbors_per_unit;
