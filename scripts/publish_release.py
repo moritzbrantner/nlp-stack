@@ -2,9 +2,10 @@
 """Publish the one checked release manifest bound to this Agent Loop invocation.
 
 All validation completes before the first publication, tag, or GitHub Release
-side effect. The public interface is the no-argument CLI configured in
-``.agent-loop.toml``; ``run_release`` accepts an effects adapter so tests can
-replace only network and process boundaries.
+side effect. The public interface is the no-argument CLI; current exact-head
+handoff verification is declared by the `handoff` tier in `.coding-tooling.json`.
+``run_release`` accepts an effects adapter so tests can replace only network and
+process boundaries.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -73,6 +75,32 @@ RELEASE_FIELDS = {"tag", "title", "notes"}
 
 class ReleaseError(RuntimeError):
     """A fail-closed release validation or external-operation failure."""
+
+
+def configured_handoff_checks(root: Path) -> list[str]:
+    """Load the one repository-owned exact-head handoff command."""
+
+    path = root / ".coding-tooling.json"
+    try:
+        config = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ReleaseError(f"cannot load coding-tooling handoff config: {error}") from error
+    if config.get("schemaVersion") != 1:
+        raise ReleaseError(".coding-tooling.json must use schemaVersion 1")
+    if config.get("tiers", {}).get("handoff") != ["package:check"]:
+        raise ReleaseError("coding-tooling handoff tier must contain only package:check")
+    command = (
+        config.get("capabilityCommands", {})
+        .get(".", {})
+        .get("package:check")
+    )
+    if (
+        not isinstance(command, list)
+        or not command
+        or any(not isinstance(part, str) or not part for part in command)
+    ):
+        raise ReleaseError("coding-tooling package:check must be a non-empty argv array")
+    return [shlex.join(command)]
 
 
 def _effect_failure(action: str, error: Exception) -> ReleaseError:
@@ -490,10 +518,9 @@ def validate_manifest(
         raise ReleaseError(
             "release manifest repair_source_sha must be a distinct full lowercase commit SHA"
         )
-    config = tomllib.loads((root / ".agent-loop.toml").read_text(encoding="utf-8"))
-    configured_checks = config.get("verification", {}).get("commands")
+    configured_checks = configured_handoff_checks(root)
     if manifest.get("required_checks") != configured_checks:
-        raise ReleaseError("required_checks must exactly match .agent-loop.toml")
+        raise ReleaseError("required_checks must exactly match the coding-tooling handoff gate")
     consumer_checks = manifest.get("required_consumer_checks")
     if not isinstance(consumer_checks, list) or not consumer_checks or any(
         not isinstance(command, str) or not command.strip() for command in consumer_checks

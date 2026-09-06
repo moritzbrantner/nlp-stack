@@ -27,9 +27,7 @@ HEAD = "a" * 40
 SOURCE = "b" * 40
 REPAIR_SOURCE = "d" * 40
 CHECKSUM = "c" * 64
-CONFIG_COMMANDS = tomllib.loads(
-    (SCRIPT.parents[1] / ".agent-loop.toml").read_text(encoding="utf-8")
-)["verification"]["commands"]
+CONFIG_COMMANDS = publish_release.configured_handoff_checks(SCRIPT.parents[1])
 ENVIRONMENT = {
     "AGENT_LOOP_REPOSITORY": REPOSITORY,
     "AGENT_LOOP_ISSUE": "7",
@@ -265,8 +263,8 @@ def write_fixture(
     ownership_path = root / "docs/repository-split/package-ownership.json"
     ownership_path.parent.mkdir(parents=True, exist_ok=True)
     ownership_path.write_text(json.dumps({"packages": ownership}), encoding="utf-8")
-    (root / ".agent-loop.toml").write_text(
-        (SCRIPT.parents[1] / ".agent-loop.toml").read_text(encoding="utf-8"),
+    (root / ".coding-tooling.json").write_text(
+        (SCRIPT.parents[1] / ".coding-tooling.json").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
     write_manifest(root / "releases/release.toml", manifest_packages, releases=releases)

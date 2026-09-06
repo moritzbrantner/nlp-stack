@@ -9,6 +9,8 @@ import tomllib
 import unittest
 from pathlib import Path
 
+from publish_release import configured_handoff_checks
+
 from check_release_plan import (
     NLP_WAVE_1,
     NLP_WAVE_1_CONSUMER_CHECKS,
@@ -172,11 +174,7 @@ class CheckedReleaseManifestTests(unittest.TestCase):
                     "tag": f"{name}-v{version}",
                 }
             )
-        checks = tomllib.loads(
-            (OWNERSHIP_PATH.parents[2] / ".agent-loop.toml").read_text(
-                encoding="utf-8"
-            )
-        )["verification"]["commands"]
+        checks = configured_handoff_checks(OWNERSHIP_PATH.parents[2])
         self.manifest = {
             "schema_version": 1,
             "repository": "moritzbrantner/nlp-stack",
