@@ -28,4 +28,4 @@ Hosted CI remains repository-local and registry-based. It validates the structur
 
 ## Handoff
 
-The readiness canary establishes that an agent can load policy, skills, and—when requested—the exact local source graph. It does not replace repository verification. Implementations still validate the narrowest affected scope first and use `scripts/check-preflight.sh` for handoff; `.agent-loop.toml` remains the exact-head handoff gate.
+The readiness canary establishes that an agent can load policy, skills, and—when requested—the exact local source graph. It does not replace repository verification. Implementations still validate the narrowest affected scope first. Exact-head handoff is the `handoff` tier in `.coding-tooling.json`; run `coding-tooling run --tier handoff --strict --json`. The tier delegates to the repository-owned `bun run check` gate, so command ownership is not duplicated in a second agent-loop config.

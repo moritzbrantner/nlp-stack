@@ -2,9 +2,15 @@
   "schemaVersion": 1,
   "profile": "repository-foundation-v1",
   "tiers": {
-    "fast": ["format:check", "lint", "build", "test:unit"]
+    "fast": ["format:check", "lint", "build", "test:unit"],
+    "handoff": ["package:check"]
   },
   "requiredCapabilities": ["format:check", "lint", "build", "test:unit"],
+  "capabilityCommands": {
+    ".": {
+      "package:check": ["bun", "run", "check"]
+    }
+  },
   "conventionRefs": [
     "AGENT-001",
     "AGENT-002",
