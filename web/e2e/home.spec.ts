@@ -11,7 +11,7 @@ test("selects examples and renders corpus views from text-analysis Wasm", async 
   const dialogue = page.getByRole("button", { name: /Meeting dialogue/ });
   await expect(dialogue).toBeVisible();
   await dialogue.click();
-  await expect(page.getByLabel("Text to analyze")).toContainText("Maya:");
+  await expect(page.getByLabel("Text to analyze")).toHaveValue(/Maya:/);
 
   const analyze = page.getByRole("button", { name: "Analyze text" });
   await expect(analyze).toBeEnabled();
