@@ -1,0 +1,39 @@
+name: Apply handoff migration
+
+on:
+  push:
+    branches:
+      - cleanup/migrate-agent-loop-handoff
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: cleanup/migrate-agent-loop-handoff
+          fetch-depth: 0
+
+      - name: Apply deterministic migration
+        run: python3 scripts/_migrate_agent_loop_handoff.py
+
+      - name: Verify readiness contract
+        run: python3 scripts/check_agent_readiness_contract.py --check
+
+      - name: Run release-control unit tests
+        run: python3 -m unittest scripts.test_publish_release scripts.test_check_release_plan
+
+      - name: Commit migration result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "refactor: move handoff authority to coding-tooling"
+          git push origin HEAD:cleanup/migrate-agent-loop-handoff
