@@ -69,4 +69,4 @@ export const textAnalysisExamples: TextAnalysisExample[] = [
   },
 ];
 
-export const defaultTextAnalysisExample = textAnalysisExamples[0];
+export const defaultTextAnalysisExample = textAnalysisExamples[0]!;
