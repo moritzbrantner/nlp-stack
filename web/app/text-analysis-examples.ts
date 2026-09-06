@@ -62,7 +62,7 @@ export const textAnalysisExamples: TextAnalysisExample[] = [
     label: "OCR-like report",
     category: "Noisy document",
     description: "Line breaks, spacing errors, numbers, and split words resemble imperfect document extraction.",
-    demonstrates: "normalization, corpus terms, robustness",
+    demonstrates: "corpus terms, document facts, robustness",
     focus: "overview",
     text:
       "FIELD REPORT 17 / BERLIN\n\nCollected: 2026-08-14   Operator: A. Keller\n\nThe north plat-form sensor recorded  42 events.\nSeveral entries were dupli-\ncated after the power interruption.  The recovery process restored the local index, but two timestamps remained incomplete.\n\nRecommendation: compare the recovered records against the source log; preserve the original identifiers; do not infer missing times.\n\nStatus: usable with review. Confidence is high for event counts and lower for the damaged timestamp sequence.",
