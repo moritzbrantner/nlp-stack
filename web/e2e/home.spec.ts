@@ -47,7 +47,7 @@ test("keeps single-document semantics separate from multi-document corpus themes
 
   await expect(page.getByRole("heading", { name: "Corpus themes" })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/Corpus: 2 sources/i)).toBeVisible();
-  await expect(page.getByText(/hashed-tfidf-sentence-baseline/i)).toBeVisible();
+  await expect(page.getByText(/hashed TF-IDF backend/i)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Theme evidence" })).toBeVisible();
   await expect(page.getByText(/semantic.*retrieval|retrieval.*semantic/i).first()).toBeVisible();
   await expect(page.getByText(/Analysis ready. Corpus themes use 2 supplied sources/i)).toBeVisible();
