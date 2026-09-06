@@ -22,7 +22,7 @@ export const textAnalysisExamples: TextAnalysisExample[] = [
     label: "Technical release",
     category: "Technical prose",
     description: "A compact engineering update with repeated domain vocabulary and named places.",
-    demonstrates: "word corpus, keywords, entities",
+    demonstrates: "word profile, keywords, entities",
     focus: "word-corpus",
     text:
       "Alice presented the semantic search roadmap in Berlin during the release review. The Rust text-analysis package extracts keywords, entities, linguistic evidence, and deterministic semantic structure. The team moved corpus statistics into the shared analysis surface and kept browser decoding outside the semantic core. Bob asked how retrieval scales to larger corpora. Alice explained that exact similarity remains the deterministic baseline while indexed search is measured separately. The release keeps source provenance attached to representative passages so editors can inspect why a concept was selected.",
@@ -32,8 +32,8 @@ export const textAnalysisExamples: TextAnalysisExample[] = [
     label: "Meeting dialogue",
     category: "Conversation",
     description: "Alternating speakers revisit concepts, disagree, and converge on a decision.",
-    demonstrates: "semantic corpus, concept trajectory",
-    focus: "semantic-corpus",
+    demonstrates: "semantic map, topic shifts",
+    focus: "semantic-map",
     text:
       "Maya: We should launch the new search experience with semantic ranking enabled by default.\n\nJonas: I disagree. The exact lexical ranking is easier to audit, and our current evaluation set is still small.\n\nMaya: The semantic model finds related passages that lexical search misses. We can keep the exact score visible as evidence.\n\nJonas: Then the decision should depend on measurable retrieval quality, not novelty. We need a baseline, a semantic candidate, and the same queries for both.\n\nMaya: Agreed. Let us ship the comparison first, preserve source passages, and only change the default after the evaluation is reproducible.\n\nJonas: That works. The audit trail is the important part.",
   },
@@ -62,7 +62,7 @@ export const textAnalysisExamples: TextAnalysisExample[] = [
     label: "OCR-like report",
     category: "Noisy document",
     description: "Line breaks, spacing errors, numbers, and split words resemble imperfect document extraction.",
-    demonstrates: "corpus terms, document facts, robustness",
+    demonstrates: "word profile, document facts, robustness",
     focus: "overview",
     text:
       "FIELD REPORT 17 / BERLIN\n\nCollected: 2026-08-14   Operator: A. Keller\n\nThe north plat-form sensor recorded  42 events.\nSeveral entries were dupli-\ncated after the power interruption.  The recovery process restored the local index, but two timestamps remained incomplete.\n\nRecommendation: compare the recovered records against the source log; preserve the original identifiers; do not infer missing times.\n\nStatus: usable with review. Confidence is high for event counts and lower for the damaged timestamp sequence.",
