@@ -224,7 +224,12 @@ fn analyze_corpus_semantics_prepared<E: TextEmbeddingBackend + ?Sized>(
     )?;
 
     let lexical = lexical_profile(items.iter().copied(), options.top_terms);
-    let authors = author_profiles(items, &semantic, options.top_terms, options.min_concept_units);
+    let authors = author_profiles(
+        items,
+        &semantic,
+        options.top_terms,
+        options.min_concept_units,
+    );
     let concepts = concept_evidence(&semantic, &sources, options.min_concept_units);
     let non_concept_unit_count = semantic
         .clusters
@@ -323,7 +328,8 @@ struct CorpusAwareHashedTextEmbedder {
 
 impl TextEmbeddingBackend for CorpusAwareHashedTextEmbedder {
     fn embed_text(&self, text: &str) -> Result<DenseVector> {
-        self.embedder.embed_text_with_corpus(text, Some(&self.corpus))
+        self.embedder
+            .embed_text_with_corpus(text, Some(&self.corpus))
     }
 
     fn model_info(&self) -> EmbeddingModelInfo {
@@ -458,12 +464,8 @@ fn concept_evidence(
                     authors.insert(author.clone());
                 }
             }
-            let key_terms = concept_key_terms(
-                cluster,
-                &units,
-                &document_frequency,
-                total_primary_units,
-            );
+            let key_terms =
+                concept_key_terms(cluster, &units, &document_frequency, total_primary_units);
             let label = if key_terms.is_empty() {
                 cluster.id.clone()
             } else {
@@ -528,25 +530,28 @@ fn concept_key_terms(
     let mut scored = cluster_counts
         .into_iter()
         .filter_map(|(term, count)| {
-            if term.chars().count() < 2 || !term.chars().any(|character| character.is_alphabetic()) {
+            if term.chars().count() < 2 || !term.chars().any(|character| character.is_alphabetic())
+            {
                 return None;
             }
             let document_count = document_frequency.get(&term).copied().unwrap_or(0);
             if total_primary_units >= 5 && document_count * 5 >= total_primary_units * 4 {
                 return None;
             }
-            let idf = (((total_primary_units + 1) as f32) / ((document_count + 1) as f32)).ln()
-                + 1.0;
+            let idf =
+                (((total_primary_units + 1) as f32) / ((document_count + 1) as f32)).ln() + 1.0;
             let score = (1.0 + (count as f32).ln()) * idf * idf;
             Some((term, count, score))
         })
         .collect::<Vec<_>>();
-    scored.sort_by(|(left_term, left_count, left_score), (right_term, right_count, right_score)| {
-        right_score
-            .total_cmp(left_score)
-            .then_with(|| right_count.cmp(left_count))
-            .then_with(|| left_term.cmp(right_term))
-    });
+    scored.sort_by(
+        |(left_term, left_count, left_score), (right_term, right_count, right_score)| {
+            right_score
+                .total_cmp(left_score)
+                .then_with(|| right_count.cmp(left_count))
+                .then_with(|| left_term.cmp(right_term))
+        },
+    );
     scored
         .into_iter()
         .take(CONCEPT_KEY_TERM_LIMIT)
