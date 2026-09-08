@@ -1,5 +1,7 @@
 //! Library-owned runtime surface for `text-index`.
 
+mod fuzzy;
+
 use runtime_core::{
     primary_workflow_operation, set_surface_operation_curation, structured_surface_value,
     OperationId, PackageSurface, RuntimeCapabilities, SurfaceError, SurfaceOperation,
@@ -26,7 +28,7 @@ pub fn package_surface() -> PackageSurface {
             operation("index.open", "Open index", "Opens or describes an index backend.", serde_json::json!({"backend": "memory"})),
             operation("index.addDocuments", "Add documents", "Adds documents to a transient memory index or an explicit committed SQLite backend.", serde_json::json!({"backend": "memory", "documents": [{"id": "doc-1", "body": "Rust text index"}]})),
             operation("index.removeDocuments", "Remove documents", "Removes documents only from an explicit committed SQLite backend; memory execution returns a side-effect-free plan.", serde_json::json!({"backend": "memory", "documentIds": ["doc-1"]})),
-            operation("index.search", "Search index", "Builds or opens a requested backend and searches it.", serde_json::json!({"backend": "memory", "documents": [{"id": "doc-1", "body": "Rust text index supports required phrases"}], "query": {"text": "text index required phrases", "requiredPhrases": ["required phrases"]}})),
+            operation("index.search", "Search index", "Builds or opens a requested backend and searches it, with optional bounded typo-tolerant lexical expansion.", serde_json::json!({"backend": "memory", "documents": [{"id": "doc-1", "body": "Rust text index supports required phrases and fuzzy retrieval"}], "query": {"text": "retrieavl required phrases", "mode": "lexical", "requiredPhrases": ["required phrases"], "fuzzy": {"maxEditDistance": 1, "minTermLength": 4, "maxExpansionsPerTerm": 3, "maxQueryVariants": 16, "maxVocabularyTerms": 20000, "fuzzyWeight": 0.8}}})),
             operation("index.inspect", "Inspect index", "Builds or opens a requested backend and returns counts.", serde_json::json!({"backend": "memory", "documents": [{"id": "doc-1", "body": "Rust text index"}]})),
             operation("index.snapshotPlan", "Plan snapshot", "Builds or opens a requested backend and returns a snapshot plan.", serde_json::json!({"backend": "memory", "documents": [{"id": "doc-1", "body": "Rust text index"}]})),
         ],
@@ -77,7 +79,13 @@ pub fn run_surface_operation_with_context(
                 },
                 context,
             )?;
-            serde_json::json!({"backend": index.backend_name(), "results": index.search(&input.query)?})
+            let results = if let Some(options) = input.query.fuzzy.as_ref() {
+                fuzzy::search(&index, &input.query.query, options)?
+            } else {
+                serde_json::to_value(index.search(&input.query.query)?)
+                    .map_err(|error| error.to_string())?
+            };
+            serde_json::json!({"backend": index.backend_name(), "results": results})
         }
         "index.inspect" => {
             let input: BuildRequest = parse_input(request.input)?;
@@ -451,13 +459,22 @@ struct BuildRequest {
 struct SearchRequest {
     #[serde(default)]
     documents: Vec<IndexDocument>,
-    query: IndexQuery,
+    query: SurfaceSearchQuery,
     #[serde(default)]
     options: IndexBuildOptions,
     #[serde(default = "default_dimensions")]
     dimensions: usize,
     #[serde(flatten)]
     backend: BackendRequest,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SurfaceSearchQuery {
+    #[serde(flatten)]
+    query: IndexQuery,
+    #[serde(default)]
+    fuzzy: Option<fuzzy::FuzzySearchOptions>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -497,7 +514,7 @@ fn parse_input<T: for<'de> Deserialize<'de>>(input: serde_json::Value) -> Result
 }
 
 fn validate_search_request(input: &SearchRequest) -> Result<(), String> {
-    if input.query.text.trim().is_empty() {
+    if input.query.query.text.trim().is_empty() {
         return Err(SurfaceError::invalid_request(
             Some("index.search"),
             "index.search requires a non-empty query.text",
@@ -601,6 +618,42 @@ mod tests {
         assert_eq!(response.value["operation"], "index.search");
         assert_eq!(response.value["result"]["backend"], "memory");
         assert_eq!(response.value["summary"]["resultCount"], 1);
+    }
+
+    #[test]
+    fn search_supports_bounded_fuzzy_lexical_queries() {
+        let response = run_surface_operation(request(
+            "index.search",
+            serde_json::json!({
+                "backend": "memory",
+                "documents": [
+                    {"id": "strategy", "body": "medieval strategy combat formations"},
+                    {"id": "recipe", "body": "kitchen recipe ingredients"}
+                ],
+                "query": {
+                    "text": "stratgey formations",
+                    "mode": "lexical",
+                    "topK": 3,
+                    "fuzzy": {
+                        "maxEditDistance": 1,
+                        "minTermLength": 4,
+                        "maxExpansionsPerTerm": 3,
+                        "maxQueryVariants": 16,
+                        "maxVocabularyTerms": 20000,
+                        "fuzzyWeight": 0.8
+                    }
+                }
+            }),
+        ))
+        .expect("fuzzy memory search");
+        assert_eq!(
+            response.value["result"]["results"][0]["documentId"],
+            "strategy"
+        );
+        assert_eq!(
+            response.value["result"]["results"][0]["fuzzyMatches"][0]["matchedTerm"],
+            "strategy"
+        );
     }
 
     #[test]
