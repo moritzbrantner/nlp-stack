@@ -151,13 +151,11 @@ pub(super) fn search(
             if adjusted <= 0.0 || !adjusted.is_finite() {
                 continue;
             }
-            let replace = best_by_chunk
-                .get(&result.chunk_id)
-                .is_none_or(|existing| {
-                    adjusted > existing.adjusted_lexical_score
-                        || (adjusted == existing.adjusted_lexical_score
-                            && variant.fuzzy_matches.len() < existing.fuzzy_matches.len())
-                });
+            let replace = best_by_chunk.get(&result.chunk_id).is_none_or(|existing| {
+                adjusted > existing.adjusted_lexical_score
+                    || (adjusted == existing.adjusted_lexical_score
+                        && variant.fuzzy_matches.len() < existing.fuzzy_matches.len())
+            });
             if replace {
                 best_by_chunk.insert(
                     result.chunk_id.clone(),
@@ -184,23 +182,27 @@ pub(super) fn search(
             candidate.result.score_breakdown.lexical_score = candidate.adjusted_lexical_score;
             candidate.result.score_breakdown.normalized_lexical_score = normalized;
             if query.explain {
-                candidate.result.score_breakdown.explanation = Some(if candidate.fuzzy_matches.is_empty() {
-                    format!("fuzzy lexical score={:.4}; exact query variant", candidate.adjusted_lexical_score)
-                } else {
-                    format!(
-                        "fuzzy lexical score={:.4}; corrections={}",
-                        candidate.adjusted_lexical_score,
-                        candidate
-                            .fuzzy_matches
-                            .iter()
-                            .map(|matched| format!(
-                                "{}→{}(d={})",
-                                matched.query_term, matched.matched_term, matched.edit_distance
-                            ))
-                            .collect::<Vec<_>>()
-                            .join(",")
-                    )
-                });
+                candidate.result.score_breakdown.explanation =
+                    Some(if candidate.fuzzy_matches.is_empty() {
+                        format!(
+                            "fuzzy lexical score={:.4}; exact query variant",
+                            candidate.adjusted_lexical_score
+                        )
+                    } else {
+                        format!(
+                            "fuzzy lexical score={:.4}; corrections={}",
+                            candidate.adjusted_lexical_score,
+                            candidate
+                                .fuzzy_matches
+                                .iter()
+                                .map(|matched| format!(
+                                    "{}→{}(d={})",
+                                    matched.query_term, matched.matched_term, matched.edit_distance
+                                ))
+                                .collect::<Vec<_>>()
+                                .join(",")
+                        )
+                    });
             }
             SurfaceFuzzyResult {
                 result: candidate.result,
@@ -251,8 +253,13 @@ fn validate_options(query: &IndexQuery, options: &FuzzySearchOptions) -> Result<
             "fuzzy maxVocabularyTerms must be between 1 and {HARD_MAX_VOCABULARY_TERMS}"
         ));
     }
-    if !options.fuzzy_weight.is_finite() || !(0.0..=1.0).contains(&options.fuzzy_weight) || options.fuzzy_weight == 0.0 {
-        return Err("fuzzy fuzzyWeight must be finite and greater than 0 and at most 1".to_string());
+    if !options.fuzzy_weight.is_finite()
+        || !(0.0..=1.0).contains(&options.fuzzy_weight)
+        || options.fuzzy_weight == 0.0
+    {
+        return Err(
+            "fuzzy fuzzyWeight must be finite and greater than 0 and at most 1".to_string(),
+        );
     }
     Ok(())
 }
@@ -511,7 +518,10 @@ mod tests {
 
     #[test]
     fn damerau_distance_treats_adjacent_transposition_as_one_edit() {
-        assert_eq!(bounded_damerau_levenshtein("strategy", "stratgey", 1), Some(1));
+        assert_eq!(
+            bounded_damerau_levenshtein("strategy", "stratgey", 1),
+            Some(1)
+        );
         assert_eq!(bounded_damerau_levenshtein("search", "searh", 1), Some(1));
         assert_eq!(bounded_damerau_levenshtein("search", "fetch", 1), None);
     }
@@ -540,6 +550,9 @@ mod tests {
         let results = search(&index, &query, &FuzzySearchOptions::default()).expect("fuzzy search");
         let results = results.as_array().expect("result array");
         assert_eq!(results[0]["documentId"], "exact");
-        assert!(results[0]["fuzzyMatches"].as_array().expect("matches").is_empty());
+        assert!(results[0]["fuzzyMatches"]
+            .as_array()
+            .expect("matches")
+            .is_empty());
     }
 }
