@@ -82,7 +82,8 @@ pub fn run_surface_operation_with_context(
             let results = if let Some(options) = input.query.fuzzy.as_ref() {
                 fuzzy::search(&index, &input.query.query, options)?
             } else {
-                serde_json::to_value(index.search(&input.query.query)?).map_err(|error| error.to_string())?
+                serde_json::to_value(index.search(&input.query.query)?)
+                    .map_err(|error| error.to_string())?
             };
             serde_json::json!({"backend": index.backend_name(), "results": results})
         }
@@ -645,7 +646,10 @@ mod tests {
             }),
         ))
         .expect("fuzzy memory search");
-        assert_eq!(response.value["result"]["results"][0]["documentId"], "strategy");
+        assert_eq!(
+            response.value["result"]["results"][0]["documentId"],
+            "strategy"
+        );
         assert_eq!(
             response.value["result"]["results"][0]["fuzzyMatches"][0]["matchedTerm"],
             "strategy"
