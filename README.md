@@ -8,6 +8,12 @@ The current workspace still contains the broad extraction-era package, adapter, 
 
 Ownership does not itself authorize publication, tags, releases, consumer migration, or source removal. Those remain explicit release or migration tasks.
 
+## Browser workbench
+
+The static GitHub Pages workbench can ingest text-bearing files, PDFs, images, and pasted text locally in the browser, then run the existing Rust/Wasm analysis surfaces without an `nlp-stack` API server.
+
+The corpus-baseline flow exports a versioned `nlp-stack.semantic-corpus-baseline` JSON artifact containing the extracted source text, provenance, semantic-corpus options, and Rust semantic result. The artifact deliberately omits generated timestamps so unchanged inputs and analysis output serialize deterministically.
+
 ## Source development
 
 Normal feature work may use the exact `moenarch-foundation` revision declared in `.coding-tooling.source-deps.json` without publishing intermediate crates. Run `bash scripts/source-deps activate` before cross-repository work and `bash scripts/source-deps deactivate` before registry-only release verification.
