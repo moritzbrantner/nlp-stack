@@ -1,3 +1,4 @@
+import { CorpusBaselineStudio } from "./CorpusBaselineStudio";
 import { StackIntro } from "./StackIntro";
 import { TextAnalysisStudio } from "./TextAnalysisStudio";
 
@@ -19,12 +20,25 @@ export default function Home() {
           <TextAnalysisStudio />
         </section>
 
+        <section className="border-t border-line pt-8" aria-labelledby="corpus-baseline-heading">
+          <div className="mb-6 max-w-3xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-accent">Reusable evaluation input</p>
+            <h2 id="corpus-baseline-heading" className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+              Corpus baseline export
+            </h2>
+            <p className="mt-3 text-base leading-7 text-muted">
+              Collect documents and pasted text into a portable baseline that contains the source text, provenance, semantic-corpus analysis options, and Rust/Wasm semantic evidence. The exported JSON is versioned and omits generated timestamps so the same inputs can be compared or checked into a downstream evaluation workflow.
+            </p>
+          </div>
+          <CorpusBaselineStudio />
+        </section>
+
         <section className="border-t border-line pt-8" aria-labelledby="architecture-heading">
           <h2 id="architecture-heading" className="text-lg font-semibold text-ink">Ownership boundary</h2>
           <ul className="mt-4 grid gap-3 text-sm leading-6 text-muted md:grid-cols-3">
-            <li className="border-l-2 border-line pl-4">The browser owns example selection, multi-file selection, PDF text extraction, rendering, OCR adaptation, and presentation.</li>
+            <li className="border-l-2 border-line pl-4">The browser owns example selection, multi-file selection, PDF text extraction, rendering, OCR adaptation, baseline assembly, and file export.</li>
             <li className="border-l-2 border-line pl-4">Rust text-analysis owns summaries, lexical evidence, linguistic analysis, embedding evidence, cohesion-preserving theme structure, and source provenance.</li>
-            <li className="border-l-2 border-line pl-4">GitHub Pages remains a static host; analysis does not depend on an nlp-stack API server.</li>
+            <li className="border-l-2 border-line pl-4">GitHub Pages remains a static host; analysis and baseline creation do not depend on an nlp-stack API server.</li>
           </ul>
         </section>
       </div>
