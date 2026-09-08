@@ -21,6 +21,7 @@ persist.
 - Memory-backed default package-surface operations that do not write artifacts.
 - Optional SQLite persistence behind the `sqlite` feature.
 - Hybrid lexical and semantic search with hashed embeddings by default.
+- Opt-in bounded fuzzy lexical search for typo-tolerant package-surface queries.
 
 ## Stable contract
 
@@ -30,6 +31,11 @@ package-surface request and response behavior. Package-surface operations
 preserve the structured `title`, `message`, `summary`, and `result` response
 shape across library, CLI, server, WASM, and app adapters.
 
+Fuzzy search is currently an opt-in `index.search` package-surface extension to
+the serialized query object rather than a change to the core `IndexQuery`
+library type. This keeps the first typo-tolerance slice isolated while its
+ranking behavior is evaluated by browser consumers.
+
 ## Quality and limits
 
 Default package-surface operations are memory-backed and side-effect free.
@@ -37,6 +43,12 @@ SQLite writes require an explicit `backend: "sqlite"`, `path`, and
 `commit: true`. WASM and default builds report SQLite as unsupported instead of
 pretending persistence is available. Hashed embeddings are deterministic and
 local-first; they are not model-quality semantic embeddings.
+
+Fuzzy search currently applies only to lexical mode. It uses Unicode-aware
+bounded Damerau-Levenshtein expansion and caps query terms, vocabulary size,
+edit distance, candidate expansions per term, and total query variants. Exact
+required phrases and ordinary index filters continue to be enforced by the
+normal `TextIndex::search` path for every expanded query variant.
 
 ## Example
 
@@ -76,10 +88,17 @@ assert_eq!(results[0].matched_phrases, vec!["public funding"]);
 # Ok::<(), text_index::TextIndexError>(())
 ```
 
+At the package surface, a lexical query may additionally include a `fuzzy`
+object. Defaults are one edit, three term expansions, sixteen query variants,
+and a 20,000-term vocabulary ceiling. Fuzzy results add `fuzzyMatches`
+diagnostics describing the correction that produced the winning score.
+
 ## Package surface
 
 - Primary workflow: `index.search` builds or opens the requested backend and
   searches it.
+- `index.search` optionally accepts bounded fuzzy settings inside its query
+  object when `mode` is `lexical`.
 - Workflow operations: `index.build`, `index.addDocuments`, `index.search`, and
   `index.snapshotPlan`.
 - Debug and inspection operations: `describe`, `index.open`, and
