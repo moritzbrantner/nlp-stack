@@ -48,7 +48,8 @@ Fuzzy search currently applies only to lexical mode. It uses Unicode-aware
 bounded Damerau-Levenshtein expansion and caps query terms, vocabulary size,
 edit distance, candidate expansions per term, and total query variants. Exact
 required phrases and ordinary index filters continue to be enforced by the
-normal `TextIndex::search` path for every expanded query variant.
+normal `TextIndex::search` path for every expanded query variant. Expansion and
+result tie-breaking are deterministic for the same corpus, query, and options.
 
 ## Example
 
