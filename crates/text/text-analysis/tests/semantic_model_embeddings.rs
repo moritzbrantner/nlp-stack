@@ -36,6 +36,16 @@ fn semantic_map_accepts_external_model_embeddings() {
     );
     assert_eq!(semantic["embeddingModel"]["backend"], "external");
     assert_eq!(semantic["embeddingModel"]["dimensions"], 3);
+    assert_eq!(semantic["embeddingModel"]["normalized"], true);
+    for unit in semantic["units"].as_array().unwrap() {
+        let squared_norm = unit["embedding"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_f64().unwrap().powi(2))
+            .sum::<f64>();
+        assert!((squared_norm.sqrt() - 1.0).abs() < 0.000_01);
+    }
     assert!(semantic["clusters"]
         .as_array()
         .unwrap()
