@@ -30,10 +30,19 @@ fn semantic_map_accepts_external_model_embeddings() {
     .unwrap();
 
     let semantic = &response.value["result"]["semantic"];
-    assert_eq!(semantic["embeddingModel"]["model_name"], "fixture/semantic-model");
+    assert_eq!(
+        semantic["embeddingModel"]["model_name"],
+        "fixture/semantic-model"
+    );
     assert_eq!(semantic["embeddingModel"]["backend"], "external");
     assert_eq!(semantic["embeddingModel"]["dimensions"], 3);
-    assert!(semantic["clusters"].as_array().unwrap().iter().any(|cluster| {
-        cluster["memberUnitIds"].as_array().is_some_and(|members| members.len() == 2)
-    }));
+    assert!(semantic["clusters"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|cluster| {
+            cluster["memberUnitIds"]
+                .as_array()
+                .is_some_and(|members| members.len() == 2)
+        }));
 }
