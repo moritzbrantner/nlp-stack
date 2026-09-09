@@ -1,5 +1,8 @@
 const runtimeReadyEvent = "nlp-stack-text-analysis-ready";
 const runtimeErrorEvent = "nlp-stack-text-analysis-error";
+const transformersModuleUrl = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0";
+const semanticEmbeddingModel = "onnx-community/all-MiniLM-L6-v2-ONNX";
+let semanticExtractorPromise = null;
 
 function fromWasmValue(value) {
   if (value instanceof Map) {
@@ -21,12 +24,104 @@ function fromWasmValue(value) {
   return value;
 }
 
+function surfaceResult(response) {
+  const value = response?.value;
+  return value?.result ?? value ?? {};
+}
+
+function semanticUnitTexts(documentResult, sourceText) {
+  const core = documentResult?.core ?? {};
+  const sentenceTexts = Array.isArray(core.sentences)
+    ? core.sentences.map((sentence) => sentence?.text).filter((text) => typeof text === "string" && text.length > 0)
+    : [];
+  const paragraphTexts = Array.isArray(core.paragraphs)
+    ? core.paragraphs.map((paragraph) => paragraph?.text).filter((text) => typeof text === "string" && text.length > 0)
+    : [];
+  return Array.from(new Set([...sentenceTexts, ...paragraphTexts, sourceText]));
+}
+
+async function semanticExtractor() {
+  if (!semanticExtractorPromise) {
+    semanticExtractorPromise = import(transformersModuleUrl).then(({ pipeline }) =>
+      pipeline("feature-extraction", semanticEmbeddingModel, { dtype: "q4" }),
+    );
+  }
+  return semanticExtractorPromise;
+}
+
+async function runModelBackedSemanticMap(wasm, request) {
+  const input = request?.input ?? {};
+  const text = typeof input.text === "string" ? input.text : "";
+  if (!text.trim()) {
+    return fromWasmValue(wasm.runOperation(request));
+  }
+
+  const segmentationResponse = fromWasmValue(
+    wasm.runOperation({
+      operation: "analysis.document",
+      input: {
+        id: input.id ?? "semantic-doc",
+        text,
+        profile: "deterministic",
+        linguistics: { mode: "off" },
+        embedding: { mode: "off" },
+      },
+    }),
+  );
+  const texts = semanticUnitTexts(surfaceResult(segmentationResponse), text);
+
+  let extractor;
+  try {
+    extractor = await semanticExtractor();
+  } catch (error) {
+    semanticExtractorPromise = null;
+    throw new Error(
+      `Unable to load Hugging Face semantic model ${semanticEmbeddingModel}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  let output;
+  try {
+    output = await extractor(texts, { pooling: "mean", normalize: true });
+  } catch (error) {
+    throw new Error(
+      `Unable to compute semantic embeddings with ${semanticEmbeddingModel}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  const vectors = output.tolist();
+  if (!Array.isArray(vectors) || vectors.length !== texts.length || !Array.isArray(vectors[0])) {
+    throw new Error(`Hugging Face semantic model ${semanticEmbeddingModel} returned an unexpected embedding shape.`);
+  }
+  const dimensions = vectors[0].length;
+
+  return fromWasmValue(
+    wasm.runOperation({
+      ...request,
+      input: {
+        ...input,
+        importedEmbeddings: texts.map((unitText, index) => ({
+          text: unitText,
+          vector: vectors[index],
+        })),
+        embeddingModel: {
+          name: semanticEmbeddingModel,
+          dimensions,
+          maxTokens: 256,
+        },
+      },
+    }),
+  );
+}
+
 const ready = import(new URL("./wasm/moenarch_text_analysis_wasm.js", import.meta.url).href)
   .then(async (wasm) => {
     await wasm.default();
     return {
       packageSurface: () => fromWasmValue(wasm.packageSurface()),
-      runOperation: (request) => fromWasmValue(wasm.runOperation(request)),
+      runOperation: (request) => request?.operation === "analysis.semantic-map"
+        ? runModelBackedSemanticMap(wasm, request)
+        : fromWasmValue(wasm.runOperation(request)),
     };
   })
   .catch((error) => {
