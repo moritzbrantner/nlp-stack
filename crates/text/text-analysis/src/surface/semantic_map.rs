@@ -189,20 +189,16 @@ impl ImportedSemanticEmbedder {
                     "imported semantic embeddings must all use {dimensions} dimensions"
                 ));
             }
-            if embedding.vector.iter().any(|value| !value.is_finite()) {
-                return Err(
-                    "imported semantic embeddings must contain only finite values".to_string(),
-                );
-            }
+            let vector = normalize_imported_vector(&embedding.vector)?;
             if let Some(existing) = vectors.get(&embedding.text) {
-                if existing != &embedding.vector {
+                if existing != &vector {
                     return Err(
                         "duplicate imported semantic text supplied with conflicting vectors"
                             .to_string(),
                     );
                 }
             } else {
-                vectors.insert(embedding.text.clone(), embedding.vector.clone());
+                vectors.insert(embedding.text.clone(), vector);
             }
         }
 
@@ -218,6 +214,18 @@ impl ImportedSemanticEmbedder {
             max_tokens: model.and_then(|model| model.max_tokens),
         })
     }
+}
+
+fn normalize_imported_vector(values: &[f32]) -> Result<Vec<f32>, String> {
+    if values.iter().any(|value| !value.is_finite()) {
+        return Err("imported semantic embeddings must contain only finite values".to_string());
+    }
+    let squared_norm = values.iter().map(|value| value * value).sum::<f32>();
+    if !squared_norm.is_finite() || squared_norm <= f32::EPSILON {
+        return Err("imported semantic embeddings must have a finite non-zero norm".to_string());
+    }
+    let norm = squared_norm.sqrt();
+    Ok(values.iter().map(|value| value / norm).collect())
 }
 
 impl TextEmbeddingBackend for ImportedSemanticEmbedder {
