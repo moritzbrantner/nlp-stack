@@ -29,7 +29,7 @@ export const textAnalysisExamples: TextAnalysisExample[] = [
   },
   {
     id: "meeting-dialogue",
-    label: "Product review meeting",
+    label: "Meeting dialogue",
     category: "Conversation",
     description: "A longer design review that leaves and revisits retrieval quality, latency, evidence, and launch policy.",
     demonstrates: "semantic map, recurring topics, topic shifts",
