@@ -49,6 +49,14 @@ async function semanticExtractor() {
   return semanticExtractorPromise;
 }
 
+function hashedSemanticMapFallback(wasm, request, error) {
+  console.warn(
+    `Falling back to the local hashed semantic map because ${semanticEmbeddingModel} was unavailable.`,
+    error,
+  );
+  return fromWasmValue(wasm.runOperation(request));
+}
+
 async function runModelBackedSemanticMap(wasm, request) {
   const input = request?.input ?? {};
   const text = typeof input.text === "string" ? input.text : "";
@@ -75,23 +83,18 @@ async function runModelBackedSemanticMap(wasm, request) {
     extractor = await semanticExtractor();
   } catch (error) {
     semanticExtractorPromise = null;
-    throw new Error(
-      `Unable to load Hugging Face semantic model ${semanticEmbeddingModel}: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    return hashedSemanticMapFallback(wasm, request, error);
   }
 
-  let output;
+  let vectors;
   try {
-    output = await extractor(texts, { pooling: "mean", normalize: true });
+    const output = await extractor(texts, { pooling: "mean", normalize: true });
+    vectors = output.tolist();
+    if (!Array.isArray(vectors) || vectors.length !== texts.length || !Array.isArray(vectors[0])) {
+      throw new Error(`Hugging Face semantic model ${semanticEmbeddingModel} returned an unexpected embedding shape.`);
+    }
   } catch (error) {
-    throw new Error(
-      `Unable to compute semantic embeddings with ${semanticEmbeddingModel}: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
-
-  const vectors = output.tolist();
-  if (!Array.isArray(vectors) || vectors.length !== texts.length || !Array.isArray(vectors[0])) {
-    throw new Error(`Hugging Face semantic model ${semanticEmbeddingModel} returned an unexpected embedding shape.`);
+    return hashedSemanticMapFallback(wasm, request, error);
   }
   const dimensions = vectors[0].length;
 
