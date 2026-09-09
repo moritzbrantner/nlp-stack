@@ -34,7 +34,10 @@ pub(super) fn operation() -> SurfaceOperation {
 pub(super) fn run(input: serde_json::Value) -> Result<serde_json::Value, String> {
     let input = super::parse_input::<SemanticMapRequest>(input)?;
     let options = input.options();
-    let id = input.id.clone().unwrap_or_else(|| "semantic-doc".to_string());
+    let id = input
+        .id
+        .clone()
+        .unwrap_or_else(|| "semantic-doc".to_string());
     let document = TextDocument::new(&id, &input.text);
     let semantic = if input.imported_embeddings.is_empty() {
         analyze_document_semantics(&document, &options).map_err(|error| error.to_string())?
@@ -187,7 +190,9 @@ impl ImportedSemanticEmbedder {
                 ));
             }
             if embedding.vector.iter().any(|value| !value.is_finite()) {
-                return Err("imported semantic embeddings must contain only finite values".to_string());
+                return Err(
+                    "imported semantic embeddings must contain only finite values".to_string(),
+                );
             }
             if let Some(existing) = vectors.get(&embedding.text) {
                 if existing != &embedding.vector {
