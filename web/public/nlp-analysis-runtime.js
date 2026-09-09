@@ -1,9 +1,10 @@
 const runtimeReadyEvent = "nlp-stack-text-analysis-ready";
 const runtimeErrorEvent = "nlp-stack-text-analysis-error";
-const transformersModuleUrl = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0";
 const semanticEmbeddingModel = "onnx-community/all-MiniLM-L6-v2-ONNX";
 const semanticModelAttemptTimeoutMs = 10_000;
-let semanticExtractorPromise = null;
+let semanticWorkerInstance = null;
+let semanticWorkerRequestSequence = 0;
+const pendingSemanticWorkerRequests = new Map();
 
 function fromWasmValue(value) {
   if (value instanceof Map) {
@@ -41,28 +42,83 @@ function semanticUnitTexts(documentResult, sourceText) {
   return Array.from(new Set([...sentenceTexts, ...paragraphTexts, sourceText]));
 }
 
-async function semanticExtractor() {
-  if (!semanticExtractorPromise) {
-    semanticExtractorPromise = import(transformersModuleUrl)
-      .then(({ pipeline }) => pipeline("feature-extraction", semanticEmbeddingModel, { dtype: "q4" }))
-      .catch((error) => {
-        semanticExtractorPromise = null;
-        throw error;
-      });
-  }
-  return semanticExtractorPromise;
+function semanticWorkerError(error) {
+  return error instanceof Error ? error : new Error(String(error));
 }
 
-async function withinModelAttemptDeadline(operation) {
+function resetSemanticWorker(error) {
+  const worker = semanticWorkerInstance;
+  semanticWorkerInstance = null;
+  worker?.terminate();
+
+  const failure = semanticWorkerError(error);
+  for (const pending of pendingSemanticWorkerRequests.values()) {
+    pending.reject(failure);
+  }
+  pendingSemanticWorkerRequests.clear();
+}
+
+function semanticWorker() {
+  if (semanticWorkerInstance) {
+    return semanticWorkerInstance;
+  }
+  if (typeof Worker === "undefined") {
+    throw new Error("Web Workers are unavailable in this browser.");
+  }
+
+  const worker = new Worker(new URL("./nlp-semantic-worker.js", import.meta.url), { type: "module" });
+  semanticWorkerInstance = worker;
+  worker.addEventListener("message", (event) => {
+    const id = event.data?.id;
+    const pending = pendingSemanticWorkerRequests.get(id);
+    if (!pending) {
+      return;
+    }
+    pendingSemanticWorkerRequests.delete(id);
+    if (event.data?.error) {
+      pending.reject(new Error(event.data.error));
+    } else {
+      pending.resolve(event.data);
+    }
+  });
+  worker.addEventListener("error", (event) => {
+    resetSemanticWorker(event.message || "Semantic model worker failed.");
+  });
+  return worker;
+}
+
+function requestSemanticEmbeddings(texts) {
+  const id = ++semanticWorkerRequestSequence;
+  const promise = new Promise((resolve, reject) => {
+    let worker;
+    try {
+      worker = semanticWorker();
+    } catch (error) {
+      reject(semanticWorkerError(error));
+      return;
+    }
+
+    pendingSemanticWorkerRequests.set(id, { resolve, reject });
+    try {
+      worker.postMessage({ id, texts });
+    } catch (error) {
+      pendingSemanticWorkerRequests.delete(id);
+      reject(semanticWorkerError(error));
+    }
+  });
+  return { id, promise };
+}
+
+async function withinModelAttemptDeadline(request) {
   let timeoutId;
   const deadline = new Promise((_, reject) => {
-    timeoutId = setTimeout(
-      () => reject(new Error(`Semantic model attempt exceeded ${semanticModelAttemptTimeoutMs}ms.`)),
-      semanticModelAttemptTimeoutMs,
-    );
+    timeoutId = setTimeout(() => {
+      pendingSemanticWorkerRequests.delete(request.id);
+      reject(new Error(`Semantic model attempt exceeded ${semanticModelAttemptTimeoutMs}ms.`));
+    }, semanticModelAttemptTimeoutMs);
   });
   try {
-    return await Promise.race([operation, deadline]);
+    return await Promise.race([request.promise, deadline]);
   } finally {
     clearTimeout(timeoutId);
   }
@@ -91,13 +147,19 @@ async function computeModelBackedSemanticMap(wasm, request, text) {
     }),
   );
   const texts = semanticUnitTexts(surfaceResult(segmentationResponse), text);
-  const extractor = await semanticExtractor();
-  const output = await extractor(texts, { pooling: "mean", normalize: true });
-  const vectors = output.tolist();
-  if (!Array.isArray(vectors) || vectors.length !== texts.length || !Array.isArray(vectors[0])) {
+  const modelResult = await withinModelAttemptDeadline(requestSemanticEmbeddings(texts));
+  const vectors = modelResult?.vectors;
+  const dimensions = modelResult?.dimensions;
+  if (
+    !Array.isArray(vectors)
+    || vectors.length !== texts.length
+    || !Array.isArray(vectors[0])
+    || !Number.isInteger(dimensions)
+    || dimensions <= 0
+    || vectors.some((vector) => !Array.isArray(vector) || vector.length !== dimensions)
+  ) {
     throw new Error(`Hugging Face semantic model ${semanticEmbeddingModel} returned an unexpected embedding shape.`);
   }
-  const dimensions = vectors[0].length;
 
   return fromWasmValue(
     wasm.runOperation({
@@ -109,7 +171,7 @@ async function computeModelBackedSemanticMap(wasm, request, text) {
           vector: vectors[index],
         })),
         embeddingModel: {
-          name: semanticEmbeddingModel,
+          name: modelResult.modelName || semanticEmbeddingModel,
           dimensions,
           maxTokens: 256,
         },
@@ -126,7 +188,7 @@ async function runModelBackedSemanticMap(wasm, request) {
   }
 
   try {
-    return await withinModelAttemptDeadline(computeModelBackedSemanticMap(wasm, request, text));
+    return await computeModelBackedSemanticMap(wasm, request, text);
   } catch (error) {
     return hashedSemanticMapFallback(wasm, request, error);
   }
