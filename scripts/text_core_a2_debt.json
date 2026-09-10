@@ -26,7 +26,6 @@
     "TimestampContract": "src/contracts.rs"
   },
   "legacyTextSpanConstructors": [
-    "crates/text/text-analysis/src/semantic/linguistic.rs",
     "crates/text/text-index/src/lib.rs",
     "crates/text/text-lexical/src/lib.rs",
     "crates/text/text-linguistics/src/tests.rs"
