@@ -122,7 +122,5 @@ fn semantic_corpus_accepts_external_model_embeddings() {
         .as_array()
         .unwrap()
         .iter()
-        .any(|concept| {
-            concept["memberUnitCount"] == 2 && concept["sourceItemCount"] == 2
-        }));
+        .any(|concept| { concept["memberUnitCount"] == 2 && concept["sourceItemCount"] == 2 }));
 }
