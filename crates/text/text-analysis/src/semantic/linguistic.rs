@@ -91,11 +91,14 @@ pub fn compose_linguistic_semantic_graph(
         .iter()
         .map(|unit| (unit.sequence_index, *unit))
         .collect::<BTreeMap<_, _>>();
-    let document_text = report
+    let mut document_units = report
         .units
         .iter()
-        .find(|unit| unit.kind == SemanticUnitKind::Document)
-        .map(|unit| unit.text.as_str());
+        .filter(|unit| unit.kind == SemanticUnitKind::Document);
+    let document_text = match (document_units.next(), document_units.next()) {
+        (Some(unit), None) => Some(unit.text.as_str()),
+        _ => None,
+    };
 
     let mut nodes = primary_units
         .iter()
