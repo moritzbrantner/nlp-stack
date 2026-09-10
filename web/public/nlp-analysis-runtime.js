@@ -2,6 +2,7 @@ const runtimeReadyEvent = "nlp-stack-text-analysis-ready";
 const runtimeErrorEvent = "nlp-stack-text-analysis-error";
 const semanticEmbeddingModel = "onnx-community/all-MiniLM-L6-v2-ONNX";
 const semanticModelAttemptTimeoutMs = 10_000;
+const semanticEmbeddingBatchSize = 32;
 let semanticWorkerInstance = null;
 let semanticWorkerRequestSequence = 0;
 const pendingSemanticWorkerRequests = new Map();
@@ -113,13 +114,19 @@ function requestSemanticEmbeddings(texts) {
   return { id, promise };
 }
 
-async function withinModelAttemptDeadline(request) {
+function semanticModelDeadlineError() {
+  return new Error(`Semantic model attempt exceeded ${semanticModelAttemptTimeoutMs}ms.`);
+}
+
+async function withinModelAttemptDeadline(request, timeoutMs = semanticModelAttemptTimeoutMs) {
   let timeoutId;
+  const boundedTimeoutMs = Math.max(1, Math.min(timeoutMs, semanticModelAttemptTimeoutMs));
   const deadline = new Promise((_, reject) => {
     timeoutId = setTimeout(() => {
-      pendingSemanticWorkerRequests.delete(request.id);
-      reject(new Error(`Semantic model attempt exceeded ${semanticModelAttemptTimeoutMs}ms.`));
-    }, semanticModelAttemptTimeoutMs);
+      const failure = semanticModelDeadlineError();
+      resetSemanticWorker(failure);
+      reject(failure);
+    }, boundedTimeoutMs);
   });
   try {
     return await Promise.race([request.promise, deadline]);
@@ -137,24 +144,57 @@ function hashedSemanticFallback(wasm, request, error) {
 }
 
 async function modelEmbeddingEvidence(texts) {
-  const modelResult = await withinModelAttemptDeadline(requestSemanticEmbeddings(texts));
-  const vectors = modelResult?.vectors;
-  const dimensions = modelResult?.dimensions;
-  if (
-    !Array.isArray(vectors)
-    || vectors.length !== texts.length
-    || !Array.isArray(vectors[0])
-    || !Number.isInteger(dimensions)
-    || dimensions <= 0
-    || vectors.some((vector) => !Array.isArray(vector) || vector.length !== dimensions)
-  ) {
-    throw new Error(`Hugging Face semantic model ${semanticEmbeddingModel} returned an unexpected embedding shape.`);
+  if (!Array.isArray(texts) || texts.length === 0) {
+    throw new Error("Semantic model analysis requires at least one text unit.");
+  }
+
+  const deadlineAt = Date.now() + semanticModelAttemptTimeoutMs;
+  const vectors = [];
+  let dimensions = null;
+  let modelName = null;
+
+  for (let offset = 0; offset < texts.length; offset += semanticEmbeddingBatchSize) {
+    const remainingMs = deadlineAt - Date.now();
+    if (remainingMs <= 0) {
+      const failure = semanticModelDeadlineError();
+      resetSemanticWorker(failure);
+      throw failure;
+    }
+
+    const batchTexts = texts.slice(offset, offset + semanticEmbeddingBatchSize);
+    const modelResult = await withinModelAttemptDeadline(
+      requestSemanticEmbeddings(batchTexts),
+      remainingMs,
+    );
+    const batchVectors = modelResult?.vectors;
+    const batchDimensions = modelResult?.dimensions;
+    const batchModelName = modelResult?.modelName || semanticEmbeddingModel;
+    if (
+      !Array.isArray(batchVectors)
+      || batchVectors.length !== batchTexts.length
+      || !Array.isArray(batchVectors[0])
+      || !Number.isInteger(batchDimensions)
+      || batchDimensions <= 0
+      || batchVectors.some((vector) => !Array.isArray(vector) || vector.length !== batchDimensions)
+    ) {
+      throw new Error(`Hugging Face semantic model ${semanticEmbeddingModel} returned an unexpected embedding shape.`);
+    }
+    if (dimensions !== null && dimensions !== batchDimensions) {
+      throw new Error(`Hugging Face semantic model ${semanticEmbeddingModel} changed embedding dimensions between batches.`);
+    }
+    if (modelName !== null && modelName !== batchModelName) {
+      throw new Error(`Hugging Face semantic model identity changed between embedding batches.`);
+    }
+
+    dimensions = batchDimensions;
+    modelName = batchModelName;
+    vectors.push(...batchVectors);
   }
 
   return {
     importedEmbeddings: texts.map((text, index) => ({ text, vector: vectors[index] })),
     embeddingModel: {
-      name: modelResult.modelName || semanticEmbeddingModel,
+      name: modelName || semanticEmbeddingModel,
       dimensions,
       maxTokens: 256,
     },
