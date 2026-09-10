@@ -570,79 +570,44 @@ fn extracts_dates_and_amounts_without_pos_annotations() {
     let text = "Launch on January 2024 costs $99.";
     let sentences = vec![Sentence {
         text: text.to_string(),
-        span: TextSpan {
-            byte_start: 0,
-            byte_end: text.len(),
-            char_start: 0,
-            char_end: text.chars().count(),
-        },
+        span: TextSpan::from_byte_range(text, 0, text.len()).unwrap(),
         token_count: 6,
     }];
     let tokens = vec![
         Token {
             text: "Launch".to_string(),
             normalized: "launch".to_string(),
-            span: TextSpan {
-                byte_start: 0,
-                byte_end: 6,
-                char_start: 0,
-                char_end: 6,
-            },
+            span: TextSpan::from_byte_range(text, 0, 6).unwrap(),
             kind: TokenKind::Word,
         },
         Token {
             text: "on".to_string(),
             normalized: "on".to_string(),
-            span: TextSpan {
-                byte_start: 7,
-                byte_end: 9,
-                char_start: 7,
-                char_end: 9,
-            },
+            span: TextSpan::from_byte_range(text, 7, 9).unwrap(),
             kind: TokenKind::Word,
         },
         Token {
             text: "January".to_string(),
             normalized: "january".to_string(),
-            span: TextSpan {
-                byte_start: 10,
-                byte_end: 17,
-                char_start: 10,
-                char_end: 17,
-            },
+            span: TextSpan::from_byte_range(text, 10, 17).unwrap(),
             kind: TokenKind::Word,
         },
         Token {
             text: "2024".to_string(),
             normalized: "2024".to_string(),
-            span: TextSpan {
-                byte_start: 18,
-                byte_end: 22,
-                char_start: 18,
-                char_end: 22,
-            },
+            span: TextSpan::from_byte_range(text, 18, 22).unwrap(),
             kind: TokenKind::Number,
         },
         Token {
             text: "costs".to_string(),
             normalized: "costs".to_string(),
-            span: TextSpan {
-                byte_start: 23,
-                byte_end: 28,
-                char_start: 23,
-                char_end: 28,
-            },
+            span: TextSpan::from_byte_range(text, 23, 28).unwrap(),
             kind: TokenKind::Word,
         },
         Token {
             text: "$99".to_string(),
             normalized: "$99".to_string(),
-            span: TextSpan {
-                byte_start: 29,
-                byte_end: 32,
-                char_start: 29,
-                char_end: 32,
-            },
+            span: TextSpan::from_byte_range(text, 29, 32).unwrap(),
             kind: TokenKind::Other,
         },
     ];

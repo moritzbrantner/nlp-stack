@@ -1200,12 +1200,16 @@ fn chunk_token_windows(
     let mut ordinal = 0;
     while start < tokens.len() {
         let end = (start + options.chunk_tokens).min(tokens.len());
-        let span = TextSpan {
-            byte_start: tokens[start].span.byte_start,
-            byte_end: tokens[end - 1].span.byte_end,
-            char_start: tokens[start].span.char_start,
-            char_end: tokens[end - 1].span.char_end,
-        };
+        let span = TextSpan::from_byte_range(
+            &document.body,
+            tokens[start].span.byte_start,
+            tokens[end - 1].span.byte_end,
+        )
+        .map_err(|error| {
+            TextIndexError::InvalidState(format!(
+                "token-window chunk span did not align to the source text: {error}"
+            ))
+        })?;
         push_chunk(
             &mut chunks,
             document,
