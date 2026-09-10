@@ -2,6 +2,7 @@ const runtimeReadyEvent = "nlp-stack-text-analysis-ready";
 const runtimeErrorEvent = "nlp-stack-text-analysis-error";
 const semanticEmbeddingModel = "onnx-community/all-MiniLM-L6-v2-ONNX";
 const semanticModelAttemptTimeoutMs = 10_000;
+const semanticEmbeddingBatchSize = 32;
 let semanticWorkerInstance = null;
 let semanticWorkerRequestSequence = 0;
 const pendingSemanticWorkerRequests = new Map();
@@ -40,6 +41,10 @@ function semanticUnitTexts(documentResult, sourceText) {
     ? core.paragraphs.map((paragraph) => paragraph?.text).filter((text) => typeof text === "string" && text.length > 0)
     : [];
   return Array.from(new Set([...sentenceTexts, ...paragraphTexts, sourceText]));
+}
+
+function hasImportedSemanticEmbeddings(input) {
+  return Array.isArray(input?.importedEmbeddings) && input.importedEmbeddings.length > 0;
 }
 
 function semanticWorkerError(error) {
@@ -109,13 +114,19 @@ function requestSemanticEmbeddings(texts) {
   return { id, promise };
 }
 
-async function withinModelAttemptDeadline(request) {
+function semanticModelDeadlineError() {
+  return new Error(`Semantic model attempt exceeded ${semanticModelAttemptTimeoutMs}ms.`);
+}
+
+async function withinModelAttemptDeadline(request, timeoutMs = semanticModelAttemptTimeoutMs) {
   let timeoutId;
+  const boundedTimeoutMs = Math.max(1, Math.min(timeoutMs, semanticModelAttemptTimeoutMs));
   const deadline = new Promise((_, reject) => {
     timeoutId = setTimeout(() => {
-      pendingSemanticWorkerRequests.delete(request.id);
-      reject(new Error(`Semantic model attempt exceeded ${semanticModelAttemptTimeoutMs}ms.`));
-    }, semanticModelAttemptTimeoutMs);
+      const failure = semanticModelDeadlineError();
+      resetSemanticWorker(failure);
+      reject(failure);
+    }, boundedTimeoutMs);
   });
   try {
     return await Promise.race([request.promise, deadline]);
@@ -124,21 +135,78 @@ async function withinModelAttemptDeadline(request) {
   }
 }
 
-function hashedSemanticMapFallback(wasm, request, error) {
+function hashedSemanticFallback(wasm, request, error) {
   console.warn(
-    `Falling back to the local hashed semantic map because ${semanticEmbeddingModel} was unavailable within the interactive analysis budget.`,
+    `Falling back to local hashed semantic analysis for ${request?.operation ?? "semantic analysis"} because ${semanticEmbeddingModel} was unavailable within the interactive analysis budget.`,
     error,
   );
   return fromWasmValue(wasm.runOperation(request));
 }
 
-async function computeModelBackedSemanticMap(wasm, request, text) {
-  const input = request?.input ?? {};
+async function modelEmbeddingEvidence(texts) {
+  if (!Array.isArray(texts) || texts.length === 0) {
+    throw new Error("Semantic model analysis requires at least one text unit.");
+  }
+
+  const deadlineAt = Date.now() + semanticModelAttemptTimeoutMs;
+  const vectors = [];
+  let dimensions = null;
+  let modelName = null;
+
+  for (let offset = 0; offset < texts.length; offset += semanticEmbeddingBatchSize) {
+    const remainingMs = deadlineAt - Date.now();
+    if (remainingMs <= 0) {
+      const failure = semanticModelDeadlineError();
+      resetSemanticWorker(failure);
+      throw failure;
+    }
+
+    const batchTexts = texts.slice(offset, offset + semanticEmbeddingBatchSize);
+    const modelResult = await withinModelAttemptDeadline(
+      requestSemanticEmbeddings(batchTexts),
+      remainingMs,
+    );
+    const batchVectors = modelResult?.vectors;
+    const batchDimensions = modelResult?.dimensions;
+    const batchModelName = modelResult?.modelName || semanticEmbeddingModel;
+    if (
+      !Array.isArray(batchVectors)
+      || batchVectors.length !== batchTexts.length
+      || !Array.isArray(batchVectors[0])
+      || !Number.isInteger(batchDimensions)
+      || batchDimensions <= 0
+      || batchVectors.some((vector) => !Array.isArray(vector) || vector.length !== batchDimensions)
+    ) {
+      throw new Error(`Hugging Face semantic model ${semanticEmbeddingModel} returned an unexpected embedding shape.`);
+    }
+    if (dimensions !== null && dimensions !== batchDimensions) {
+      throw new Error(`Hugging Face semantic model ${semanticEmbeddingModel} changed embedding dimensions between batches.`);
+    }
+    if (modelName !== null && modelName !== batchModelName) {
+      throw new Error(`Hugging Face semantic model identity changed between embedding batches.`);
+    }
+
+    dimensions = batchDimensions;
+    modelName = batchModelName;
+    vectors.push(...batchVectors);
+  }
+
+  return {
+    importedEmbeddings: texts.map((text, index) => ({ text, vector: vectors[index] })),
+    embeddingModel: {
+      name: modelName || semanticEmbeddingModel,
+      dimensions,
+      maxTokens: 256,
+    },
+  };
+}
+
+function documentSemanticUnitTexts(wasm, id, text) {
   const segmentationResponse = fromWasmValue(
     wasm.runOperation({
       operation: "analysis.document",
       input: {
-        id: input.id ?? "semantic-doc",
+        id,
         text,
         profile: "deterministic",
         linguistics: { mode: "off" },
@@ -146,35 +214,20 @@ async function computeModelBackedSemanticMap(wasm, request, text) {
       },
     }),
   );
-  const texts = semanticUnitTexts(surfaceResult(segmentationResponse), text);
-  const modelResult = await withinModelAttemptDeadline(requestSemanticEmbeddings(texts));
-  const vectors = modelResult?.vectors;
-  const dimensions = modelResult?.dimensions;
-  if (
-    !Array.isArray(vectors)
-    || vectors.length !== texts.length
-    || !Array.isArray(vectors[0])
-    || !Number.isInteger(dimensions)
-    || dimensions <= 0
-    || vectors.some((vector) => !Array.isArray(vector) || vector.length !== dimensions)
-  ) {
-    throw new Error(`Hugging Face semantic model ${semanticEmbeddingModel} returned an unexpected embedding shape.`);
-  }
+  return semanticUnitTexts(surfaceResult(segmentationResponse), text);
+}
+
+async function computeModelBackedSemanticMap(wasm, request, text) {
+  const input = request?.input ?? {};
+  const texts = documentSemanticUnitTexts(wasm, input.id ?? "semantic-doc", text);
+  const evidence = await modelEmbeddingEvidence(texts);
 
   return fromWasmValue(
     wasm.runOperation({
       ...request,
       input: {
         ...input,
-        importedEmbeddings: texts.map((unitText, index) => ({
-          text: unitText,
-          vector: vectors[index],
-        })),
-        embeddingModel: {
-          name: modelResult.modelName || semanticEmbeddingModel,
-          dimensions,
-          maxTokens: 256,
-        },
+        ...evidence,
       },
     }),
   );
@@ -183,14 +236,67 @@ async function computeModelBackedSemanticMap(wasm, request, text) {
 async function runModelBackedSemanticMap(wasm, request) {
   const input = request?.input ?? {};
   const text = typeof input.text === "string" ? input.text : "";
-  if (!text.trim()) {
+  if (!text.trim() || hasImportedSemanticEmbeddings(input)) {
     return fromWasmValue(wasm.runOperation(request));
   }
 
   try {
     return await computeModelBackedSemanticMap(wasm, request, text);
   } catch (error) {
-    return hashedSemanticMapFallback(wasm, request, error);
+    return hashedSemanticFallback(wasm, request, error);
+  }
+}
+
+function validSemanticCorpusItems(input) {
+  const items = input?.items;
+  if (!Array.isArray(items) || items.length === 0) {
+    return null;
+  }
+  const ids = new Set();
+  for (const item of items) {
+    if (
+      typeof item?.id !== "string"
+      || !item.id.trim()
+      || typeof item?.text !== "string"
+      || !item.text.trim()
+      || ids.has(item.id)
+    ) {
+      return null;
+    }
+    ids.add(item.id);
+  }
+  return items;
+}
+
+async function computeModelBackedSemanticCorpus(wasm, request, items) {
+  const input = request?.input ?? {};
+  const texts = Array.from(new Set(items.flatMap((item) =>
+    documentSemanticUnitTexts(wasm, item.id, item.text),
+  )));
+  const evidence = await modelEmbeddingEvidence(texts);
+
+  return fromWasmValue(
+    wasm.runOperation({
+      ...request,
+      input: {
+        ...input,
+        ...evidence,
+      },
+    }),
+  );
+}
+
+async function runModelBackedSemanticCorpus(wasm, request) {
+  const input = request?.input ?? {};
+  const items = validSemanticCorpusItems(input);
+  if (!items || hasImportedSemanticEmbeddings(input)) {
+    return fromWasmValue(wasm.runOperation(request));
+  }
+
+  try {
+    return await computeModelBackedSemanticCorpus(wasm, request, items);
+  } catch (error) {
+    return hashedSemanticFallback(wasm, request, error);
   }
 }
 
@@ -199,9 +305,15 @@ const ready = import(new URL("./wasm/moenarch_text_analysis_wasm.js", import.met
     await wasm.default();
     return {
       packageSurface: () => fromWasmValue(wasm.packageSurface()),
-      runOperation: (request) => request?.operation === "analysis.semantic-map"
-        ? runModelBackedSemanticMap(wasm, request)
-        : fromWasmValue(wasm.runOperation(request)),
+      runOperation: (request) => {
+        if (request?.operation === "analysis.semantic-map") {
+          return runModelBackedSemanticMap(wasm, request);
+        }
+        if (request?.operation === "analysis.semantic-corpus") {
+          return runModelBackedSemanticCorpus(wasm, request);
+        }
+        return fromWasmValue(wasm.runOperation(request));
+      },
     };
   })
   .catch((error) => {

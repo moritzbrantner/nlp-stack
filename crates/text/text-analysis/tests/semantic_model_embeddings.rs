@@ -56,3 +56,71 @@ fn semantic_map_accepts_external_model_embeddings() {
                 .is_some_and(|members| members.len() == 2)
         }));
 }
+
+#[test]
+fn semantic_corpus_accepts_external_model_embeddings() {
+    let response = run_surface_operation(SurfaceRequest {
+        operation: OperationId::new("analysis.semantic-corpus"),
+        input: serde_json::json!({
+            "items": [
+                {
+                    "id": "cat-1",
+                    "author": "Alice",
+                    "source": "notes/cat-1.txt",
+                    "text": "A cat sleeps on the sofa."
+                },
+                {
+                    "id": "cat-2",
+                    "author": "Bob",
+                    "source": "notes/cat-2.txt",
+                    "text": "A feline rests on the couch."
+                },
+                {
+                    "id": "database-1",
+                    "author": "Cara",
+                    "source": "notes/database-1.txt",
+                    "text": "Database indexes accelerate lookup."
+                }
+            ],
+            "minConceptUnits": 2,
+            "neighborsPerUnit": 2,
+            "neighborThreshold": 0.8,
+            "clusterThreshold": 0.8,
+            "embeddingModel": {
+                "name": "fixture/corpus-semantic-model",
+                "dimensions": 3,
+                "maxTokens": 128
+            },
+            "importedEmbeddings": [
+                {"text": "A cat sleeps on the sofa.", "vector": [2.0, 0.0, 0.0]},
+                {"text": "A feline rests on the couch.", "vector": [1.9, 0.1, 0.0]},
+                {"text": "Database indexes accelerate lookup.", "vector": [0.0, 2.0, 0.0]}
+            ]
+        }),
+    })
+    .unwrap();
+
+    let report = &response.value["result"];
+    let semantic = &report["semantic"];
+    assert_eq!(
+        semantic["embeddingModel"]["model_name"],
+        "fixture/corpus-semantic-model"
+    );
+    assert_eq!(semantic["embeddingModel"]["backend"], "external");
+    assert_eq!(semantic["embeddingModel"]["dimensions"], 3);
+    assert_eq!(semantic["embeddingModel"]["normalized"], true);
+    for unit in semantic["units"].as_array().unwrap() {
+        let squared_norm = unit["embedding"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|value| value.as_f64().unwrap().powi(2))
+            .sum::<f64>();
+        assert!((squared_norm.sqrt() - 1.0).abs() < 0.000_01);
+    }
+    assert!(report["concepts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|concept| { concept["memberUnitCount"] == 2 && concept["sourceItemCount"] == 2 }));
+}
