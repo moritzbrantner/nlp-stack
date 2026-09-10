@@ -1,15 +1,26 @@
+use std::collections::BTreeMap;
+
 use runtime_core::SurfaceOperation;
 use serde::Deserialize;
+use text_core::AnnotationProvenance;
+use text_embeddings::{
+    DenseVector, EmbeddingModelInfo, TextEmbeddingBackend, TextEmbeddingBackendKind,
+    TextEmbeddingMetadata,
+};
 
-use crate::semantic::{
-    analyze_corpus_semantics, SemanticCorpusAnalysisOptions, SemanticCorpusItem,
+use crate::{
+    invalid_argument,
+    semantic::{
+        analyze_corpus_semantics, analyze_corpus_semantics_with, SemanticCorpusAnalysisOptions,
+        SemanticCorpusItem,
+    },
 };
 
 pub(super) fn operation() -> SurfaceOperation {
     super::operation(
         "analysis.semantic-corpus",
         "Build semantic corpus profile",
-        "Aggregates lexical statistics and deterministic corpus themes across attributed items, retaining source provenance and explicit embedding evidence.",
+        "Aggregates lexical statistics and model- or baseline-backed corpus themes across attributed items, retaining source provenance and explicit embedding evidence.",
         serde_json::json!({
             "items": [
                 {
@@ -57,7 +68,16 @@ pub(super) fn run(input: serde_json::Value) -> Result<serde_json::Value, String>
             timestamp_millis: item.timestamp_millis,
         })
         .collect::<Vec<_>>();
-    let report = analyze_corpus_semantics(&items, &options).map_err(|error| error.to_string())?;
+    let report = if input.imported_embeddings.is_empty() {
+        analyze_corpus_semantics(&items, &options).map_err(|error| error.to_string())?
+    } else {
+        let embedder = ImportedSemanticEmbedder::new(
+            &input.imported_embeddings,
+            input.embedding_model.as_ref(),
+        )?;
+        analyze_corpus_semantics_with(&items, &options, &embedder)
+            .map_err(|error| error.to_string())?
+    };
     serde_json::to_value(report).map_err(|error| error.to_string())
 }
 
@@ -66,9 +86,10 @@ pub(super) fn annotation(
 ) -> (&'static str, &'static str, serde_json::Value) {
     (
         "Semantic corpus profile",
-        "Corpus-aware deterministic theme evidence across attributed items, retaining representative passages and explicit embedding provenance.",
+        "Corpus-aware theme evidence across attributed items, retaining representative passages and explicit embedding provenance.",
         serde_json::json!({
             "status": "ok",
+            "embeddingModel": value["semantic"]["embeddingModel"],
             "itemCount": value["itemCount"],
             "authorCount": value["authorCount"],
             "wordCount": value["lexical"]["wordCount"],
@@ -95,6 +116,10 @@ struct SemanticCorpusRequest {
     neighbor_threshold: Option<f32>,
     #[serde(default)]
     cluster_threshold: Option<f32>,
+    #[serde(default)]
+    imported_embeddings: Vec<ImportedSemanticEmbedding>,
+    #[serde(default)]
+    embedding_model: Option<ImportedEmbeddingModel>,
 }
 
 impl SemanticCorpusRequest {
@@ -130,4 +155,125 @@ struct SemanticCorpusItemRequest {
     source: Option<String>,
     #[serde(default)]
     timestamp_millis: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ImportedSemanticEmbedding {
+    text: String,
+    vector: Vec<f32>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ImportedEmbeddingModel {
+    name: String,
+    #[serde(default)]
+    dimensions: Option<usize>,
+    #[serde(default)]
+    max_tokens: Option<usize>,
+}
+
+#[derive(Debug)]
+struct ImportedSemanticEmbedder {
+    vectors: BTreeMap<String, Vec<f32>>,
+    model_name: String,
+    dimensions: usize,
+    max_tokens: Option<usize>,
+}
+
+impl ImportedSemanticEmbedder {
+    fn new(
+        embeddings: &[ImportedSemanticEmbedding],
+        model: Option<&ImportedEmbeddingModel>,
+    ) -> Result<Self, String> {
+        let dimensions = embeddings
+            .first()
+            .map(|embedding| embedding.vector.len())
+            .unwrap_or_default();
+        if dimensions == 0 {
+            return Err("imported semantic embeddings must contain non-empty vectors".to_string());
+        }
+        if let Some(declared) = model.and_then(|model| model.dimensions) {
+            if declared != dimensions {
+                return Err(format!(
+                    "imported semantic embedding dimensions declared {declared} but vectors contain {dimensions} values"
+                ));
+            }
+        }
+
+        let mut vectors = BTreeMap::new();
+        for embedding in embeddings {
+            if embedding.vector.len() != dimensions {
+                return Err(format!(
+                    "imported semantic embeddings must all use {dimensions} dimensions"
+                ));
+            }
+            let vector = normalize_imported_vector(&embedding.vector)?;
+            if let Some(existing) = vectors.get(&embedding.text) {
+                if existing != &vector {
+                    return Err(
+                        "duplicate imported semantic text supplied with conflicting vectors"
+                            .to_string(),
+                    );
+                }
+            } else {
+                vectors.insert(embedding.text.clone(), vector);
+            }
+        }
+
+        let model_name = model
+            .map(|model| model.name.trim())
+            .filter(|name| !name.is_empty())
+            .unwrap_or("external-semantic-embedder")
+            .to_string();
+        Ok(Self {
+            vectors,
+            model_name,
+            dimensions,
+            max_tokens: model.and_then(|model| model.max_tokens),
+        })
+    }
+}
+
+fn normalize_imported_vector(values: &[f32]) -> Result<Vec<f32>, String> {
+    if values.iter().any(|value| !value.is_finite()) {
+        return Err("imported semantic embeddings must contain only finite values".to_string());
+    }
+    let squared_norm = values.iter().map(|value| value * value).sum::<f32>();
+    if !squared_norm.is_finite() || squared_norm <= f32::EPSILON {
+        return Err("imported semantic embeddings must have a finite non-zero norm".to_string());
+    }
+    let norm = squared_norm.sqrt();
+    Ok(values.iter().map(|value| value / norm).collect())
+}
+
+impl TextEmbeddingBackend for ImportedSemanticEmbedder {
+    fn embed_text(&self, text: &str) -> text_core::Result<DenseVector> {
+        let vector = self.vectors.get(text).ok_or_else(|| {
+            invalid_argument(format!(
+                "imported semantic embeddings are missing an exact vector for `{text}`"
+            ))
+        })?;
+        DenseVector::new(vector.clone())
+    }
+
+    fn metadata(&self) -> TextEmbeddingMetadata {
+        TextEmbeddingMetadata {
+            backend: TextEmbeddingBackendKind::External,
+            provenance: AnnotationProvenance::Derived,
+            model_name: Some(self.model_name.clone()),
+            dimensions: Some(self.dimensions),
+        }
+    }
+
+    fn model_info(&self) -> EmbeddingModelInfo {
+        EmbeddingModelInfo {
+            model_name: self.model_name.clone(),
+            backend: TextEmbeddingBackendKind::External,
+            dimensions: self.dimensions,
+            normalized: true,
+            max_tokens: self.max_tokens,
+        }
+    }
 }
