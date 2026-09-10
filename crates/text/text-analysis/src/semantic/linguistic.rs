@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use text_core::TextSpan;
 use text_linguistics::LinguisticAnalysis;
 
-use super::SemanticAnalysisReport;
+use super::{SemanticAnalysisReport, SemanticUnitKind};
 
 /// Node kinds in the composed linguistic semantic graph.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -91,6 +91,11 @@ pub fn compose_linguistic_semantic_graph(
         .iter()
         .map(|unit| (unit.sequence_index, *unit))
         .collect::<BTreeMap<_, _>>();
+    let document_text = report
+        .units
+        .iter()
+        .find(|unit| unit.kind == SemanticUnitKind::Document)
+        .map(|unit| unit.text.as_str());
 
     let mut nodes = primary_units
         .iter()
@@ -199,7 +204,12 @@ pub fn compose_linguistic_semantic_graph(
         });
         for (mention_index, mention) in cluster.mentions.iter().enumerate() {
             let mention_id = format!("{}:mention:{}", cluster_id, mention_index);
-            let span = token_range_span(analysis, mention.token_start, mention.token_end);
+            let span = token_range_span(
+                analysis,
+                document_text,
+                mention.token_start,
+                mention.token_end,
+            );
             nodes.push(SemanticGraphNode {
                 id: mention_id.clone(),
                 kind: SemanticGraphNodeKind::CoreferenceMention,
@@ -385,20 +395,17 @@ pub fn compose_linguistic_semantic_graph(
 
 fn token_range_span(
     analysis: &LinguisticAnalysis,
+    source_text: Option<&str>,
     token_start: usize,
     token_end: usize,
 ) -> Option<TextSpan> {
     if token_start >= token_end {
         return None;
     }
+    let source_text = source_text?;
     let first = analysis.tokens.get(token_start)?;
     let last = analysis.tokens.get(token_end - 1)?;
-    Some(TextSpan {
-        byte_start: first.span.byte_start,
-        byte_end: last.span.byte_end,
-        char_start: first.span.char_start,
-        char_end: last.span.char_end,
-    })
+    TextSpan::from_byte_range(source_text, first.span.byte_start, last.span.byte_end).ok()
 }
 
 #[allow(clippy::too_many_arguments)]
