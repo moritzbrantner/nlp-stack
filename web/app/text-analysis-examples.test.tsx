@@ -13,6 +13,12 @@ describe("text analysis examples", () => {
     expect(textAnalysisExamples.every((example) => example.text.trim().length > 100)).toBe(true);
   });
 
+  it("keeps several substantial semantic-map examples", () => {
+    const semanticExamples = textAnalysisExamples.filter((example) => example.focus === "semantic-map");
+    expect(semanticExamples.length).toBeGreaterThanOrEqual(3);
+    expect(semanticExamples.every((example) => example.text.trim().length > 1_500)).toBe(true);
+  });
+
   it("uses a real catalog entry as the default", () => {
     expect(textAnalysisExamples).toContain(defaultTextAnalysisExample);
   });
