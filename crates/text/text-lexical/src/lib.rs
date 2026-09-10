@@ -1224,11 +1224,12 @@ fn push_capitalized_phrase(
     if end_index < start_index {
         return;
     }
-    let span = TextSpan {
-        byte_start: tokens[start_index].span.byte_start,
-        byte_end: tokens[end_index].span.byte_end,
-        char_start: tokens[start_index].span.char_start,
-        char_end: tokens[end_index].span.char_end,
+    let Ok(span) = TextSpan::from_byte_range(
+        text,
+        tokens[start_index].span.byte_start,
+        tokens[end_index].span.byte_end,
+    ) else {
+        return;
     };
     let raw = text[span.byte_start..span.byte_end].to_string();
     mentions.push(EntityMention {
