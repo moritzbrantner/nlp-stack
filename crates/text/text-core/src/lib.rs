@@ -391,16 +391,12 @@ pub struct TextStats {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-/// Half-open byte and character span into a UTF-8 text buffer.
+/// Half-open UTF-8 byte span into a text buffer.
 pub struct TextSpan {
     /// Inclusive byte offset.
     pub byte_start: usize,
     /// Exclusive byte offset.
     pub byte_end: usize,
-    /// Inclusive Unicode scalar index.
-    pub char_start: usize,
-    /// Exclusive Unicode scalar index.
-    pub char_end: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -834,7 +830,6 @@ pub fn segment_words(text: &str, options: &TextBoundaryOptions) -> Vec<WordSegme
                 previous.text.push_str(&current.text);
                 previous.normalized = normalize_text(&previous.text, &processing);
                 previous.span.byte_end = current.span.byte_end;
-                previous.span.char_end = current.span.char_end;
                 continue;
             }
         }
@@ -1209,12 +1204,8 @@ fn next_char(text: &str, byte_index: usize) -> char {
 }
 
 fn span_for(text: &str, byte_start: usize, byte_end: usize) -> TextSpan {
-    TextSpan {
-        byte_start,
-        byte_end,
-        char_start: text[..byte_start].chars().count(),
-        char_end: text[..byte_end].chars().count(),
-    }
+    TextSpan::from_byte_range(text, byte_start, byte_end)
+        .expect("text-core derives spans only from UTF-8 character boundaries")
 }
 
 fn span_is_inside(inner: TextSpan, outer: TextSpan) -> bool {
@@ -1513,7 +1504,6 @@ mod tests {
         let tokens = tokenize("Hi café 東京", &TextProcessingOptions::default());
         assert_eq!(tokens[1].text, "café");
         assert_eq!(tokens[1].span.byte_start, 3);
-        assert_eq!(tokens[1].span.char_start, 3);
         assert_eq!(tokens[2].text, "東京");
     }
 
@@ -1621,17 +1611,19 @@ mod tests {
     }
 
     #[test]
-    fn segments_graphemes_with_byte_and_char_spans() {
+    fn segments_graphemes_with_byte_spans() {
         let graphemes = segment_graphemes("e\u{301}👍🏽a");
         assert_eq!(graphemes.len(), 3);
         assert_eq!(graphemes[0].text, "e\u{301}");
-        assert_eq!(graphemes[0].span.byte_start, 0);
-        assert_eq!(graphemes[0].span.byte_end, 3);
-        assert_eq!(graphemes[0].span.char_start, 0);
-        assert_eq!(graphemes[0].span.char_end, 2);
+        assert_eq!(
+            (graphemes[0].span.byte_start, graphemes[0].span.byte_end),
+            (0, 3)
+        );
         assert_eq!(graphemes[1].text, "👍🏽");
-        assert_eq!(graphemes[1].span.char_start, 2);
-        assert_eq!(graphemes[1].span.char_end, 4);
+        assert_eq!(
+            (graphemes[1].span.byte_start, graphemes[1].span.byte_end),
+            (3, 11)
+        );
     }
 
     #[test]

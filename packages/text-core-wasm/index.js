@@ -104,12 +104,8 @@ function toSpan(value, sourceText = "") {
   const span = value.span ?? {};
 
   return {
-    end: toUtf16Offset(sourceText, span.byte_end ?? span.byteEnd, span.char_end ?? span.charEnd),
-    start: toUtf16Offset(
-      sourceText,
-      span.byte_start ?? span.byteStart,
-      span.char_start ?? span.charStart,
-    ),
+    end: toUtf16Offset(sourceText, span.byte_end ?? span.byteEnd),
+    start: toUtf16Offset(sourceText, span.byte_start ?? span.byteStart),
     text: value.text ?? "",
   };
 }
@@ -122,9 +118,9 @@ function toToken(value, sourceText = "") {
   };
 }
 
-function toUtf16Offset(text, byteOffset, fallback = 0) {
+function toUtf16Offset(text, byteOffset) {
   if (!text || byteOffset === undefined) {
-    return fallback ?? 0;
+    return 0;
   }
 
   let currentByteOffset = 0;

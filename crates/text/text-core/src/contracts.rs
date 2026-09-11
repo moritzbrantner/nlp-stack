@@ -434,8 +434,7 @@ impl std::error::Error for TextSpanConversionError {}
 impl TextSpan {
     /// Constructs a canonical span from a validated UTF-8 byte range.
     ///
-    /// Legacy scalar offsets are populated only for compatibility. Callers own
-    /// byte ranges; alternate coordinate systems are derived at their boundary.
+    /// Alternate coordinate systems are derived explicitly at the boundary that needs them.
     pub fn from_byte_range(
         text: &str,
         byte_start: usize,
@@ -444,16 +443,9 @@ impl TextSpan {
         let candidate = Self {
             byte_start,
             byte_end,
-            char_start: 0,
-            char_end: 0,
         };
         candidate.validate_byte_range(text)?;
-        Ok(Self {
-            byte_start,
-            byte_end,
-            char_start: text[..byte_start].chars().count(),
-            char_end: text[..byte_end].chars().count(),
-        })
+        Ok(candidate)
     }
 
     /// Validates the canonical byte range against the supplied UTF-8 text.
@@ -475,10 +467,6 @@ impl TextSpan {
     }
 
     /// Converts the canonical byte range to UTF-16 code-unit offsets.
-    ///
-    /// Legacy `char_start`/`char_end` fields are intentionally ignored: byte
-    /// offsets are the source of truth and alternate coordinates are derived at
-    /// the boundary that needs them.
     pub fn to_utf16(self, text: &str) -> Result<Utf16Span, TextSpanConversionError> {
         self.validate_byte_range(text)?;
         Ok(Utf16Span {
@@ -488,8 +476,6 @@ impl TextSpan {
     }
 
     /// Converts the canonical byte range to grapheme-cluster offsets.
-    ///
-    /// Legacy `char_start`/`char_end` fields are intentionally ignored.
     pub fn to_grapheme(self, text: &str) -> Result<GraphemeOffsetSpan, TextSpanConversionError> {
         self.validate_byte_range(text)?;
         Ok(GraphemeOffsetSpan {
@@ -504,23 +490,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn span_construction_derives_legacy_scalars_from_bytes() {
+    fn span_construction_preserves_validated_bytes() {
         let text = "e\u{301}👍🏽a";
         let span = TextSpan::from_byte_range(text, 3, 11).unwrap();
 
         assert_eq!((span.byte_start, span.byte_end), (3, 11));
-        assert_eq!((span.char_start, span.char_end), (2, 4));
     }
 
     #[test]
-    fn span_conversions_use_bytes_as_the_source_of_truth() {
+    fn span_conversions_derive_alternate_coordinates_from_bytes() {
         let text = "e\u{301}👍🏽a";
-        let span = TextSpan {
-            byte_start: 3,
-            byte_end: 11,
-            char_start: 99,
-            char_end: 100,
-        };
+        let span = TextSpan::from_byte_range(text, 3, 11).unwrap();
 
         assert_eq!(span.to_utf16(text).unwrap(), Utf16Span { start: 2, end: 6 });
         assert_eq!(
@@ -535,8 +515,6 @@ mod tests {
         let span = TextSpan {
             byte_start: 1,
             byte_end: 2,
-            char_start: 0,
-            char_end: 1,
         };
 
         assert_eq!(
@@ -554,8 +532,6 @@ mod tests {
         let span = TextSpan {
             byte_start: 2,
             byte_end: 1,
-            char_start: 2,
-            char_end: 1,
         };
 
         assert_eq!(

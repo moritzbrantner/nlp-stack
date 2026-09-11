@@ -3,13 +3,9 @@ use text_core::TextSpan;
 use text_linguistics::{surface::run_surface_operation, TextNlpConfig, TextNlpPipeline};
 
 fn assert_span(text: &str, span: TextSpan, expected: &str) {
+    span.validate_byte_range(text)
+        .expect("linguistic span must align to its source text");
     assert_eq!(&text[span.byte_start..span.byte_end], expected);
-    let chars = text
-        .chars()
-        .skip(span.char_start)
-        .take(span.char_end - span.char_start)
-        .collect::<String>();
-    assert_eq!(chars, expected);
 }
 
 #[test]

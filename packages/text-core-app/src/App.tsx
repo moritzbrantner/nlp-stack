@@ -210,7 +210,7 @@ function TokenSummary({ value }: { value: Record<string, unknown> }) {
                   </div>
                   <p className="text-sm text-zinc-700">{stringValue(token.kind) ?? "Token"}</p>
                   <p className="font-mono text-xs text-zinc-500">
-                    chars {formatSpanNumber(span.char_start, span.charStart)}-{formatSpanNumber(span.char_end, span.charEnd)}
+                    bytes {formatSpanNumber(span.byte_start, span.byteStart)}-{formatSpanNumber(span.byte_end, span.byteEnd)}
                   </p>
                 </li>
               );
