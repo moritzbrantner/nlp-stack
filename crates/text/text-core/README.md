@@ -23,9 +23,9 @@ consumers or new parallel contract types to those seams.
 
 ### Span coordinates
 
-UTF-8 half-open byte offsets are authoritative. The current `char_start` /
-`char_end` members remain only as migration compatibility fields and must not be
-used as a second source of truth.
+UTF-8 half-open byte offsets are authoritative. `TextSpan` stores only the
+canonical byte range; alternate coordinate systems are derived explicitly at the
+boundary that needs them.
 
 When a boundary needs another coordinate system, derive it from the byte range:
 
@@ -33,13 +33,7 @@ When a boundary needs another coordinate system, derive it from the byte range:
 use text_core::{TextProcessingOptions, TextSpan};
 
 let text = "e\u{301}👍🏽a";
-let span = TextSpan {
-    byte_start: 3,
-    byte_end: 11,
-    // Legacy compatibility values are ignored by explicit conversions.
-    char_start: 0,
-    char_end: 0,
-};
+let span = TextSpan::from_byte_range(text, 3, 11)?;
 
 let utf16 = span.to_utf16(text)?;
 let graphemes = span.to_grapheme(text)?;

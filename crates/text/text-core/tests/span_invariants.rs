@@ -36,8 +36,6 @@ fn every_utf8_character_boundary_range_constructs_canonically() {
                     .expect("every ordered pair of UTF-8 character boundaries must be valid");
 
                 assert_eq!((span.byte_start, span.byte_end), (byte_start, byte_end));
-                assert_eq!(span.char_start, text[..byte_start].chars().count());
-                assert_eq!(span.char_end, text[..byte_end].chars().count());
                 assert_eq!(
                     &text[span.byte_start..span.byte_end],
                     &text[byte_start..byte_end]
@@ -87,19 +85,6 @@ fn alternate_coordinates_are_derived_only_from_canonical_bytes() {
         for (start_index, &byte_start) in boundaries.iter().enumerate() {
             for &byte_end in &boundaries[start_index..] {
                 let canonical = TextSpan::from_byte_range(text, byte_start, byte_end).unwrap();
-                let poisoned_legacy = TextSpan {
-                    byte_start,
-                    byte_end,
-                    char_start: usize::MAX,
-                    char_end: usize::MAX,
-                };
-
-                assert_eq!(canonical.to_utf16(text), poisoned_legacy.to_utf16(text));
-                assert_eq!(
-                    canonical.to_grapheme(text),
-                    poisoned_legacy.to_grapheme(text)
-                );
-
                 let utf16 = canonical.to_utf16(text).unwrap();
                 assert_eq!(utf16.start, text[..byte_start].encode_utf16().count());
                 assert_eq!(utf16.end, text[..byte_end].encode_utf16().count());
