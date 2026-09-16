@@ -51,6 +51,8 @@ jobs:
         run: cargo doc --workspace --no-deps
       - name: Focused package-surface adapter
         run: bun run nlp-app-ui:test
+      - name: Browser adapters
+        run: bun run browser:test
       - name: Text apps
         run: |
           bun run text-app:typecheck
