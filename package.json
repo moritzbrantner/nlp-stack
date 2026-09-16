@@ -7,13 +7,14 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "cargo test --workspace --all-features && bun run nlp-app-ui:test && bun run text-wasm:test:all",
+    "test": "cargo test --workspace --all-features && bun run nlp-app-ui:test && bun run text-wasm:test:all && bun run browser:test",
     "lint": "cargo clippy --workspace --all-targets --all-features -- -D warnings && bun run nlp-app-ui:typecheck && bun run text-app:typecheck",
     "format": "cargo fmt --all",
     "format:check": "cargo fmt --all --check",
     "build": "cargo build --workspace --all-features && bun run nlp-app-ui:build && bun run text-app:build",
     "check": "scripts/check.sh",
     "preflight": "scripts/check-preflight.sh",
+    "browser:test": "bun test browser",
     "nlp-app-ui:build": "bun run --cwd packages/nlp-app-ui build",
     "nlp-app-ui:typecheck": "bun run --cwd packages/nlp-app-ui typecheck",
     "nlp-app-ui:test": "bun run --cwd packages/nlp-app-ui test",
