@@ -16,8 +16,7 @@ use candle_transformers::models::{bert as candle_bert, distilbert as candle_dist
 use media_core::{DetectError, Result};
 #[cfg(feature = "model-bundles")]
 use model_runtime::{
-    download_model_bundle, HuggingFaceDownloader, HuggingFaceModelSpec, ModelBundle,
-    ModelBundleStore, ModelTask,
+    HuggingFaceDownloader, HuggingFaceModelSpec, ModelBundle, ModelBundleStore, ModelTask,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -527,7 +526,8 @@ impl TokenizerSource {
                         .clone()
                         .unwrap_or_else(|| PathBuf::from(".model-runtime"));
                     let store = ModelBundleStore::new(bundle_root).downloader(options.downloader());
-                    let bundle = download_model_bundle(&spec, &store, None)
+                    let bundle = store
+                        .download(&spec)
                         .map_err(|err| DetectError::Source(err.to_string()))?;
                     bundle.file_path(tokenizer_file).ok_or_else(|| {
                         DetectError::Source(format!(
