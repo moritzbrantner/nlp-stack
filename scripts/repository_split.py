@@ -24,7 +24,6 @@ BUN_PACKAGE_COUNT = 28
 
 FOUNDATION_DEPENDENCIES = {
     "moenarch-data-inversion-core": "=0.1.1",
-    "moenarch-jobs-core": "=0.1.2",
     "moenarch-math-sparse-data": "=0.1.1",
     "moenarch-media-core": "=0.1.0",
     "moenarch-model-runtime": "=0.1.1",
