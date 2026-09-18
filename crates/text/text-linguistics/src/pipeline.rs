@@ -20,10 +20,8 @@ use crate::tokenization::{
     TokenAlignmentMap, TokenizationMode, TokenizerPolicy, TokenizerRegistry, TokenizerSelection,
 };
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
-use jobs_core::BackgroundJobRunner;
-#[cfg(all(feature = "candle", feature = "model-bundles"))]
 use model_runtime::{
-    jobs::spawn_model_download_job, HuggingFaceDownloader, ModelBundle, ModelBundleStore,
+    download_model_bundle, HuggingFaceDownloader, ModelBundle, ModelBundleStore,
 };
 use text_core::{
     build_annotation_graph_from_parts, split_paragraphs, split_sentence_spans, tokenize,
@@ -757,10 +755,8 @@ fn ensure_local_entity_bundle(options: &EntityRecognitionOptions) -> Result<Mode
             .map_err(model_runtime_error);
     }
 
-    let runner = BackgroundJobRunner::default();
     let store = local_model_bundle_store(options);
-    let mut handle = spawn_model_download_job(&runner, spec, store).map_job_error()?;
-    handle.join_result().map_job_error()
+    download_model_bundle(&spec, &store, None).map_err(model_runtime_error)
 }
 
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
@@ -780,18 +776,9 @@ fn model_runtime_error(error: model_runtime::ModelRuntimeError) -> DetectError {
         }
         model_runtime::ModelRuntimeError::Source(message) => DetectError::Source(message),
         model_runtime::ModelRuntimeError::Io(error) => DetectError::Io(error),
-    }
-}
-
-#[cfg(all(feature = "candle", feature = "model-bundles"))]
-trait JobResultExt<T> {
-    fn map_job_error(self) -> Result<T>;
-}
-
-#[cfg(all(feature = "candle", feature = "model-bundles"))]
-impl<T> JobResultExt<T> for jobs_core::Result<T> {
-    fn map_job_error(self) -> Result<T> {
-        self.map_err(|err| DetectError::Source(err.to_string()))
+        model_runtime::ModelRuntimeError::Cancelled => {
+            DetectError::Source("model operation cancelled".to_string())
+        }
     }
 }
 
