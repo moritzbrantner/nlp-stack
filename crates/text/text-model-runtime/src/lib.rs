@@ -13,12 +13,10 @@ use candle_core::{DType as CandleDType, Device as CandleDevice, Tensor as Candle
 use candle_nn::{Linear as CandleLinear, Module as CandleModule, VarBuilder as CandleVarBuilder};
 #[cfg(feature = "candle")]
 use candle_transformers::models::{bert as candle_bert, distilbert as candle_distilbert};
-#[cfg(feature = "model-bundles")]
-use jobs_core::BackgroundJobRunner;
 use media_core::{DetectError, Result};
 #[cfg(feature = "model-bundles")]
 use model_runtime::{
-    jobs::spawn_model_download_job, HuggingFaceDownloader, HuggingFaceModelSpec, ModelBundle,
+    download_model_bundle, HuggingFaceDownloader, HuggingFaceModelSpec, ModelBundle,
     ModelBundleStore, ModelTask,
 };
 use serde::{Deserialize, Serialize};
@@ -529,11 +527,7 @@ impl TokenizerSource {
                         .clone()
                         .unwrap_or_else(|| PathBuf::from(".model-runtime"));
                     let store = ModelBundleStore::new(bundle_root).downloader(options.downloader());
-                    let runner = BackgroundJobRunner::default();
-                    let mut handle = spawn_model_download_job(&runner, spec, store)
-                        .map_err(|err| DetectError::Source(err.to_string()))?;
-                    let bundle = handle
-                        .join_result()
+                    let bundle = download_model_bundle(&spec, &store, None)
                         .map_err(|err| DetectError::Source(err.to_string()))?;
                     bundle.file_path(tokenizer_file).ok_or_else(|| {
                         DetectError::Source(format!(
