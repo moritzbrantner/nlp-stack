@@ -1,10 +1,10 @@
 use super::*;
 
+use text_core::Result;
 use text_core::{
     split_sentence_spans, tokenize, AnnotationProvenance, Sentence, TextProcessingOptions,
     TextSpan, Token, TokenKind,
 };
-use text_core::{OwnedTextSegment, Result, TextAnalyzer};
 #[cfg(feature = "transcripts")]
 use text_transcripts::{
     parse_srt, parse_webvtt, TranscriptSegment, TranscriptSegmentContract, TranscriptionContract,
@@ -549,20 +549,6 @@ fn classifies_discourse_topics_and_style() {
     assert!(!analysis.discourse.is_empty());
     assert!(!analysis.topics.descriptors.is_empty());
     assert!(analysis.style.complexity.average_sentence_tokens > 0.0);
-}
-
-#[test]
-fn analyzer_emits_segment_and_document_events() {
-    let mut analyzer = LinguisticAnalyzer::new(LinguisticAnalysisOptions::heuristic());
-    let segment = OwnedTextSegment::new(0, "Alice presented the roadmap");
-    let events = analyzer.process_segment(&segment.as_segment()).unwrap();
-    assert!(events
-        .iter()
-        .any(|event| event.label.starts_with("text:language:")));
-    let final_events = analyzer.finish(Some(0)).unwrap();
-    assert!(final_events
-        .iter()
-        .any(|event| event.label.starts_with("text:topic:")));
 }
 
 #[test]

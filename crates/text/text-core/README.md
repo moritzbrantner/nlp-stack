@@ -17,9 +17,13 @@ records, and text processing options are the intended text-kernel boundary.
 
 A2 is actively removing extraction-era responsibilities that do not belong in
 the kernel. `TextDocumentContract` / `TextSegmentContract`, media timing,
-analysis-event/error re-exports, analyzer lifecycle, and package-surface/JSON
-dispatch remain compatibility debt during that migration; do not add new
-consumers or new parallel contract types to those seams.
+analysis-event/error re-exports, and package-surface/JSON dispatch remain
+compatibility debt during that migration; do not add new consumers or new
+parallel contract types to those seams.
+
+Generic `TextAnalyzer`/`TextPipeline` orchestration has been removed from the
+kernel. Capability crates expose their typed operations directly instead of
+registering analyzers with `text-core`.
 
 ### Span coordinates
 
