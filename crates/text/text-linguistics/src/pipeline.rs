@@ -20,9 +20,7 @@ use crate::tokenization::{
     TokenAlignmentMap, TokenizationMode, TokenizerPolicy, TokenizerRegistry, TokenizerSelection,
 };
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
-use model_runtime::{
-    download_model_bundle, HuggingFaceDownloader, ModelBundle, ModelBundleStore,
-};
+use model_runtime::{download_model_bundle, HuggingFaceDownloader, ModelBundle, ModelBundleStore};
 use text_core::{
     build_annotation_graph_from_parts, split_paragraphs, split_sentence_spans, tokenize,
     AnnotationConfidence, AnnotationProvenance, Sentence, TextAnnotationGraph, TextDocument,
