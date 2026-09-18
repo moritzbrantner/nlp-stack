@@ -12,7 +12,6 @@ Heuristic-first, local-first linguistic analysis pipeline for
 - Explicit local model-backed named entities through `CandleTokenClassifier`
 - Heuristic rule extraction remains available through `LinguisticAnalysisOptions::heuristic()`
 - Coreference, events, discourse, topics, and style analysis
-- `TextAnalyzer` adapter for text pipelines
 
 ## Stable contract
 

@@ -10,7 +10,7 @@ use text_core::{
     detailed_text_stats, split_sentence_spans, text_stats, tokenize, tokenize_words, word_counts,
     TextProcessingOptions, TextSpan, TextStats, TokenKind,
 };
-use text_core::{AnalysisEvent, DetectError, Result, TextAnalyzer, TextSegment, Timestamp};
+use text_core::{DetectError, Result};
 
 pub use corpus::*;
 
@@ -911,176 +911,6 @@ pub fn rule_entities(text: &str, rules: &EntityRuleSet) -> Vec<EntityMention> {
     mentions
 }
 
-#[derive(Debug, Default, Clone)]
-/// Data type for text stats analyzer.
-pub struct TextStatsAnalyzer;
-
-impl TextAnalyzer for TextStatsAnalyzer {
-    fn name(&self) -> &str {
-        "text_stats"
-    }
-
-    fn process_segment(&mut self, segment: &TextSegment<'_>) -> Result<Vec<AnalysisEvent>> {
-        let stats = text_stats(segment.text);
-        Ok(vec![
-            event_at(self.name(), "text:stats", segment.timestamp).score(stats.words as f32)
-        ])
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-/// Data type for keyword analyzer.
-pub struct KeywordAnalyzer {
-    /// The options value.
-    pub options: KeywordOptions,
-}
-
-impl KeywordAnalyzer {
-    /// Creates a new value.
-    pub fn new(options: KeywordOptions) -> Self {
-        Self { options }
-    }
-}
-
-impl TextAnalyzer for KeywordAnalyzer {
-    fn name(&self) -> &str {
-        "keywords"
-    }
-
-    fn process_segment(&mut self, segment: &TextSegment<'_>) -> Result<Vec<AnalysisEvent>> {
-        Ok(keywords(segment.text, &self.options)
-            .into_iter()
-            .map(|keyword| {
-                event_at(
-                    self.name(),
-                    &format!("text:keyword:{}", keyword.text),
-                    segment.timestamp,
-                )
-                .score(keyword.score)
-            })
-            .collect())
-    }
-}
-
-#[derive(Debug, Default, Clone)]
-/// Data type for pattern analyzer.
-pub struct PatternAnalyzer;
-
-impl TextAnalyzer for PatternAnalyzer {
-    fn name(&self) -> &str {
-        "text_patterns"
-    }
-
-    fn process_segment(&mut self, segment: &TextSegment<'_>) -> Result<Vec<AnalysisEvent>> {
-        let mut events = pattern_events(self.name(), segment.text, segment.timestamp);
-        if segment.text.trim_end().ends_with(['?', '؟', '？']) {
-            events.push(event_at(
-                self.name(),
-                "text:pattern:question",
-                segment.timestamp,
-            ));
-        }
-        Ok(events)
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-/// Data type for extractive summary analyzer.
-pub struct ExtractiveSummaryAnalyzer {
-    /// The options value.
-    pub options: ExtractiveSummaryOptions,
-}
-
-impl ExtractiveSummaryAnalyzer {
-    /// Creates a new value.
-    pub fn new(options: ExtractiveSummaryOptions) -> Self {
-        Self { options }
-    }
-}
-
-impl TextAnalyzer for ExtractiveSummaryAnalyzer {
-    fn name(&self) -> &str {
-        "extractive_summary"
-    }
-
-    fn process_segment(&mut self, segment: &TextSegment<'_>) -> Result<Vec<AnalysisEvent>> {
-        Ok(extractive_summary(segment.text, &self.options)?
-            .into_iter()
-            .map(|sentence| {
-                event_at(
-                    self.name(),
-                    &format!("text:summary:{}", sentence.index),
-                    segment.timestamp,
-                )
-                .score(sentence.score)
-            })
-            .collect())
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-/// Data type for sentiment analyzer.
-pub struct SentimentAnalyzer {
-    /// The lexicon value.
-    pub lexicon: SentimentLexicon,
-}
-
-impl SentimentAnalyzer {
-    /// Creates a new value.
-    pub fn new(lexicon: SentimentLexicon) -> Self {
-        Self { lexicon }
-    }
-}
-
-impl TextAnalyzer for SentimentAnalyzer {
-    fn name(&self) -> &str {
-        "sentiment"
-    }
-
-    fn process_segment(&mut self, segment: &TextSegment<'_>) -> Result<Vec<AnalysisEvent>> {
-        let summary = sentiment(segment.text, &self.lexicon);
-        Ok(vec![event_at(
-            self.name(),
-            &format!("text:sentiment:{}", summary.label),
-            segment.timestamp,
-        )
-        .score(summary.compound)])
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-/// Data type for entity rule analyzer.
-pub struct EntityRuleAnalyzer {
-    /// The rules value.
-    pub rules: EntityRuleSet,
-}
-
-impl EntityRuleAnalyzer {
-    /// Creates a new value.
-    pub fn new(rules: EntityRuleSet) -> Self {
-        Self { rules }
-    }
-}
-
-impl TextAnalyzer for EntityRuleAnalyzer {
-    fn name(&self) -> &str {
-        "rule_entities"
-    }
-
-    fn process_segment(&mut self, segment: &TextSegment<'_>) -> Result<Vec<AnalysisEvent>> {
-        Ok(rule_entities(segment.text, &self.rules)
-            .into_iter()
-            .map(|mention| {
-                event_at(
-                    self.name(),
-                    &format!("text:entity:{}:{}", mention.kind, mention.normalized),
-                    segment.timestamp,
-                )
-            })
-            .collect())
-    }
-}
-
 fn ngram_frequencies(ngrams: Vec<Vec<String>>) -> Vec<NgramFrequency> {
     let total = ngrams.len().max(1) as f32;
     let mut counts = BTreeMap::<Vec<String>, usize>::new();
@@ -1133,27 +963,6 @@ fn is_intensifier(term: &str) -> bool {
         term,
         "very" | "really" | "extremely" | "so" | "too" | "sehr" | "tres" | "très" | "muy"
     )
-}
-
-fn pattern_events(analyzer: &str, text: &str, timestamp: Option<Timestamp>) -> Vec<AnalysisEvent> {
-    let mut seen = BTreeSet::new();
-    let mut events = Vec::new();
-    for token in tokenize(text, &TextProcessingOptions::default()) {
-        let label = match token.kind {
-            TokenKind::Url => Some("text:pattern:url"),
-            TokenKind::Email => Some("text:pattern:email"),
-            TokenKind::Mention => Some("text:pattern:mention"),
-            TokenKind::Hashtag => Some("text:pattern:hashtag"),
-            TokenKind::Number => Some("text:pattern:number"),
-            _ => None,
-        };
-        if let Some(label) = label {
-            if seen.insert(label) {
-                events.push(event_at(analyzer, label, timestamp));
-            }
-        }
-    }
-    events
 }
 
 fn stem_english(term: &str) -> String {
@@ -1240,15 +1049,6 @@ fn push_capitalized_phrase(
     });
 }
 
-fn event_at(analyzer: &str, label: &str, timestamp: Option<Timestamp>) -> AnalysisEvent {
-    let event = AnalysisEvent::new(analyzer, label);
-    if let Some(timestamp) = timestamp {
-        event.at_timestamp(timestamp)
-    } else {
-        event
-    }
-}
-
 fn invalid_argument(message: impl Into<String>) -> DetectError {
     DetectError::InvalidArgument(message.into())
 }
@@ -1256,7 +1056,6 @@ fn invalid_argument(message: impl Into<String>) -> DetectError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use text_core::{OwnedTextSegment, TextPipeline};
 
     #[test]
     fn ranks_terms_by_count() {
@@ -1445,52 +1244,6 @@ mod tests {
             &text[email.span.byte_start..email.span.byte_end],
             "jane@example.com"
         );
-    }
-
-    #[test]
-    fn pattern_analyzer_emits_labels() {
-        let mut analyzer = PatternAnalyzer;
-        let segment =
-            OwnedTextSegment::new(0, "Mail hi@example.com @team #rust https://example.com 42?");
-        let labels = analyzer
-            .process_segment(&segment.as_segment())
-            .unwrap()
-            .into_iter()
-            .map(|event| event.label)
-            .collect::<Vec<_>>();
-        assert!(labels.contains(&"text:pattern:url".to_string()));
-        assert!(labels.contains(&"text:pattern:number".to_string()));
-        assert!(labels.contains(&"text:pattern:question".to_string()));
-        assert!(labels.contains(&"text:pattern:email".to_string()));
-        assert!(labels.contains(&"text:pattern:mention".to_string()));
-        assert!(labels.contains(&"text:pattern:hashtag".to_string()));
-    }
-
-    #[test]
-    fn analyzers_run_inside_text_pipeline() {
-        let mut pipeline = TextPipeline::builder()
-            .analyzer(TextStatsAnalyzer)
-            .analyzer(KeywordAnalyzer::default())
-            .analyzer(PatternAnalyzer)
-            .build()
-            .unwrap();
-
-        pipeline
-            .process_segment(OwnedTextSegment::new(
-                0,
-                "Visit https://example.com with rust rust?",
-            ))
-            .unwrap();
-        let result = pipeline.finish_analysis().unwrap();
-        let labels = result
-            .events
-            .into_iter()
-            .map(|event| event.label)
-            .collect::<Vec<_>>();
-        assert!(labels.contains(&"text:stats".to_string()));
-        assert!(labels.contains(&"text:keyword:rust".to_string()));
-        assert!(labels.contains(&"text:pattern:question".to_string()));
-        assert!(labels.contains(&"text:pattern:url".to_string()));
     }
 
     #[test]
