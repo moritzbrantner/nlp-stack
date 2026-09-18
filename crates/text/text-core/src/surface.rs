@@ -91,7 +91,7 @@ pub fn run_surface_operation(request: SurfaceRequest) -> Result<SurfaceResponse,
     let value = match request.operation.as_str() {
         "describe" => return Ok(describe_surface_response(&package_surface(), request)),
         "text.statistics" => serde_json::to_value(analyze_text_statistics(parse_input(request.input)?))
-            .map_err(|error| error.to_string())?
+            .map_err(|error| error.to_string())?,
         "text.normalize" => normalize_value(parse_input(request.input)?)?,
         "text.tokenize" => tokenize_value(parse_input(request.input)?)?,
         "text.boundaries" => boundaries_value(parse_input(request.input)?)?,
