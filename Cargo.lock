@@ -1655,6 +1655,18 @@ dependencies = [
  "serde_json",
 ]
 
+[[package]]
+name = "moenarch-jobs-core"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b197d9c2b606635898dc59bf6b3c9081ee728c4180e0c5cebfaac408f46aa865"
+dependencies = [
+ "chrono",
+ "moenarch-runtime-core",
+ "serde",
+ "serde_json",
+ "sha2",
+]
 
 [[package]]
 name = "moenarch-math-linear"
@@ -2197,7 +2209,6 @@ dependencies = [
  "candle-nn",
  "candle-transformers",
  "criterion",
- "moenarch-jobs-core",
  "moenarch-model-runtime",
  "moenarch-runtime-core",
  "moenarch-text-core",
@@ -2251,7 +2262,6 @@ dependencies = [
  "candle-core",
  "candle-nn",
  "candle-transformers",
- "moenarch-jobs-core",
  "moenarch-media-core",
  "moenarch-model-runtime",
  "moenarch-runtime-core",
