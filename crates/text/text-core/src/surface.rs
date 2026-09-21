@@ -91,8 +91,8 @@ pub fn run_surface_operation(request: SurfaceRequest) -> Result<SurfaceResponse,
     let value = match request.operation.as_str() {
         "describe" => return Ok(describe_surface_response(&package_surface(), request)),
         "text.statistics" => {
-            let result = analyze_text_statistics(parse_input(request.input)?);
-            serde_json::to_value(result).map_err(|error| error.to_string())?
+            serde_json::to_value(analyze_text_statistics(parse_input(request.input)?))
+                .map_err(|error| error.to_string())?
         }
         "text.normalize" => normalize_value(parse_input(request.input)?)?,
         "text.tokenize" => tokenize_value(parse_input(request.input)?)?,
@@ -144,8 +144,8 @@ fn workflow_summary(operation: &str, value: &serde_json::Value) -> serde_json::V
     match operation {
         "text.statistics" => serde_json::json!({
             "status": "ok",
-            "words": value["value"]["wordCount"],
-            "sentences": value["value"]["sentenceCount"]
+            "words": value["wordCount"],
+            "sentences": value["sentenceCount"]
         }),
         "text.normalize" => serde_json::json!({
             "status": "ok",
