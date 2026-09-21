@@ -1,10 +1,12 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use runtime_core::{OperationId, SurfaceRequest};
 use text_analysis::semantic::{
-    analyze_document_semantics, compare_semantic_neighborhoods, SemanticAnalysisOptions,
+    analyze_document_semantics, analyze_document_semantics_with, compare_semantic_neighborhoods,
+    SemanticAnalysisOptions,
 };
 use text_analysis::surface::run_surface_operation;
 use text_core::TextDocument;
+use text_embeddings::{DenseVector, TextEmbeddingBackend};
 
 fn bench_document_and_corpus(c: &mut Criterion) {
     let document_input = serde_json::json!({
@@ -71,5 +73,35 @@ fn bench_document_and_corpus(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_document_and_corpus);
+// Identical vectors force every possible merge and exposed the cubic clustering regression.
+// Criterion samples end-to-end latency; lower is better. Keep sizes stable for baseline comparisons.
+fn bench_repeated_semantic_sentences(c: &mut Criterion) {
+    struct RepeatedEmbedding;
+    impl TextEmbeddingBackend for RepeatedEmbedding {
+        fn embed_text(&self, _text: &str) -> text_core::Result<DenseVector> {
+            DenseVector::new(vec![1.0, 0.0])
+        }
+    }
+
+    let mut group = c.benchmark_group("semantic_repeated_sentences");
+    group.sample_size(10);
+    for count in [500, 1_000, 2_000] {
+        let text = "Cats sleep. ".repeat(count);
+        let document = TextDocument::new("repeated", &text);
+        let options = SemanticAnalysisOptions::default();
+        group.bench_with_input(BenchmarkId::from_parameter(count), &count, |b, _| {
+            b.iter(|| {
+                analyze_document_semantics_with(black_box(&document), &options, &RepeatedEmbedding)
+                    .unwrap()
+            })
+        });
+    }
+    group.finish();
+}
+
+criterion_group!(
+    benches,
+    bench_document_and_corpus,
+    bench_repeated_semantic_sentences
+);
 criterion_main!(benches);

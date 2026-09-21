@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useRef,
   useState,
   type DragEvent,
@@ -8,7 +9,6 @@ import {
 } from "react";
 
 import type {
-  SurfaceRequest,
   SurfaceResponse,
 } from "../../packages/nlp-app-ui/dist/package-surface/index.js";
 import {
@@ -24,19 +24,11 @@ import {
   type TextAnalysisExample,
 } from "./text-analysis-examples";
 
-type TextAnalysisRuntime = {
-  runOperation: (request: SurfaceRequest) => SurfaceResponse;
-};
+import { loadAnalysisRuntime, type AnalysisRuntime } from "./analysis-runtime";
 
-type RuntimeHandle = { ready: Promise<TextAnalysisRuntime> };
-type RuntimeWindow = Window & { nlpStackTextAnalysis?: RuntimeHandle };
 type JsonRecord = Record<string, unknown>;
 type ResultTab = ExampleResultView | "entities" | "technical";
 
-const runtimeReadyEvent = "nlp-stack-text-analysis-ready";
-const runtimeErrorEvent = "nlp-stack-text-analysis-error";
-const runtimeScriptId = "nlp-stack-text-analysis-runtime";
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const resultGroups: { label: string; tabs: [ResultTab, string][] }[] = [
   {
     label: "Corpus",
@@ -58,10 +50,14 @@ const resultGroups: { label: string; tabs: [ResultTab, string][] }[] = [
   { label: "Inspect", tabs: [["technical", "Technical"]] },
 ];
 
-let runtimePromise: Promise<TextAnalysisRuntime> | null = null;
-
 export function TextAnalysisStudio() {
   const fileInput = useRef<HTMLInputElement>(null);
+  const activeAnalysis = useRef<AbortController | null>(null);
+  useEffect(() => () => {
+    const controller = activeAnalysis.current;
+    activeAnalysis.current = null;
+    controller?.abort();
+  }, []);
   const [text, setText] = useState(defaultTextAnalysisExample.text);
   const [selectedExampleId, setSelectedExampleId] = useState<string | null>(defaultTextAnalysisExample.id);
   const [source, setSource] = useState<BrowserTextIngestResult | null>(null);
@@ -106,6 +102,7 @@ export function TextAnalysisStudio() {
     focus: ResultTab = selectedExample?.focus ?? "word-corpus",
     suppliedCorpusSources: BrowserTextIngestResult[] = corpusSources,
   ) {
+    if (activeAnalysis.current) return;
     const trimmed = nextText.trim();
     if (!trimmed) {
       setError("Add text or upload a document before running analysis.");
@@ -122,11 +119,16 @@ export function TextAnalysisStudio() {
     const isMultiDocumentCorpus = corpusItems.length > 1;
     const resolvedFocus = focus === "semantic-corpus" && !isMultiDocumentCorpus ? "semantic-map" : focus;
 
+    const controller = new AbortController();
+    activeAnalysis.current = controller;
     setBusy(true);
     setError(null);
+    clearResults();
     setPhase("Loading the text-analysis Rust/Wasm runtime…");
+    let runtime: AnalysisRuntime | undefined;
     try {
-      const runtime = await loadRuntime();
+      runtime = await loadAnalysisRuntime(controller.signal);
+      controller.signal.throwIfAborted();
       const id = documentId(sourceLabel);
       setPhase(
         isMultiDocumentCorpus
@@ -148,7 +150,7 @@ export function TextAnalysisStudio() {
               linguistics: { mode: "heuristicBalanced" },
               embedding: { mode: "hashed", dimensions: 128, useIdf: false },
             },
-          }),
+          }, { signal: controller.signal }),
         ),
         Promise.resolve(
           runtime.runOperation({
@@ -162,7 +164,7 @@ export function TextAnalysisStudio() {
               includeLinguisticGraph: true,
               includeNeighborhoodEvidence: false,
             },
-          }),
+          }, { signal: controller.signal }),
         ),
         Promise.resolve(
           runtime.runOperation({
@@ -175,10 +177,11 @@ export function TextAnalysisStudio() {
               neighborThreshold: 0.25,
               clusterThreshold: 0.6,
             },
-          }),
+          }, { signal: controller.signal }),
         ),
       ]);
 
+      controller.signal.throwIfAborted();
       setDocumentReport(surfaceResult(documentResponse));
       setSemanticReport(surfaceResult(semanticResponse));
       setCorpusReport(surfaceResult(corpusResponse));
@@ -191,15 +194,23 @@ export function TextAnalysisStudio() {
           : "Analysis ready. Single-document semantic structure is available in Semantic map; add multiple documents for Corpus themes.",
       );
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to analyze this text.");
-      setPhase("Analysis stopped.");
+      if (activeAnalysis.current !== controller) return;
+      const cancelled = controller.signal.aborted;
+      // A failed operation also stops any queued sibling operations.
+      controller.abort();
+      setError(cancelled ? null : caught instanceof Error ? caught.message : "Unable to analyze this text.");
+      setPhase(cancelled ? "Analysis cancelled." : "Analysis stopped.");
     } finally {
-      setBusy(false);
+      runtime?.dispose();
+      if (activeAnalysis.current === controller) {
+        activeAnalysis.current = null;
+        setBusy(false);
+      }
     }
   }
 
   async function ingest(files: File[]) {
-    if (files.length === 0) return;
+    if (busy || files.length === 0) return;
     setBusy(true);
     setError(null);
     setSelectedExampleId(null);
@@ -372,6 +383,7 @@ export function TextAnalysisStudio() {
           />
         </label>
 
+        <p className="text-sm text-muted">Browser analysis supports up to 256 KiB of source text and 512 sentences across all documents.</p>
         <div className="flex flex-wrap items-center gap-4">
           <button
             className="min-h-11 rounded-md bg-accent px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
@@ -380,6 +392,15 @@ export function TextAnalysisStudio() {
           >
             {busy ? "Working…" : corpusSources.length > 1 ? "Analyze corpus" : "Analyze text"}
           </button>
+          {busy && activeAnalysis.current ? (
+            <button
+              className="min-h-11 rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink"
+              type="button"
+              onClick={() => activeAnalysis.current?.abort()}
+            >
+              Cancel analysis
+            </button>
+          ) : null}
           <p className="text-sm text-muted" aria-live="polite">{phase}</p>
         </div>
         {error ? (
@@ -574,7 +595,7 @@ function SemanticCorpusPanel({ report }: { report: JsonRecord | null }) {
   const itemCount = numberValue(report?.itemCount);
   const nonConceptUnitCount = numberValue(report?.nonConceptUnitCount);
   const maxMembers = concepts.reduce((max, concept) => Math.max(max, numberValue(concept.memberUnitCount)), 0);
-  const modelName = stringValue(embeddingModel?.modelName, "unknown embedding backend");
+  const modelName = stringValue(embeddingModel?.model_name, "unknown embedding backend");
   const dimensions = numberValue(embeddingModel?.dimensions);
 
   if (itemCount < 2) {
@@ -830,44 +851,6 @@ function JsonInline({ value }: { value: unknown }) {
 
 function JsonBlock({ value }: { value: unknown }) {
   return <pre className="mt-3 max-h-[36rem] overflow-auto whitespace-pre-wrap break-words rounded-md bg-zinc-950 p-4 text-xs leading-5 text-zinc-100">{JSON.stringify(value ?? null, null, 2)}</pre>;
-}
-
-async function loadRuntime(): Promise<TextAnalysisRuntime> {
-  if (runtimePromise) return runtimePromise;
-  const runtimeWindow = window as RuntimeWindow;
-  if (runtimeWindow.nlpStackTextAnalysis?.ready) {
-    runtimePromise = runtimeWindow.nlpStackTextAnalysis.ready;
-    return runtimePromise;
-  }
-  runtimePromise = waitForRuntimeRegistration().then(() => {
-    const registered = (window as RuntimeWindow).nlpStackTextAnalysis?.ready;
-    if (!registered) throw new Error("The text-analysis Wasm runtime registered without a ready promise.");
-    return registered;
-  });
-  ensureRuntimeScript();
-  return runtimePromise;
-}
-
-function waitForRuntimeRegistration(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const cleanup = () => {
-      window.removeEventListener(runtimeReadyEvent, onReady);
-      window.removeEventListener(runtimeErrorEvent, onError);
-    };
-    const onReady = () => { cleanup(); resolve(); };
-    const onError = () => { cleanup(); reject(new Error("Failed to load the text-analysis Wasm runtime.")); };
-    window.addEventListener(runtimeReadyEvent, onReady, { once: true });
-    window.addEventListener(runtimeErrorEvent, onError, { once: true });
-  });
-}
-
-function ensureRuntimeScript() {
-  if (document.getElementById(runtimeScriptId)) return;
-  const script = document.createElement("script");
-  script.id = runtimeScriptId;
-  script.type = "module";
-  script.src = `${basePath}/nlp-analysis-runtime.js`;
-  document.head.append(script);
 }
 
 function surfaceResult(response: SurfaceResponse): JsonRecord {

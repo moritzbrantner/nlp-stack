@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useRef,
   useState,
   type DragEvent,
@@ -8,7 +9,6 @@ import {
 } from "react";
 
 import type {
-  SurfaceRequest,
   SurfaceResponse,
 } from "../../packages/nlp-app-ui/dist/package-surface/index.js";
 import {
@@ -25,23 +25,19 @@ import {
   type SemanticCorpusBaselineOptions,
 } from "./corpus-baseline";
 
-type TextAnalysisRuntime = {
-  runOperation: (request: SurfaceRequest) => SurfaceResponse;
-};
+import { loadAnalysisRuntime, type AnalysisRuntime } from "./analysis-runtime";
 
-type RuntimeHandle = { ready: Promise<TextAnalysisRuntime> };
-type RuntimeWindow = Window & { nlpStackTextAnalysis?: RuntimeHandle };
 type JsonRecord = Record<string, unknown>;
 
-const runtimeReadyEvent = "nlp-stack-text-analysis-ready";
-const runtimeErrorEvent = "nlp-stack-text-analysis-error";
-const runtimeScriptId = "nlp-stack-text-analysis-runtime";
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-
-let runtimePromise: Promise<TextAnalysisRuntime> | null = null;
 
 export function CorpusBaselineStudio() {
   const fileInput = useRef<HTMLInputElement>(null);
+  const activeAnalysis = useRef<AbortController | null>(null);
+  useEffect(() => () => {
+    const controller = activeAnalysis.current;
+    activeAnalysis.current = null;
+    controller?.abort();
+  }, []);
   const [label, setLabel] = useState("My semantic corpus");
   const [manualSource, setManualSource] = useState("pasted-text");
   const [manualText, setManualText] = useState("");
@@ -60,7 +56,7 @@ export function CorpusBaselineStudio() {
   }
 
   async function ingest(files: File[]) {
-    if (files.length === 0) return;
+    if (busy || files.length === 0) return;
     setBusy(true);
     setError(null);
     setBaseline(null);
@@ -107,6 +103,7 @@ export function CorpusBaselineStudio() {
   }
 
   async function buildBaseline() {
+    if (activeAnalysis.current) return;
     if (sources.length === 0) {
       setError("Add at least one source before building a corpus baseline.");
       return;
@@ -119,12 +116,16 @@ export function CorpusBaselineStudio() {
     }));
     const options = semanticCorpusOptions(items.reduce((sum, item) => sum + item.text.length, 0));
 
+    const controller = new AbortController();
+    activeAnalysis.current = controller;
     setBusy(true);
     setError(null);
+    setBaseline(null);
     setPhase("Running semantic corpus analysis in Rust/Wasm…");
 
+    let runtime: AnalysisRuntime | undefined;
     try {
-      const runtime = await loadRuntime();
+      runtime = await loadAnalysisRuntime(controller.signal);
       const response = await Promise.resolve(
         runtime.runOperation({
           operation: "analysis.semantic-corpus",
@@ -132,8 +133,9 @@ export function CorpusBaselineStudio() {
             items,
             ...options,
           },
-        }),
+        }, { signal: controller.signal }),
       );
+      controller.signal.throwIfAborted();
       const result = surfaceResult(response);
       const nextBaseline = createCorpusBaseline({
         label,
@@ -156,10 +158,17 @@ export function CorpusBaselineStudio() {
         `Baseline ready with ${sources.length} source${sources.length === 1 ? "" : "s"}. Exporting preserves the extracted text, analysis options, and Rust semantic-corpus result.`,
       );
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to build the corpus baseline.");
-      setPhase("Baseline analysis stopped.");
+      if (activeAnalysis.current !== controller) return;
+      const cancelled = controller.signal.aborted;
+      controller.abort();
+      setError(cancelled ? null : caught instanceof Error ? caught.message : "Unable to build the corpus baseline.");
+      setPhase(cancelled ? "Baseline analysis cancelled." : "Baseline analysis stopped.");
     } finally {
-      setBusy(false);
+      runtime?.dispose();
+      if (activeAnalysis.current === controller) {
+        activeAnalysis.current = null;
+        setBusy(false);
+      }
     }
   }
 
@@ -332,6 +341,7 @@ export function CorpusBaselineStudio() {
         </section>
       ) : null}
 
+      <p className="text-sm text-muted">Browser analysis supports up to 256 KiB of source text and 512 sentences across all documents.</p>
       <div className="flex flex-wrap items-center gap-3 border-t border-line pt-5">
         <button
           className="min-h-11 rounded-md bg-accent px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
@@ -349,6 +359,15 @@ export function CorpusBaselineStudio() {
         >
           Export JSON
         </button>
+        {busy && activeAnalysis.current ? (
+          <button
+            className="min-h-11 rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink"
+            type="button"
+            onClick={() => activeAnalysis.current?.abort()}
+          >
+            Cancel baseline analysis
+          </button>
+        ) : null}
         <p className="text-sm text-muted" aria-live="polite">{phase}</p>
       </div>
 
@@ -373,54 +392,6 @@ function semanticCorpusOptions(totalTextCharacters: number): SemanticCorpusBasel
     neighborThreshold: 0.25,
     clusterThreshold: 0.6,
   };
-}
-
-async function loadRuntime(): Promise<TextAnalysisRuntime> {
-  if (runtimePromise) return runtimePromise;
-  const runtimeWindow = window as RuntimeWindow;
-  if (runtimeWindow.nlpStackTextAnalysis?.ready) {
-    runtimePromise = runtimeWindow.nlpStackTextAnalysis.ready;
-    return runtimePromise;
-  }
-
-  runtimePromise = waitForRuntimeRegistration().then(() => {
-    const registered = (window as RuntimeWindow).nlpStackTextAnalysis?.ready;
-    if (!registered) {
-      throw new Error("The text-analysis Wasm runtime registered without a ready promise.");
-    }
-    return registered;
-  });
-  ensureRuntimeScript();
-  return runtimePromise;
-}
-
-function waitForRuntimeRegistration(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const cleanup = () => {
-      window.removeEventListener(runtimeReadyEvent, onReady);
-      window.removeEventListener(runtimeErrorEvent, onError);
-    };
-    const onReady = () => {
-      cleanup();
-      resolve();
-    };
-    const onError = () => {
-      cleanup();
-      reject(new Error("Failed to load the text-analysis Wasm runtime."));
-    };
-
-    window.addEventListener(runtimeReadyEvent, onReady, { once: true });
-    window.addEventListener(runtimeErrorEvent, onError, { once: true });
-  });
-}
-
-function ensureRuntimeScript() {
-  if (document.getElementById(runtimeScriptId)) return;
-  const script = document.createElement("script");
-  script.id = runtimeScriptId;
-  script.type = "module";
-  script.src = `${basePath}/nlp-analysis-runtime.js`;
-  document.head.append(script);
 }
 
 function surfaceResult(response: SurfaceResponse): JsonRecord {
