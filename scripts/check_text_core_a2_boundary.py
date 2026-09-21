@@ -34,6 +34,14 @@ ORIGINAL_MIRROR_CONTRACTS = {
     "TimestampContract",
 }
 
+FORBIDDEN_KERNEL_FRAMEWORK_TYPES = {
+    "TextAnalysis",
+    "TextAnalysisResult",
+    "TextAnalyzer",
+    "TextPipeline",
+    "TextPipelineBuilder",
+}
+
 CONTRACT_PATTERN = re.compile(
     r"\bpub\s+struct\s+([A-Za-z_][A-Za-z0-9_]*Contract)\b"
 )
@@ -134,6 +142,7 @@ def check_contract(root: Path) -> list[str]:
 
     actual_source_files = {crate_name: set() for crate_name in known_rust_crates}
     actual_contract_locations: dict[str, set[Path]] = {}
+    forbidden_framework_locations: dict[str, set[Path]] = {}
     for path in sorted(src.rglob("*.rs")):
         relative = path.relative_to(core)
         content = path.read_text(encoding="utf-8")
@@ -144,6 +153,22 @@ def check_contract(root: Path) -> list[str]:
 
         for contract_name in CONTRACT_PATTERN.findall(content):
             actual_contract_locations.setdefault(contract_name, set()).add(relative)
+
+        for type_name in FORBIDDEN_KERNEL_FRAMEWORK_TYPES:
+            pattern = re.compile(
+                rf"\bpub\s+(?:struct|trait)\s+{re.escape(type_name)}\b"
+            )
+            if pattern.search(content):
+                forbidden_framework_locations.setdefault(type_name, set()).add(relative)
+
+    if forbidden_framework_locations:
+        details = ", ".join(
+            f"{name} ({_display_paths(paths)})"
+            for name, paths in sorted(forbidden_framework_locations.items())
+        )
+        errors.append(
+            "text-core regained forbidden analyzer/pipeline framework types: " + details
+        )
 
     for crate_name in sorted(known_rust_crates):
         declared = declared_source_files.get(crate_name, set())
