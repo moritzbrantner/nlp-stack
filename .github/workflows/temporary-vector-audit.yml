@@ -33,8 +33,11 @@ jobs:
           git checkout "$GITHUB_SHA" -- crates/text/text-index/src/surface/fuzzy/vector_reads.rs scripts/benchmark_lexical_vectors.py scripts/test_benchmark_lexical_vectors.py
           git show "$GITHUB_SHA:scripts/prepare_lexical_vector_audit.py" | python3
           cargo fmt --all
+          # The runner may push source but cannot update workflows. The existing
+          # authorized connector will apply that separately after inspection.
+          git restore --source "$BASE" -- .github/workflows/fuzzy-distance-evidence.yml
           git diff --exit-code Cargo.lock
-          git add crates/text/text-index/src/lib.rs crates/text/text-index/src/surface/fuzzy.rs crates/text/text-index/src/surface/fuzzy/vector_reads.rs scripts/benchmark_lexical_vectors.py scripts/test_benchmark_lexical_vectors.py .github/workflows/fuzzy-distance-evidence.yml docs/verification/lexical-vector-audit.md
+          git add crates/text/text-index/src/lib.rs crates/text/text-index/src/surface/fuzzy.rs crates/text/text-index/src/surface/fuzzy/vector_reads.rs scripts/benchmark_lexical_vectors.py scripts/test_benchmark_lexical_vectors.py docs/verification/lexical-vector-audit.md
           git diff --exit-code
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
