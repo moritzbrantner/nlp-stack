@@ -135,3 +135,30 @@ jobs:
           path: ${{ runner.temp }}/fuzzy-search-regressions.json
           if-no-files-found: error
           retention-days: 90
+
+  lexical-vectors:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'performance')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.95.0"
+      - name: Query-only correctness, vector-work ratchet and paired timing
+        run: |
+          export CARGO_TARGET_DIR="$RUNNER_TEMP/lexical-vector-target"
+          python3 scripts/benchmark_lexical_vectors.py --iterations 10 --samples 5 \
+            --output "$RUNNER_TEMP/lexical-vectors.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lexical-vectors-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/lexical-vectors.json
+          if-no-files-found: error
+          retention-days: 90
