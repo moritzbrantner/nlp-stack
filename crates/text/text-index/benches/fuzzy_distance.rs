@@ -7,6 +7,8 @@ mod legacy;
 use std::hint::black_box;
 use std::time::Instant;
 
+// Keep the paired timing harness explicit; these inputs mirror one distance call.
+#[allow(clippy::too_many_arguments)]
 fn sample(
     operation: impl Fn(&str, &str, usize) -> Option<usize>,
     left: &str,
