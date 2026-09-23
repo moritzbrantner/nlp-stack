@@ -90,9 +90,11 @@ mod tests {
         for (column, value) in matrix[0].iter_mut().enumerate() {
             *value = column;
         }
-        for row in 1..=left.len() {
-            for column in 1..=right.len() {
-                let cost = usize::from(left[row - 1] != right[column - 1]);
+        for (left_index, left_char) in left.iter().enumerate() {
+            let row = left_index + 1;
+            for (right_index, right_char) in right.iter().enumerate() {
+                let column = right_index + 1;
+                let cost = usize::from(left_char != right_char);
                 matrix[row][column] = (matrix[row - 1][column] + 1)
                     .min(matrix[row][column - 1] + 1)
                     .min(matrix[row - 1][column - 1] + cost);
