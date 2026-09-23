@@ -6,6 +6,14 @@ use text_core::{tokenize, TextProcessingOptions, TokenKind};
 use super::SurfaceIndex;
 use crate::{IndexChunk, IndexQuery, IndexSearchMode, IndexSearchResult, TextIndexStore};
 
+#[path = "fuzzy/distance.rs"]
+mod distance;
+use distance::bounded_damerau_levenshtein;
+
+#[cfg(test)]
+#[path = "fuzzy/audit_regressions.rs"]
+mod audit_regressions;
+
 const MAX_FUZZY_QUERY_TERMS: usize = 16;
 const MAX_FUZZY_TERM_CHARS: usize = 64;
 const HARD_MAX_EXPANSIONS_PER_TERM: usize = 8;
@@ -108,9 +116,10 @@ pub(super) fn search(
     query: &IndexQuery,
     options: &FuzzySearchOptions,
 ) -> Result<serde_json::Value, String> {
+    // Validate the original request before variant candidate limits are widened.
+    crate::validate_query(query).map_err(|error| error.to_string())?;
     validate_options(query, options)?;
 
-    let chunks = index_chunks(index)?;
     let query_tokens = normalized_query_tokens(&query.text);
     if query_tokens.is_empty() {
         return Err("fuzzy search requires at least one searchable query term".to_string());
@@ -121,6 +130,7 @@ pub(super) fn search(
         ));
     }
 
+    let chunks = index_chunks(index)?;
     let vocabulary = build_vocabulary(&chunks, options)?;
     let variants = build_query_variants(&query_tokens, &vocabulary, options);
     let limit = query.candidate_limit.max(query.top_k).max(1);
@@ -148,7 +158,9 @@ pub(super) fn search(
 
         for result in index.search(&variant_query)? {
             let adjusted = result.score_breakdown.lexical_score * variant_weight;
-            if adjusted <= 0.0 || !adjusted.is_finite() {
+            // The core deliberately admits required-phrase hits with zero BM25.
+            // An unrelated vocabulary expansion must not make those hits vanish.
+            if adjusted < 0.0 || !adjusted.is_finite() {
                 continue;
             }
             let replace = best_by_chunk.get(&result.chunk_id).is_none_or(|existing| {
@@ -438,43 +450,6 @@ fn fuzzy_expansions(
     });
     matches.truncate(options.max_expansions_per_term);
     matches.into_iter().map(|(matched, _)| matched).collect()
-}
-
-fn bounded_damerau_levenshtein(left: &str, right: &str, max_distance: usize) -> Option<usize> {
-    let left = left.chars().collect::<Vec<_>>();
-    let right = right.chars().collect::<Vec<_>>();
-    if left.len().abs_diff(right.len()) > max_distance {
-        return None;
-    }
-    if left == right {
-        return Some(0);
-    }
-
-    let mut previous_previous = vec![0; right.len() + 1];
-    let mut previous = (0..=right.len()).collect::<Vec<_>>();
-    for (left_index, left_char) in left.iter().enumerate() {
-        let row = left_index + 1;
-        let mut current = vec![row; right.len() + 1];
-        for (right_index, right_char) in right.iter().enumerate() {
-            let column = right_index + 1;
-            let substitution_cost = usize::from(left_char != right_char);
-            let mut distance = (previous[column] + 1)
-                .min(current[column - 1] + 1)
-                .min(previous[column - 1] + substitution_cost);
-            if row > 1
-                && column > 1
-                && left[row - 1] == right[column - 2]
-                && left[row - 2] == right[column - 1]
-            {
-                distance = distance.min(previous_previous[column - 2] + 1);
-            }
-            current[column] = distance;
-        }
-        previous_previous = previous;
-        previous = current;
-    }
-    let distance = previous[right.len()];
-    (distance <= max_distance).then_some(distance)
 }
 
 fn default_max_edit_distance() -> usize {

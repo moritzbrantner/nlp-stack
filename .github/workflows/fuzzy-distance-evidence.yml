@@ -1,0 +1,44 @@
+name: fuzzy-distance-evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzzy-distance-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'performance')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.95.0"
+      - name: Native correctness and before-after kernel evidence
+        run: |
+          python3 scripts/benchmark_fuzzy_distance.py \
+            --iterations 1000 --output "$RUNNER_TEMP/fuzzy-distance.json"
+          python3 - "$RUNNER_TEMP/fuzzy-distance.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          report = json.loads(Path(sys.argv[1]).read_text())
+          print(report["native_test_output"])
+          print(json.dumps(report["summary"], indent=2))
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fuzzy-distance-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/fuzzy-distance.json
+          if-no-files-found: error
+          retention-days: 90
