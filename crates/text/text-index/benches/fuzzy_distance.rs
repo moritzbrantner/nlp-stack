@@ -28,7 +28,7 @@ fn sample(
 }
 
 // Keep fixture construction and both alternating measurement orders auditable together.
-#[allow(clippy::too_many_lines)]
+#[allow(clippy::too_many_lines, clippy::uninlined_format_args)]
 fn main() {
     let iterations = std::env::args()
         .skip(1)
