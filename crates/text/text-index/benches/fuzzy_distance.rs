@@ -27,6 +27,8 @@ fn sample(
     start.elapsed().as_nanos() as f64 / iterations as f64
 }
 
+// Keep fixture construction and both alternating measurement orders auditable together.
+#[allow(clippy::too_many_lines)]
 fn main() {
     let iterations = std::env::args()
         .skip(1)
