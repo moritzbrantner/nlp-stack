@@ -1,4 +1,8 @@
 //! No dependencies: also compilable directly with rustc for isolated evidence.
+// Cargo checks harness=false benches with cfg(test), without generating test
+// entrypoints. The included module's test helpers are then intentionally unused.
+// Scope these two allowances to this inclusion; library tests remain fully linted.
+#[cfg_attr(test, allow(dead_code, unused_imports))]
 #[path = "../src/surface/fuzzy/distance.rs"]
 mod distance;
 #[path = "support/fuzzy_distance_legacy.rs"]
@@ -7,8 +11,6 @@ mod legacy;
 use std::hint::black_box;
 use std::time::Instant;
 
-// Keep the paired timing harness explicit; these inputs mirror one distance call.
-#[allow(clippy::too_many_arguments)]
 fn sample(
     operation: impl Fn(&str, &str, usize) -> Option<usize>,
     left: &str,
@@ -27,8 +29,6 @@ fn sample(
     start.elapsed().as_nanos() as f64 / iterations as f64
 }
 
-// Keep fixture construction and both alternating measurement orders auditable together.
-#[allow(clippy::too_many_lines, clippy::uninlined_format_args)]
 fn main() {
     let iterations = std::env::args()
         .skip(1)
