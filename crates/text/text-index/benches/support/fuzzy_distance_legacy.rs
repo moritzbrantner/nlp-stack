@@ -1,7 +1,9 @@
 // Frozen function body from aa425fcc8f030731a000f72c736e13d36d2829d3.
 // Source blob: 7875625a43c1431aa2e3d29b114051ca4041a3e8.
-// Only visibility and signature formatting change. Not production code.
+// Only visibility, lint attributes and signature formatting change. Not production code.
 
+// Keep this frozen baseline lint-independent; only production code should evolve.
+#[allow(clippy::needless_range_loop)]
 pub(super) fn bounded_damerau_levenshtein(
     left: &str,
     right: &str,
