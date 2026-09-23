@@ -531,3 +531,7 @@ mod tests {
             .is_empty());
     }
 }
+
+#[cfg(test)]
+#[path = "fuzzy/vector_reads.rs"]
+mod vector_reads;
