@@ -16,7 +16,11 @@ fn sample(
 ) -> f64 {
     let start = Instant::now();
     for _ in 0..iterations {
-        black_box(operation(black_box(left), black_box(right), black_box(limit)));
+        black_box(operation(
+            black_box(left),
+            black_box(right),
+            black_box(limit),
+        ));
     }
     start.elapsed().as_nanos() as f64 / iterations as f64
 }
@@ -25,14 +29,22 @@ fn main() {
     let iterations = std::env::args()
         .skip(1)
         .find(|value| value != "--bench")
-        .map(|value| value.parse::<usize>().expect("iterations must be an integer"))
+        .map(|value| {
+            value
+                .parse::<usize>()
+                .expect("iterations must be an integer")
+        })
         .unwrap_or(10_000);
     assert!(iterations > 0, "iterations must be positive");
     for length in [8, 16, 32, 64] {
         let ascii = "a".repeat(length);
         let unicode = "é".repeat(length);
         let fixtures = [
-            ("one-edit", ascii.clone(), format!("{}b", "a".repeat(length - 1))),
+            (
+                "one-edit",
+                ascii.clone(),
+                format!("{}b", "a".repeat(length - 1)),
+            ),
             ("rejected", ascii.clone(), "b".repeat(length)),
             ("equal", ascii.clone(), ascii),
             ("unicode", unicode, format!("{}界", "é".repeat(length - 1))),
@@ -51,8 +63,20 @@ fn main() {
                     "fixture={fixture}, length={length}, limit={limit}"
                 );
                 // Warm both implementations; alternate their order across samples.
-                sample(legacy::bounded_damerau_levenshtein, &left, &right, limit, 100);
-                sample(distance::bounded_damerau_levenshtein, &left, &right, limit, 100);
+                sample(
+                    legacy::bounded_damerau_levenshtein,
+                    &left,
+                    &right,
+                    limit,
+                    100,
+                );
+                sample(
+                    distance::bounded_damerau_levenshtein,
+                    &left,
+                    &right,
+                    limit,
+                    100,
+                );
                 for sample_index in 0..7 {
                     let (before, after) = if sample_index % 2 == 0 {
                         let before = sample(

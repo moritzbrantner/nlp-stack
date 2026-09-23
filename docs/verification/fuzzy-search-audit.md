@@ -69,7 +69,8 @@ python3 scripts/benchmark_fuzzy_distance.py --output /tmp/fuzzy-distance.json
 The last command requires only the repository's Rust compiler, Python and Git;
 it does not resolve Cargo dependencies. It compiles and runs the real Rust helper
 tests first, then compiles an optimized native benchmark. The frozen legacy
-function body comes directly from the baseline above; only visibility changed.
+function body comes directly from the baseline above; only visibility and signature
+formatting changed.
 It is test/benchmark code, never linked into the production implementation.
 
 The JSON artifact retains baseline/head identities, actual source hashes, dirty
@@ -81,8 +82,12 @@ samples; those values are not performance evidence.
 
 The opt-in `fuzzy-distance-evidence` workflow runs this native comparison on
 manual dispatch or PRs labeled `performance` and retains the JSON artifact for
-90 days. It is skipped on the ordinary PR path and does not change the existing
-workspace validation gates.
+90 days. Its separate optional search-regressions job runs the repaired crate in
+memory and SQLite configurations, then transplants only the regression tests onto
+the original commit. It accepts only the exact six expected test failures plus
+one passing negative control, not an arbitrary nonzero exit or compilation error.
+A second JSON artifact retains the named before/after results and complete logs.
+Both jobs are skipped on the ordinary PR path; existing workspace gates remain.
 
 The Cargo benchmark is also available as
 `cargo bench -p moenarch-text-index --bench fuzzy_distance`.
@@ -112,8 +117,37 @@ repository development.
   exhaustive cases and reproduced the work-count table. This is supplementary
   model-level evidence, not execution of the Rust implementation.
 - Benchmark-report Python unit tests: 4 passed.
-- Native Rust tests, native timings, Cargo format/Clippy/workspace checks and
-  repository-wide boundary/release checks were not executable in the authoring
-  container: Rust/Bun and a complete checkout were unavailable. No native timing
-  artifact or full-workspace pass is claimed. Check the PR's exact-head CI before
-  integration.
+- The authoring container lacks Rust/Bun and a complete checkout; native evidence
+  was obtained from GitHub Actions instead of being inferred from Python.
+- Hosted kernel run `35884202222` on head
+  `8d8abf14e6dbca3db542afd1271a3917a97a3b99`: all four native Rust helper tests
+  passed, including the exhaustive oracle and deterministic work ratchets.
+- Initial workspace run `35884179462`: ownership/release checks and all 125
+  Python tests passed; formatting stopped the later stages. Formatter-suggested
+  edits to the new benchmark/helper files were applied in the follow-up commit.
+  Do not treat that initial run as a full workspace pass.
+
+## First retained native timing run
+
+Run: https://github.com/moritzbrantner/nlp-stack/actions/runs/35884202222
+
+Artifact `10762575964`, named
+`fuzzy-distance-8d8abf14e6dbca3db542afd1271a3917a97a3b99`, contains the raw
+`fuzzy-distance.json`. Its source hashes matched the benchmarked files, and the
+recorded working tree was clean. Compiler: Rust 1.95.0, optimized native x86_64
+Linux. Each row below is the median of seven samples of 1,000 calls in this run,
+with both implementations measured in the same process.
+
+| One-edit fixture, limit 1 | Before (ns/call) | After (ns/call) | Before / after |
+| --- | ---: | ---: | ---: |
+| 8 scalars | 283.491 | 224.733 | 1.26x |
+| 16 scalars | 746.157 | 377.540 | 1.98x |
+| 32 scalars | 2,244.580 | 644.095 | 3.48x |
+| 64 scalars | 8,202.438 | 1,152.149 | 7.12x |
+
+At 64 scalars with limit 2 the same fixture measured 8,185.954 -> 1,598.982
+ns/call (5.12x). These are observations for the distance kernel on this hosted
+runner, **not whole-index latency or guarantees for other hardware**. The artifact
+also includes rejected, equal, Unicode and transposition fixtures; none are
+excluded from the raw report. Later head runs retain their own identities rather
+than relabeling these measurements as belonging to another commit.

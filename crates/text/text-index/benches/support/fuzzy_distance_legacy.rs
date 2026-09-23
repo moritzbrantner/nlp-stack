@@ -1,8 +1,12 @@
 // Frozen function body from aa425fcc8f030731a000f72c736e13d36d2829d3.
 // Source blob: 7875625a43c1431aa2e3d29b114051ca4041a3e8.
-// Only visibility is changed for the comparison harness. Not production code.
+// Only visibility and signature formatting change. Not production code.
 
-pub(super) fn bounded_damerau_levenshtein(left: &str, right: &str, max_distance: usize) -> Option<usize> {
+pub(super) fn bounded_damerau_levenshtein(
+    left: &str,
+    right: &str,
+    max_distance: usize,
+) -> Option<usize> {
     let left = left.chars().collect::<Vec<_>>();
     let right = right.chars().collect::<Vec<_>>();
     if left.len().abs_diff(right.len()) > max_distance {

@@ -101,8 +101,7 @@ mod tests {
                     && left[row - 1] == right[column - 2]
                     && left[row - 2] == right[column - 1]
                 {
-                    matrix[row][column] =
-                        matrix[row][column].min(matrix[row - 2][column - 2] + 1);
+                    matrix[row][column] = matrix[row][column].min(matrix[row - 2][column - 2] + 1);
                 }
             }
         }

@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 concurrency:
   group: fuzzy-distance-evidence-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -40,5 +44,93 @@ jobs:
         with:
           name: fuzzy-distance-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ runner.temp }}/fuzzy-distance.json
+          if-no-files-found: error
+          retention-days: 90
+
+  search-regressions:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'performance')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_PROFILE_TEST_DEBUG: 0
+      CARGO_TARGET_DIR: ${{ runner.temp }}/fuzzy-cargo-target
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.95.0"
+      - name: Repaired memory and SQLite search tests
+        run: |
+          cargo test -p moenarch-text-index --lib --no-default-features -- --test-threads=1 2>&1 | tee "$RUNNER_TEMP/fuzzy-after-memory.log"
+          cargo test -p moenarch-text-index --lib --features sqlite -- --test-threads=1 2>&1 | tee "$RUNNER_TEMP/fuzzy-after-sqlite.log"
+      - name: Transplant only regression tests onto the original commit
+        run: |
+          baseline=aa425fcc8f030731a000f72c736e13d36d2829d3
+          git fetch --depth=1 origin "$baseline"
+          git worktree add --detach "$RUNNER_TEMP/fuzzy-before" "$baseline"
+          relative=crates/text/text-index/src/surface/fuzzy/audit_regressions.rs
+          mkdir -p "$RUNNER_TEMP/fuzzy-before/$(dirname "$relative")"
+          cp "$relative" "$RUNNER_TEMP/fuzzy-before/$relative"
+          printf '\n#[cfg(test)]\n#[path = "fuzzy/audit_regressions.rs"]\nmod audit_regressions;\n' >> "$RUNNER_TEMP/fuzzy-before/crates/text/text-index/src/surface/fuzzy.rs"
+          cd "$RUNNER_TEMP/fuzzy-before"
+          set +e
+          cargo test -p moenarch-text-index --lib --no-default-features audit_regressions -- --test-threads=1 > "$RUNNER_TEMP/fuzzy-before.log" 2>&1
+          result=$?
+          set -e
+          cat "$RUNNER_TEMP/fuzzy-before.log"
+          test "$result" -eq 101
+      - name: Require exact old failures and new passes; retain evidence
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"])
+          baseline = "aa425fcc8f030731a000f72c736e13d36d2829d3"
+          fixed = {
+              "zero_top_k_is_rejected_even_when_corrections_exist",
+              "zero_candidate_limit_is_rejected_even_when_corrections_exist",
+              "validation_does_not_depend_on_whether_vocabulary_has_a_correction",
+              "unrelated_expansion_does_not_erase_required_phrase_hits",
+              "retained_zero_score_hits_still_obey_every_phrase_and_metadata_filter",
+              "positive_fuzzy_hits_rank_above_retained_phrase_only_hits",
+          }
+          control = {"retaining_phrase_hits_does_not_fabricate_unmatched_results"}
+          logs = {}
+          for phase in ("before", "after-memory", "after-sqlite"):
+              text = (root / f"fuzzy-{phase}.log").read_text()
+              results = dict(re.findall(
+                  r"^test surface::fuzzy::audit_regressions::(\w+) \.\.\. (ok|FAILED)$",
+                  text, re.MULTILINE,
+              ))
+              expected = {name: "ok" for name in fixed | control}
+              if phase == "before":
+                  expected.update({name: "FAILED" for name in fixed})
+              assert results == expected, (phase, results, expected)
+              logs[phase] = {"test_results": results, "raw_log": text}
+          test_path = Path("crates/text/text-index/src/surface/fuzzy/audit_regressions.rs")
+          report = {
+              "schema": "nlp-stack.fuzzy-search-regressions.v1",
+              "baseline_commit": baseline,
+              "head_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+              "regression_source_sha256": hashlib.sha256(test_path.read_bytes()).hexdigest(),
+              "compiler": subprocess.check_output(["rustc", "--version", "--verbose"], text=True),
+              "baseline_changes": "Only audit_regressions.rs and its cfg(test) module declaration.",
+              "phases": logs,
+          }
+          (root / "fuzzy-search-regressions.json").write_text(json.dumps(report, indent=2) + "\n")
+          print("Confirmed six original failures, one passing control, and all seven passing after repair in memory and SQLite builds.")
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fuzzy-search-regressions-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/fuzzy-search-regressions.json
           if-no-files-found: error
           retention-days: 90
