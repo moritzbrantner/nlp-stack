@@ -680,12 +680,16 @@ impl<B: TextEmbedderBackend, S: TextIndexStore> TextIndex<B, S> {
                 "search index is empty".to_string(),
             ));
         }
-        let vectors = self
-            .store
-            .vectors()?
-            .into_iter()
-            .map(|vector| (vector.chunk_id.clone(), vector))
-            .collect::<BTreeMap<_, _>>();
+        // Lexical search must not load or depend on unused semantic state.
+        let vectors = if query.mode == IndexSearchMode::Lexical {
+            BTreeMap::new()
+        } else {
+            self.store
+                .vectors()?
+                .into_iter()
+                .map(|vector| (vector.chunk_id.clone(), vector))
+                .collect::<BTreeMap<_, _>>()
+        };
 
         let lexical_scores = if query.mode != IndexSearchMode::Semantic {
             match self.store.lexical_candidates(&normalized_query, limit)? {
