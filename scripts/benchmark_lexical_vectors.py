@@ -41,6 +41,13 @@ CONTROLS = {
 
 def run(command: list[str], cwd: Path = ROOT, env: dict | None = None,
         check: bool = True) -> subprocess.CompletedProcess:
+    if command[0] == "cargo":
+        # Cargo can reuse an executable built from another worktree when both
+        # checkouts share a target directory. A comparison must isolate outputs.
+        env = dict(os.environ if env is None else env)
+        parent = Path(env.get("CARGO_TARGET_DIR", str(ROOT / "target"))).resolve()
+        checkout = hashlib.sha256(str(cwd.resolve()).encode()).hexdigest()[:16]
+        env["CARGO_TARGET_DIR"] = str(parent / "lexical-vector-evidence" / checkout)
     return subprocess.run(command, cwd=cwd, env=env, check=check, text=True,
                           capture_output=True, timeout=900)
 
@@ -129,6 +136,7 @@ def main() -> None:
         "timing_mode": "native release test binaries; warmup; alternating revision order; no timing gate",
         "baseline_changes": "Only vector_reads.rs and its cfg(test) declaration in fuzzy.rs.",
         "work_scope": "Counting store outside timing for direct lexical calls; fuzzy vector isolation is tested with corrupted SQLite payloads, not counted in timings.",
+        "build_isolation": "Separate Cargo target directories per checkout; copied release binaries per revision.",
         "validation": {}, "samples": [], "summary": [],
     }
     run(["git", "fetch", "--depth=1", "origin", BASELINE])

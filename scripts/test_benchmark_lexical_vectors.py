@@ -2,6 +2,9 @@
 import copy
 import json
 import unittest
+from pathlib import Path
+from unittest.mock import patch
+import benchmark_lexical_vectors as benchmark
 from benchmark_lexical_vectors import CONTROLS, FIXED, PREFIX, parse_samples, validate_pair, validate_tests
 
 
@@ -43,3 +46,14 @@ class LexicalVectorEvidenceTests(unittest.TestCase):
             validate_pair(before, wrong)
         with self.assertRaises(ValueError):
             validate_pair(before, before)
+
+    def test_cargo_targets_are_isolated_by_checkout_and_preserve_environment(self):
+        environment = {"CARGO_TARGET_DIR": "/tmp/shared", "RUSTFLAGS": "-C opt-level=2"}
+        with patch.object(benchmark.subprocess, "run") as subprocess_run:
+            benchmark.run(["cargo", "test"], cwd=Path("/tmp/before"), env=environment)
+            before = subprocess_run.call_args.kwargs["env"]
+            benchmark.run(["cargo", "test"], cwd=Path("/tmp/after"), env=environment)
+            after = subprocess_run.call_args.kwargs["env"]
+        self.assertNotEqual(before["CARGO_TARGET_DIR"], after["CARGO_TARGET_DIR"])
+        self.assertEqual(before["RUSTFLAGS"], after["RUSTFLAGS"])
+        self.assertEqual(environment["CARGO_TARGET_DIR"], "/tmp/shared")
