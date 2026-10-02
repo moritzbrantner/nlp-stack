@@ -1,3 +1,4 @@
+mod clustering;
 mod corpus;
 mod derive;
 mod dynamics;

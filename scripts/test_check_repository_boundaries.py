@@ -131,6 +131,96 @@ class RepositoryBoundaryTests(unittest.TestCase):
         ownership["platform_packages_ownership_checked"] = False
         self.assertTrue(any("platform_packages_ownership_checked" in error for error in self.errors(ownership=ownership)))
 
+    def test_repository_boundary_declaration_is_required(self) -> None:
+        ownership = copy.deepcopy(self.ownership)
+        del ownership["repository_boundary"]
+        errors = self.errors(ownership=ownership)
+        self.assertTrue(any("repository_boundary must declare" in error for error in errors), errors)
+
+    def test_timed_text_and_corpus_persistence_stay_excluded(self) -> None:
+        ownership = copy.deepcopy(self.ownership)
+        boundary = ownership["repository_boundary"]
+        boundary["excluded_authorities"] = [
+            record
+            for record in boundary["excluded_authorities"]
+            if record["authority"] != "corpus-persistence"
+        ]
+        timed_text = next(
+            record
+            for record in boundary["excluded_authorities"]
+            if record["authority"] == "neutral-timed-text-contracts"
+        )
+        timed_text["owner_repository"] = "moritzbrantner/nlp-stack"
+        boundary["owned_capabilities"].append("neutral-timed-text-contracts")
+        errors = self.errors(ownership=ownership)
+        self.assertTrue(any("missing excluded authority corpus-persistence" in error for error in errors), errors)
+        self.assertTrue(any("neutral-timed-text-contracts must declare" in error for error in errors), errors)
+        self.assertTrue(any("both owned and excluded" in error for error in errors), errors)
+
+    def test_owned_capabilities_and_known_consumers_cannot_drift(self) -> None:
+        ownership = copy.deepcopy(self.ownership)
+        boundary = ownership["repository_boundary"]
+        boundary["owned_capabilities"].remove("markov-text-generation")
+        boundary["owned_capabilities"].append("corpus-storage")
+        boundary["known_consumer_repositories"].remove("moritzbrantner/youtube-corpus")
+        errors = self.errors(ownership=ownership)
+        self.assertTrue(any("missing owned capabilities: markov-text-generation" in error for error in errors), errors)
+        self.assertTrue(any("unapproved capabilities: corpus-storage" in error for error in errors), errors)
+        self.assertTrue(any("missing known consumers: moritzbrantner/youtube-corpus" in error for error in errors), errors)
+
+    def test_later_bun_section_cannot_mask_forbidden_dependency(self) -> None:
+        bun_packages = copy.deepcopy(self.bun_packages)
+        _, app = bun_packages["@moritzbrantner/text-core-app"]
+        app["dependencies"]["youtube-corpus"] = "github:moritzbrantner/youtube-corpus"
+        app.setdefault("devDependencies", {})["youtube-corpus"] = "^1.0.0"
+        errors = self.errors(bun_packages=bun_packages)
+        self.assertTrue(any("Git/GitHub dependency youtube-corpus" in error for error in errors), errors)
+
+    def test_application_repository_cannot_become_cargo_dependency(self) -> None:
+        metadata = copy.deepcopy(self.metadata)
+        metadata["packages"][0]["dependencies"].append(
+            {
+                "name": "philosophy-corpus",
+                "source": "git+https://github.com/moritzbrantner/philosophy-extractor?rev="
+                + "b" * 40
+                + "#"
+                + "a" * 40,
+            }
+        )
+        errors = self.errors(metadata=metadata)
+        self.assertTrue(
+            any("must not depend on repository moritzbrantner/philosophy-extractor" in error for error in errors),
+            errors,
+        )
+
+    def test_application_repository_cannot_become_bun_dependency(self) -> None:
+        bun_packages = copy.deepcopy(self.bun_packages)
+        _, app = bun_packages["@moritzbrantner/text-core-app"]
+        app["dependencies"]["youtube-corpus"] = "github:moritzbrantner/youtube-corpus"
+        errors = self.errors(bun_packages=bun_packages)
+        self.assertTrue(any("Git/GitHub dependency youtube-corpus" in error for error in errors), errors)
+
+    def test_nlp_dependency_direction_is_enforced(self) -> None:
+        metadata = copy.deepcopy(self.metadata)
+        packages = {package["name"]: package for package in metadata["packages"]}
+        for source, target in (
+            ("moenarch-text-core", "moenarch-text-lexical"),
+            ("moenarch-text-embeddings", "moenarch-text-retrieval"),
+            ("moenarch-text-index", "moenarch-text-retrieval"),
+            ("moenarch-text-linguistics", "moenarch-text-index"),
+            ("moenarch-text-retrieval", "moenarch-nlp-package-registry"),
+        ):
+            packages[source]["dependencies"].append({"name": target, "path": None, "source": None})
+        errors = self.errors(metadata=metadata)
+        for message in (
+            "moenarch-text-core: NLP dependency direction forbids moenarch-text-lexical",
+            "moenarch-text-embeddings: NLP dependency direction forbids moenarch-text-retrieval",
+            "moenarch-text-index: NLP dependency direction forbids moenarch-text-retrieval",
+            "moenarch-text-linguistics: NLP dependency direction forbids moenarch-text-index",
+            "moenarch-text-retrieval: semantic capability must not depend on adapter/registry",
+        ):
+            self.assertTrue(any(message in error for error in errors), (message, errors))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

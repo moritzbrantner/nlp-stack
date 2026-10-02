@@ -124,3 +124,72 @@ fn semantic_corpus_accepts_external_model_embeddings() {
         .iter()
         .any(|concept| { concept["memberUnitCount"] == 2 && concept["sourceItemCount"] == 2 }));
 }
+
+#[test]
+fn imported_vectors_are_normalized_independently_of_scale() {
+    for operation in ["analysis.semantic-map", "analysis.semantic-corpus"] {
+        for scale in [
+            1.0_f32,
+            0.0001,
+            1e20,
+            f32::MAX,
+            f32::MIN_POSITIVE,
+            f32::from_bits(1),
+        ] {
+            let response = run_surface_operation(SurfaceRequest {
+                operation: OperationId::new(operation),
+                input: serde_json::json!({
+                    "text": "Cats sleep.",
+                    "items": [{"id": "cats", "text": "Cats sleep."}],
+                    "includeLinguisticGraph": false,
+                    "importedEmbeddings": [{"text": "Cats sleep.", "vector": [scale, -scale]}]
+                }),
+            })
+            .unwrap_or_else(|error| panic!("{operation} rejected scale {scale}: {error}"));
+            for unit in response.value["result"]["semantic"]["units"]
+                .as_array()
+                .unwrap()
+            {
+                let vector = unit["embedding"].as_array().unwrap();
+                assert!(
+                    (vector[0].as_f64().unwrap() - std::f64::consts::FRAC_1_SQRT_2).abs() < 1e-6
+                );
+                assert!(
+                    (vector[1].as_f64().unwrap() + std::f64::consts::FRAC_1_SQRT_2).abs() < 1e-6
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn invalid_imported_embedding_evidence_is_rejected_by_both_surfaces() {
+    for operation in ["analysis.semantic-map", "analysis.semantic-corpus"] {
+        for evidence in [
+            serde_json::json!([{"text": "Cats sleep.", "vector": [0.0, 0.0]}]),
+            serde_json::json!([{"text": "Cats sleep.", "vector": []}]),
+            serde_json::json!([
+                {"text": "Cats sleep.", "vector": [1.0, 0.0]},
+                {"text": "Cats sleep.", "vector": [0.0, 1.0]}
+            ]),
+            serde_json::json!([
+                {"text": "Cats sleep.", "vector": [1.0, 0.0]},
+                {"text": "Dogs bark.", "vector": [1.0]}
+            ]),
+        ] {
+            assert!(
+                run_surface_operation(SurfaceRequest {
+                    operation: OperationId::new(operation),
+                    input: serde_json::json!({
+                        "text": "Cats sleep.",
+                        "items": [{"id": "cats", "text": "Cats sleep."}],
+                        "includeLinguisticGraph": false,
+                        "importedEmbeddings": evidence
+                    }),
+                })
+                .is_err(),
+                "{operation} accepted invalid evidence"
+            );
+        }
+    }
+}
