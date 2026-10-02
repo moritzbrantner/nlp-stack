@@ -1904,5 +1904,62 @@
       "temporary_boundary_violations": [],
       "wrapped_library": "moenarch-nlp-package-registry"
     }
-  ]
+  ],
+  "repository_boundary": {
+    "schema_version": 1,
+    "repository": "moritzbrantner/nlp-stack",
+    "layer": "domain",
+    "purpose": "Own reusable linguistic and text capabilities: text kernel primitives, lexical statistics, linguistic analysis including NER, classification, embeddings, text index materialization, text retrieval and ranking semantics, extractive QA, Markov generation, and NLP-specific transcript enrichment, without owning corpus persistence, product workflow, or neutral timed-text/media contracts.",
+    "owned_capabilities": [
+      "text-kernel",
+      "lexical-statistics",
+      "linguistic-analysis",
+      "named-entity-recognition",
+      "text-classification",
+      "text-embeddings",
+      "text-index-materialization",
+      "text-retrieval-and-ranking",
+      "extractive-question-answering",
+      "markov-text-generation",
+      "nlp-transcript-enrichment",
+      "proven-text-analysis-recipes"
+    ],
+    "known_consumer_repositories": [
+      "moritzbrantner/philosophy-extractor",
+      "moritzbrantner/stutter-tracker",
+      "moritzbrantner/subtitle-merger",
+      "moritzbrantner/visual-analysis",
+      "moritzbrantner/youtube-corpus"
+    ],
+    "excluded_authorities": [
+      {
+        "authority": "application-composition",
+        "owner_layer": "application"
+      },
+      {
+        "authority": "corpus-persistence",
+        "owner_layer": "application"
+      },
+      {
+        "authority": "product-workflow",
+        "owner_layer": "application"
+      },
+      {
+        "authority": "neutral-timed-text-contracts",
+        "owner_repository": "moritzbrantner/moenarch-foundation"
+      },
+      {
+        "authority": "media-timing-and-events",
+        "owner_repository": "moritzbrantner/moenarch-foundation"
+      },
+      {
+        "authority": "generic-runtime-and-job-execution",
+        "owner_repository": "moritzbrantner/moenarch-foundation"
+      },
+      {
+        "authority": "browser-implementation-packages",
+        "owner_repository": "moritzbrantner/platform-packages"
+      }
+    ]
+  }
 }

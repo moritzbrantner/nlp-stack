@@ -30,6 +30,47 @@ from repository_split import (
 
 FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
+REQUIRED_OWNED_CAPABILITIES = {
+    "text-kernel",
+    "lexical-statistics",
+    "linguistic-analysis",
+    "named-entity-recognition",
+    "text-classification",
+    "text-embeddings",
+    "text-index-materialization",
+    "text-retrieval-and-ranking",
+    "nlp-transcript-enrichment",
+}
+REQUIRED_EXCLUDED_AUTHORITIES = {
+    "application-composition": ("owner_layer", "application"),
+    "corpus-persistence": ("owner_layer", "application"),
+    "product-workflow": ("owner_layer", "application"),
+    "neutral-timed-text-contracts": ("owner_repository", "moritzbrantner/moenarch-foundation"),
+    "media-timing-and-events": ("owner_repository", "moritzbrantner/moenarch-foundation"),
+}
+REQUIRED_KNOWN_CONSUMERS = {"moritzbrantner/philosophy-extractor"}
+# Repositories whose sources NLP capabilities may resolve from besides crates.io/npm.
+ALLOWED_SOURCE_REPOSITORIES = {"moritzbrantner/moenarch-foundation"}
+GITHUB_REPOSITORY_RE = re.compile(r"github\.com[/:]([^/]+/[^/?#.]+)")
+
+# Intra-NLP dependency direction (docs/ARCHITECTURE.md). The key may not depend
+# on any listed workspace package. Adapter/registry crates are covered separately.
+FORBIDDEN_NLP_EDGES = {
+    "moenarch-text-core": {"*"},
+    "moenarch-text-lexical": {"*"},
+    "moenarch-text-embeddings": {"moenarch-text-index", "moenarch-text-retrieval"},
+    "moenarch-text-index": {"moenarch-text-retrieval"},
+    "moenarch-text-linguistics": {
+        "moenarch-text-embeddings",
+        "moenarch-text-index",
+        "moenarch-text-retrieval",
+    },
+}
+# Workspace packages the forbidden "*" wildcard still permits.
+WILDCARD_EXCEPTIONS = {"moenarch-text-lexical": {"moenarch-text-core"}}
+ADAPTER_SUFFIXES = ("-cli", "-server", "-wasm")
+REGISTRY_PACKAGE = "moenarch-nlp-package-registry"
+
 
 def immutable_git_source(source: str) -> bool:
     """Accept only an exact requested revision plus Cargo's resolved commit."""
@@ -45,6 +86,100 @@ def immutable_git_source(source: str) -> bool:
         and FULL_SHA_RE.fullmatch(revisions[0]) is not None
         and FULL_SHA_RE.fullmatch(parsed.fragment) is not None
     )
+
+
+def is_adapter_or_registry(name: str) -> bool:
+    return name.startswith(REGISTRY_PACKAGE) or name.endswith(ADAPTER_SUFFIXES)
+
+
+def source_repository(source: str) -> str | None:
+    match = GITHUB_REPOSITORY_RE.search(source)
+    return match.group(1).lower() if match else None
+
+
+def validate_repository_boundary(boundary: object) -> list[str]:
+    """Validate the machine-readable purpose/ownership/exclusion declaration."""
+
+    if not isinstance(boundary, dict):
+        return ["repository_boundary must declare NLP purpose, ownership, and exclusions"]
+    errors: list[str] = []
+    if (
+        boundary.get("schema_version") != 1
+        or boundary.get("repository") != DESTINATION_REPOSITORY
+        or boundary.get("layer") != "domain"
+        or not str(boundary.get("purpose", "")).strip()
+    ):
+        errors.append("repository_boundary must identify nlp-stack as a domain capability owner with a purpose")
+
+    owned = boundary.get("owned_capabilities")
+    if (
+        not isinstance(owned, list)
+        or any(not isinstance(item, str) or not item.strip() for item in owned)
+        or len(set(owned)) != len(owned)
+    ):
+        errors.append("repository_boundary owned_capabilities must be unique non-empty strings")
+        owned = []
+    missing_owned = REQUIRED_OWNED_CAPABILITIES - set(owned)
+    if missing_owned:
+        errors.append("repository_boundary is missing owned capabilities: " + ", ".join(sorted(missing_owned)))
+
+    excluded: dict[str, dict] = {}
+    records = boundary.get("excluded_authorities")
+    if not isinstance(records, list):
+        errors.append("repository_boundary excluded_authorities must be a list")
+        records = []
+    for record in records:
+        if not isinstance(record, dict) or not isinstance(record.get("authority"), str):
+            errors.append("repository_boundary has an invalid excluded-authority record")
+            continue
+        authority = record["authority"]
+        if authority in excluded:
+            errors.append(f"excluded authority {authority} must be declared exactly once")
+            continue
+        if authority in owned:
+            errors.append(f"{authority} cannot be both owned and excluded")
+        excluded[authority] = record
+    for authority, (owner_key, expected_owner) in REQUIRED_EXCLUDED_AUTHORITIES.items():
+        record = excluded.get(authority)
+        if record is None:
+            errors.append(f"repository_boundary is missing excluded authority {authority}")
+        elif record.get(owner_key) != expected_owner:
+            errors.append(f"excluded authority {authority} must declare {owner_key}={expected_owner}")
+
+    consumers = boundary.get("known_consumer_repositories")
+    if not isinstance(consumers, list) or any(not isinstance(item, str) or not item for item in consumers):
+        errors.append("known_consumer_repositories must be a list of repository names")
+        consumers = []
+    elif consumers != sorted(set(consumers)):
+        errors.append("known_consumer_repositories must be unique and sorted")
+    missing_consumers = REQUIRED_KNOWN_CONSUMERS - set(consumers)
+    if missing_consumers:
+        errors.append("repository_boundary is missing known consumers: " + ", ".join(sorted(missing_consumers)))
+    if DESTINATION_REPOSITORY in consumers or set(consumers) & ALLOWED_SOURCE_REPOSITORIES:
+        errors.append("known consumers cannot include nlp-stack or its allowed source repositories")
+    return errors
+
+
+def validate_nlp_direction(cargo_packages: dict[str, dict]) -> list[str]:
+    errors: list[str] = []
+    for name, package in sorted(cargo_packages.items()):
+        workspace_dependencies = {
+            dependency.get("name")
+            for dependency in package.get("dependencies", [])
+            if dependency.get("name") in cargo_packages
+        }
+        if not is_adapter_or_registry(name):
+            for dependency_name in sorted(workspace_dependencies):
+                if is_adapter_or_registry(dependency_name):
+                    errors.append(
+                        f"{name}: semantic capability must not depend on adapter/registry {dependency_name}"
+                    )
+        forbidden = FORBIDDEN_NLP_EDGES.get(name, set())
+        allowed = WILDCARD_EXCEPTIONS.get(name, set())
+        for dependency_name in sorted(workspace_dependencies):
+            if dependency_name in forbidden or ("*" in forbidden and dependency_name not in allowed):
+                errors.append(f"{name}: NLP dependency direction forbids {dependency_name}")
+    return errors
 
 
 def bun_manifests(root: Path = ROOT) -> dict[str, tuple[Path, dict]]:
@@ -78,6 +213,8 @@ def validate(
     for key, expected in expected_header.items():
         if ownership.get(key) != expected:
             errors.append(f"{key} must be {expected!r}")
+
+    errors.extend(validate_repository_boundary(ownership.get("repository_boundary")))
 
     records = ownership.get("packages")
     if not isinstance(records, list):
@@ -171,6 +308,15 @@ def validate(
                     errors.append(f"{package['name']}: dependency path escapes repository")
             if not immutable_git_source(source):
                 errors.append(f"{package['name']}: non-immutable Git dependency {source}")
+            repository = source_repository(source) if source.startswith("git+") else None
+            if (
+                repository is not None
+                and repository.startswith("moritzbrantner/")
+                and repository not in ALLOWED_SOURCE_REPOSITORIES
+            ):
+                errors.append(
+                    f"{package['name']}: capability implementation must not depend on repository {repository}"
+                )
             if not isinstance(dependency_name, str) or not dependency_name.startswith("moenarch-"):
                 continue
             if dependency_name in cargo_packages:
@@ -190,6 +336,8 @@ def validate(
                     f"{package['name']}: foundation dependency {dependency_name} must use {expected_req}"
                 )
 
+    errors.extend(validate_nlp_direction(cargo_packages))
+
     for name, (_, manifest) in actual_bun.items():
         dependencies: dict[str, str] = {}
         for field in ("dependencies", "devDependencies", "peerDependencies", "optionalDependencies"):
@@ -203,6 +351,11 @@ def validate(
                 errors.append(f"{name}: missing workspace dependency {dependency_name}")
             if isinstance(requirement, str) and requirement.startswith("file:"):
                 errors.append(f"{name}: local file dependency {dependency_name} is forbidden")
+            if isinstance(requirement, str) and (
+                requirement.startswith(("git", "github:", "moritzbrantner/"))
+                or "github.com" in requirement
+            ):
+                errors.append(f"{name}: Git/GitHub dependency {dependency_name} is forbidden")
         if name.endswith("-app"):
             if dependencies.get("@moritzbrantner/nlp-app-ui") != "workspace:*":
                 errors.append(f"{name}: app must use the focused NLP workbench adapter")
