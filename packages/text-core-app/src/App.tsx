@@ -226,7 +226,7 @@ function TokenSummary({ value }: { value: Record<string, unknown> }) {
 }
 
 function StatisticsSummary({ value }: { value: Record<string, unknown> }) {
-  const stats = asRecord(value.value);
+  const stats = value;
   return (
     <div className="space-y-5">
       <StatGrid
