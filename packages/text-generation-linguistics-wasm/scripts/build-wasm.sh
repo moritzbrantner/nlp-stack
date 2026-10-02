@@ -2,4 +2,4 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-wasm-pack build "$ROOT_DIR/crates/bindings/text-generation-linguistics-wasm" --target web --out-dir "$ROOT_DIR/packages/text-generation-linguistics-wasm/pkg"
+wasm-pack build "$ROOT_DIR/crates/bindings/text-generation-linguistics-wasm" --target web --out-dir "$ROOT_DIR/packages/text-generation-linguistics-wasm/pkg" -- --locked

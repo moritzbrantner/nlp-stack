@@ -8,6 +8,8 @@ The current repository still contains many packages, adapters, application surfa
 
 `nlp-stack` is the canonical owner of NLP source, architecture, tests, issues, versions, and releases for packages that belong to this domain. Historical copies in `rust-packages` are compatibility/provenance material only and must not become a second source of truth.
 
+The machine-readable purpose, owned capabilities, known consumers, and excluded authorities (corpus persistence and product workflow stay with consuming applications; neutral timed-text and media timing stay in `moenarch-foundation`) live in `repository_boundary` of `docs/repository-split/package-ownership.json`. `scripts/check_repository_boundaries.py` enforces that declaration, the intra-NLP dependency direction below, and that no application repository becomes a capability implementation dependency.
+
 Canonical ownership does not authorize publication. Publishing crates, creating tags/releases, deleting historical source, or migrating consumers still requires an explicit release or migration task.
 
 ## Architectural principles

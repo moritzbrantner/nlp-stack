@@ -75,7 +75,7 @@ export function SemanticCorpusPanel({
   const wordCount = numberValue(lexical.wordCount);
   const uniqueTerms = numberValue(lexical.uniqueTerms);
   const nonConceptUnitCount = numberValue(report.nonConceptUnitCount);
-  const modelName = stringValue(embeddingModel.modelName);
+  const modelName = stringValue(embeddingModel.model_name);
   const dimensions = numberValue(embeddingModel.dimensions);
 
   return (
