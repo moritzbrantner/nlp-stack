@@ -14,6 +14,7 @@
     "build": "cargo build --workspace --all-features && bun run nlp-app-ui:build && bun run text-app:build",
     "check": "scripts/check.sh",
     "preflight": "scripts/check-preflight.sh",
+    "pages:check": "bash scripts/check-pages.sh",
     "nlp-app-ui:build": "bun run --cwd packages/nlp-app-ui build",
     "nlp-app-ui:typecheck": "bun run --cwd packages/nlp-app-ui typecheck",
     "nlp-app-ui:test": "bun run --cwd packages/nlp-app-ui test",

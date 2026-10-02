@@ -183,44 +183,7 @@ fn concept_clusters(
     similarities: &[Vec<f32>],
     threshold: f32,
 ) -> Vec<SemanticCluster> {
-    // Merge the globally strongest average-link pair until no pair clears the threshold.
-    // This avoids the input-order bias of assigning each sentence once to whichever cluster
-    // happened to exist when that sentence was visited, while still resisting single-sentence
-    // bridges that would collapse unrelated regions under connected-component clustering.
-    let mut member_clusters = (0..primary_indices.len())
-        .map(|member| vec![member])
-        .collect::<Vec<_>>();
-
-    loop {
-        let best_pair = (0..member_clusters.len())
-            .flat_map(|left| ((left + 1)..member_clusters.len()).map(move |right| (left, right)))
-            .map(|(left, right)| {
-                let score = average_link_similarity(
-                    &member_clusters[left],
-                    &member_clusters[right],
-                    similarities,
-                );
-                ((left, right), score)
-            })
-            .filter(|(_, score)| *score >= threshold)
-            .max_by(|(left_pair, left_score), (right_pair, right_score)| {
-                left_score
-                    .total_cmp(right_score)
-                    .then_with(|| right_pair.0.cmp(&left_pair.0))
-                    .then_with(|| right_pair.1.cmp(&left_pair.1))
-            })
-            .map(|(pair, _)| pair);
-
-        let Some((left, right)) = best_pair else {
-            break;
-        };
-        let right_members = member_clusters.remove(right);
-        member_clusters[left].extend(right_members);
-        member_clusters[left].sort_unstable();
-    }
-
-    member_clusters.sort_by_key(|members| members.first().copied().unwrap_or(usize::MAX));
-    member_clusters
+    super::clustering::average_link_clusters(similarities, threshold)
         .into_iter()
         .enumerate()
         .map(|(cluster_index, members)| {
@@ -237,22 +200,6 @@ fn concept_clusters(
             }
         })
         .collect()
-}
-
-fn average_link_similarity(
-    left_members: &[usize],
-    right_members: &[usize],
-    similarities: &[Vec<f32>],
-) -> f32 {
-    let mut total = 0.0;
-    let mut pairs = 0usize;
-    for left in left_members {
-        for right in right_members {
-            total += similarities[*left][*right];
-            pairs += 1;
-        }
-    }
-    total / pairs.max(1) as f32
 }
 
 fn cluster_medoid(members: &[usize], similarities: &[Vec<f32>]) -> usize {

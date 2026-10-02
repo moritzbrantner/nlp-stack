@@ -58,7 +58,7 @@ const corpusResponse: SurfaceResponse = {
       ],
       semantic: {
         embeddingModel: {
-          modelName: "hashed-tfidf-sentence-baseline",
+          model_name: "hashed-tfidf-sentence-baseline",
           backend: "hashed",
           dimensions: 512,
           normalized: true,

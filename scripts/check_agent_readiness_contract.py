@@ -7,7 +7,6 @@ from pathlib import Path
 
 REQUIRED_CONVENTION_REFS = {
     "AGENT-001",
-    "AGENT-002",
     "AGENT-003",
     "AGENT-007",
     "AGENT-008",
