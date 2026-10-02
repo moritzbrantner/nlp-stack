@@ -157,6 +157,25 @@ class RepositoryBoundaryTests(unittest.TestCase):
         self.assertTrue(any("neutral-timed-text-contracts must declare" in error for error in errors), errors)
         self.assertTrue(any("both owned and excluded" in error for error in errors), errors)
 
+    def test_owned_capabilities_and_known_consumers_cannot_drift(self) -> None:
+        ownership = copy.deepcopy(self.ownership)
+        boundary = ownership["repository_boundary"]
+        boundary["owned_capabilities"].remove("markov-text-generation")
+        boundary["owned_capabilities"].append("corpus-storage")
+        boundary["known_consumer_repositories"].remove("moritzbrantner/youtube-corpus")
+        errors = self.errors(ownership=ownership)
+        self.assertTrue(any("missing owned capabilities: markov-text-generation" in error for error in errors), errors)
+        self.assertTrue(any("unapproved capabilities: corpus-storage" in error for error in errors), errors)
+        self.assertTrue(any("missing known consumers: moritzbrantner/youtube-corpus" in error for error in errors), errors)
+
+    def test_later_bun_section_cannot_mask_forbidden_dependency(self) -> None:
+        bun_packages = copy.deepcopy(self.bun_packages)
+        _, app = bun_packages["@moritzbrantner/text-core-app"]
+        app["dependencies"]["youtube-corpus"] = "github:moritzbrantner/youtube-corpus"
+        app.setdefault("devDependencies", {})["youtube-corpus"] = "^1.0.0"
+        errors = self.errors(bun_packages=bun_packages)
+        self.assertTrue(any("Git/GitHub dependency youtube-corpus" in error for error in errors), errors)
+
     def test_application_repository_cannot_become_cargo_dependency(self) -> None:
         metadata = copy.deepcopy(self.metadata)
         metadata["packages"][0]["dependencies"].append(

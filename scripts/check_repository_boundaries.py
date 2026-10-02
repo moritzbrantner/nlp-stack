@@ -39,7 +39,10 @@ REQUIRED_OWNED_CAPABILITIES = {
     "text-embeddings",
     "text-index-materialization",
     "text-retrieval-and-ranking",
+    "extractive-question-answering",
+    "markov-text-generation",
     "nlp-transcript-enrichment",
+    "proven-text-analysis-recipes",
 }
 REQUIRED_EXCLUDED_AUTHORITIES = {
     "application-composition": ("owner_layer", "application"),
@@ -48,7 +51,13 @@ REQUIRED_EXCLUDED_AUTHORITIES = {
     "neutral-timed-text-contracts": ("owner_repository", "moritzbrantner/moenarch-foundation"),
     "media-timing-and-events": ("owner_repository", "moritzbrantner/moenarch-foundation"),
 }
-REQUIRED_KNOWN_CONSUMERS = {"moritzbrantner/philosophy-extractor"}
+REQUIRED_KNOWN_CONSUMERS = {
+    "moritzbrantner/philosophy-extractor",
+    "moritzbrantner/stutter-tracker",
+    "moritzbrantner/subtitle-merger",
+    "moritzbrantner/visual-analysis",
+    "moritzbrantner/youtube-corpus",
+}
 # Repositories whose sources NLP capabilities may resolve from besides crates.io/npm.
 ALLOWED_SOURCE_REPOSITORIES = {"moritzbrantner/moenarch-foundation"}
 GITHUB_REPOSITORY_RE = re.compile(r"github\.com[/:]([^/]+/[^/?#.]+)")
@@ -122,6 +131,11 @@ def validate_repository_boundary(boundary: object) -> list[str]:
     missing_owned = REQUIRED_OWNED_CAPABILITIES - set(owned)
     if missing_owned:
         errors.append("repository_boundary is missing owned capabilities: " + ", ".join(sorted(missing_owned)))
+    unapproved_owned = set(owned) - REQUIRED_OWNED_CAPABILITIES
+    if unapproved_owned:
+        errors.append(
+            "repository_boundary claims unapproved capabilities: " + ", ".join(sorted(unapproved_owned))
+        )
 
     excluded: dict[str, dict] = {}
     records = boundary.get("excluded_authorities")
@@ -340,13 +354,16 @@ def validate(
 
     for name, (_, manifest) in actual_bun.items():
         dependencies: dict[str, str] = {}
+        # Check every section entry; a later section must not mask an earlier one.
+        entries: list[tuple[str, object]] = []
         for field in ("dependencies", "devDependencies", "peerDependencies", "optionalDependencies"):
             value = manifest.get(field, {})
             if isinstance(value, dict):
                 dependencies.update(value)
-        if "@moritzbrantner/video-analysis-ui" in dependencies:
+                entries.extend(value.items())
+        if any(dependency_name == "@moritzbrantner/video-analysis-ui" for dependency_name, _ in entries):
             errors.append(f"{name}: must not absorb the rust-packages compatibility UI facade")
-        for dependency_name, requirement in dependencies.items():
+        for dependency_name, requirement in entries:
             if requirement == "workspace:*" and dependency_name not in actual_bun:
                 errors.append(f"{name}: missing workspace dependency {dependency_name}")
             if isinstance(requirement, str) and requirement.startswith("file:"):
