@@ -299,7 +299,7 @@ mod tests {
             response.operation.as_str(),
             "moenarch-text-core/text.statistics"
         );
-        assert_eq!(response.value["value"]["wordCount"], 2);
+        assert_eq!(response.value["wordCount"], 2);
     }
 
     #[test]
