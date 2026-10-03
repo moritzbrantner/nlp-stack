@@ -18,7 +18,7 @@ use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Debug, Clone, Copy)]
-/// Borrowed text segment at the boundary between text producers and analyzers.
+/// Borrowed text segment at the boundary between text producers and consumers.
 pub struct TextSegment<'a> {
     /// Stable segment index within its source.
     pub segment_index: u64,
@@ -33,7 +33,7 @@ pub struct TextSegment<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-/// Owned text segment for source and pipeline boundaries.
+/// Owned text segment for source and processing boundaries.
 pub struct OwnedTextSegment {
     /// Stable segment index within its source.
     pub segment_index: u64,
@@ -86,145 +86,6 @@ impl OwnedTextSegment {
             language: self.language.as_deref(),
             is_final: self.is_final,
         }
-    }
-}
-
-#[derive(Debug, Default, Clone, PartialEq)]
-/// Aggregate result returned when a text pipeline finishes.
-pub struct TextAnalysisResult {
-    /// Events emitted during the pipeline run.
-    pub events: Vec<AnalysisEvent>,
-    /// Number of segments processed.
-    pub segments_processed: u64,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-/// Incremental result returned after one text segment.
-pub struct TextAnalysis {
-    /// The processed segment index.
-    pub segment_index: u64,
-    /// Events emitted for this segment.
-    pub events: Vec<AnalysisEvent>,
-    /// Number of segments processed in the current run.
-    pub segments_processed: u64,
-}
-
-/// Analyzer interface for text segments.
-pub trait TextAnalyzer {
-    /// Returns the analyzer name.
-    fn name(&self) -> &str;
-
-    /// Processes one borrowed segment.
-    fn process_segment(&mut self, segment: &TextSegment<'_>) -> Result<Vec<AnalysisEvent>>;
-
-    /// Finishes a run and optionally emits delayed events.
-    fn finish(&mut self, _last_segment_index: Option<u64>) -> Result<Vec<AnalysisEvent>> {
-        Ok(Vec::new())
-    }
-}
-
-/// Stateful composition of text analyzers.
-pub struct TextPipeline {
-    analyzers: Vec<Box<dyn TextAnalyzer>>,
-    state: TextPipelineState,
-}
-
-#[derive(Debug, Default, Clone)]
-struct TextPipelineState {
-    events: Vec<AnalysisEvent>,
-    last_segment_index: Option<u64>,
-    segments_processed: u64,
-    finished: bool,
-}
-
-impl TextPipeline {
-    /// Creates a pipeline builder.
-    pub fn builder() -> TextPipelineBuilder {
-        TextPipelineBuilder::default()
-    }
-
-    /// Processes one owned segment.
-    pub fn process_segment(&mut self, segment: OwnedTextSegment) -> Result<TextAnalysis> {
-        if self.state.finished {
-            return Err(DetectError::InvalidArgument(
-                "cannot process text segments after finish_analysis; call reset first".to_string(),
-            ));
-        }
-        let segment_ref = segment.as_segment();
-        self.state.last_segment_index = Some(segment_ref.segment_index);
-
-        let mut events = Vec::new();
-        for analyzer in &mut self.analyzers {
-            let mut new_events = analyzer.process_segment(&segment_ref)?;
-            events.append(&mut new_events);
-        }
-        self.state.events.extend(events.iter().cloned());
-        self.state.segments_processed += 1;
-
-        Ok(TextAnalysis {
-            segment_index: segment_ref.segment_index,
-            events,
-            segments_processed: self.state.segments_processed,
-        })
-    }
-
-    /// Finishes the current analysis run.
-    pub fn finish_analysis(&mut self) -> Result<TextAnalysisResult> {
-        if !self.state.finished {
-            let mut events = Vec::new();
-            for analyzer in &mut self.analyzers {
-                let mut new_events = analyzer.finish(self.state.last_segment_index)?;
-                events.append(&mut new_events);
-            }
-            self.state.events.extend(events);
-            self.state.finished = true;
-        }
-        Ok(TextAnalysisResult {
-            events: self.state.events.clone(),
-            segments_processed: self.state.segments_processed,
-        })
-    }
-
-    /// Resets the pipeline for another run.
-    pub fn reset(&mut self) {
-        self.state = TextPipelineState::default();
-    }
-
-    /// Returns all events emitted in the current run.
-    pub fn events(&self) -> &[AnalysisEvent] {
-        &self.state.events
-    }
-
-    /// Returns the number of processed segments.
-    pub fn segments_processed(&self) -> u64 {
-        self.state.segments_processed
-    }
-}
-
-#[derive(Default)]
-/// Builder for a text analysis pipeline.
-pub struct TextPipelineBuilder {
-    analyzers: Vec<Box<dyn TextAnalyzer>>,
-}
-
-impl TextPipelineBuilder {
-    /// Adds an analyzer.
-    pub fn analyzer<A: TextAnalyzer + 'static>(mut self, analyzer: A) -> Self {
-        self.analyzers.push(Box::new(analyzer));
-        self
-    }
-
-    /// Builds a non-empty pipeline.
-    pub fn build(self) -> Result<TextPipeline> {
-        if self.analyzers.is_empty() {
-            return Err(DetectError::InvalidArgument(
-                "at least one text analyzer is required".to_string(),
-            ));
-        }
-        Ok(TextPipeline {
-            analyzers: self.analyzers,
-            state: TextPipelineState::default(),
-        })
     }
 }
 

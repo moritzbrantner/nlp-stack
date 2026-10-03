@@ -9,8 +9,8 @@ use std::path::Path;
 use serde::Deserialize;
 use serde_json::Value;
 use text_core::{
-    tokenize, tokenize_words, AnalysisEvent, OwnedTextSegment, TextAnalyzer, TextProcessingOptions,
-    TextSegment, Timestamp, TokenKind,
+    tokenize, tokenize_words, AnalysisEvent, OwnedTextSegment, TextProcessingOptions, TextSegment,
+    Timestamp, TokenKind,
 };
 
 use thiserror::Error;
@@ -184,34 +184,25 @@ pub fn normalize_subtitle_text(text: &str, options: SubtitleNormalizationOptions
 /// Transcript-specific deterministic analyzer.
 pub struct TranscriptHeuristicAnalyzer;
 
-impl TextAnalyzer for TranscriptHeuristicAnalyzer {
-    fn name(&self) -> &str {
-        "transcript_heuristics"
-    }
-
-    fn process_segment(
-        &mut self,
-        segment: &TextSegment<'_>,
-    ) -> text_core::Result<Vec<AnalysisEvent>> {
+impl TranscriptHeuristicAnalyzer {
+    /// Analyzes one transcript segment and returns deterministic speech events.
+    pub fn analyze_segment(&self, segment: &TextSegment<'_>) -> Vec<AnalysisEvent> {
+        let analyzer = "transcript_heuristics";
         let mut events = Vec::new();
         let text = segment.text.trim();
         if text.ends_with(['?', '؟', '？']) {
-            events.push(event_at(self.name(), "speech:question", segment.timestamp));
+            events.push(event_at(analyzer, "speech:question", segment.timestamp));
         }
         if has_token_kind(text, TokenKind::Url) {
-            events.push(event_at(self.name(), "speech:url", segment.timestamp));
+            events.push(event_at(analyzer, "speech:url", segment.timestamp));
         }
         if has_token_kind(text, TokenKind::Number) {
-            events.push(event_at(self.name(), "speech:number", segment.timestamp));
+            events.push(event_at(analyzer, "speech:number", segment.timestamp));
         }
         if tokenize_words(text).len() >= 30 {
-            events.push(event_at(
-                self.name(),
-                "speech:long_segment",
-                segment.timestamp,
-            ));
+            events.push(event_at(analyzer, "speech:long_segment", segment.timestamp));
         }
-        Ok(events)
+        events
     }
 }
 
@@ -1202,11 +1193,10 @@ mod tests {
             language: None,
             is_final: true,
         };
-        let mut analyzer = TranscriptHeuristicAnalyzer;
+        let analyzer = TranscriptHeuristicAnalyzer;
 
         let labels = analyzer
-            .process_segment(&segment)
-            .unwrap()
+            .analyze_segment(&segment)
             .into_iter()
             .map(|event| event.label)
             .collect::<Vec<_>>();
