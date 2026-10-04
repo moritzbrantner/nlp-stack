@@ -3,9 +3,14 @@ import { assertAnalysisTextBudget, assertAnalysisSentenceBudget } from "./nlp-an
 const semanticEmbeddingModel = "onnx-community/all-MiniLM-L6-v2-ONNX";
 const semanticModelAttemptTimeoutMs = 10_000;
 const semanticEmbeddingBatchSize = 32;
+const namedEntityModel = "onnx-community/distilbert-NER-ONNX";
+const namedEntityModelAttemptTimeoutMs = 45_000;
 let semanticWorkerInstance = null;
 let semanticWorkerRequestSequence = 0;
 const pendingSemanticWorkerRequests = new Map();
+let entityWorkerInstance = null;
+let entityWorkerRequestSequence = 0;
+const pendingEntityWorkerRequests = new Map();
 
 function fromWasmValue(value) {
   if (value instanceof Map) {
@@ -116,6 +121,105 @@ function requestSemanticEmbeddings(texts) {
     }
   });
   return { id, promise };
+}
+
+function resetEntityWorker(error) {
+  const worker = entityWorkerInstance;
+  entityWorkerInstance = null;
+  worker?.terminate();
+
+  const failure = semanticWorkerError(error);
+  for (const pending of pendingEntityWorkerRequests.values()) {
+    pending.reject(failure);
+  }
+  pendingEntityWorkerRequests.clear();
+}
+
+function entityWorker() {
+  if (entityWorkerInstance) return entityWorkerInstance;
+  if (typeof Worker === "undefined") {
+    throw new Error("Web Workers are unavailable in this browser.");
+  }
+
+  const worker = new Worker(new URL("./nlp-entity-worker.js", import.meta.url), { type: "module" });
+  entityWorkerInstance = worker;
+  worker.addEventListener("message", (event) => {
+    const id = event.data?.id;
+    const pending = pendingEntityWorkerRequests.get(id);
+    if (!pending) return;
+    pendingEntityWorkerRequests.delete(id);
+    if (event.data?.error) pending.reject(new Error(event.data.error));
+    else pending.resolve(event.data);
+  });
+  worker.addEventListener("error", (event) => {
+    resetEntityWorker(event.message || "Named entity model worker failed.");
+  });
+  return worker;
+}
+
+function requestNamedEntities(segments) {
+  const id = ++entityWorkerRequestSequence;
+  const promise = new Promise((resolve, reject) => {
+    let worker;
+    try {
+      worker = entityWorker();
+    } catch (error) {
+      reject(semanticWorkerError(error));
+      return;
+    }
+    pendingEntityWorkerRequests.set(id, { resolve, reject });
+    try {
+      worker.postMessage({ id, segments });
+    } catch (error) {
+      pendingEntityWorkerRequests.delete(id);
+      reject(semanticWorkerError(error));
+    }
+  });
+  return { id, promise };
+}
+
+async function modelNamedEntities(documentResult) {
+  const sentences = Array.isArray(documentResult?.core?.sentences) ? documentResult.core.sentences : [];
+  const segments = sentences
+    .filter((sentence) => typeof sentence?.text === "string" && sentence.text.length > 0)
+    .map((sentence) => ({
+      text: sentence.text,
+      byteStart: Number(sentence?.span?.byte_start ?? 0),
+    }));
+  if (segments.length === 0) {
+    return { modelName: namedEntityModel, entities: [] };
+  }
+
+  let timeoutId;
+  const request = requestNamedEntities(segments);
+  const deadline = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      const failure = new Error(`Named entity model attempt exceeded ${namedEntityModelAttemptTimeoutMs}ms.`);
+      resetEntityWorker(failure);
+      reject(failure);
+    }, namedEntityModelAttemptTimeoutMs);
+  });
+  try {
+    const result = await Promise.race([request.promise, deadline]);
+    if (!Array.isArray(result?.entities)) {
+      throw new Error(`Hugging Face NER model ${namedEntityModel} returned invalid entity evidence.`);
+    }
+    return {
+      modelName: result.modelName || namedEntityModel,
+      entities: result.entities,
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function runModelBackedDocumentAnalysis(wasm, request) {
+  const response = fromWasmValue(wasm.runOperation(request));
+  const result = surfaceResult(response);
+  const namedEntities = await modelNamedEntities(result);
+  result.namedEntities = namedEntities.entities;
+  result.namedEntityModel = { name: namedEntities.modelName };
+  return response;
 }
 
 function semanticModelDeadlineError() {
@@ -317,6 +421,9 @@ export function createTextAnalysisRuntime(wasm, coreWasm) {
         })));
         sentenceCount += statistics.value.sentenceCount;
         assertAnalysisSentenceBudget(sentenceCount);
+      }
+      if (request?.operation === "analysis.document" && input?.namedEntities?.mode === "huggingFace") {
+        return runModelBackedDocumentAnalysis(wasm, request);
       }
       if (request?.operation === "analysis.semantic-map") {
         return runModelBackedSemanticMap(wasm, request);
