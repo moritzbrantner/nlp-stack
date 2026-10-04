@@ -139,14 +139,6 @@ async function withinModelAttemptDeadline(request, timeoutMs = semanticModelAtte
   }
 }
 
-function hashedSemanticFallback(wasm, request, error) {
-  console.warn(
-    `Falling back to local hashed semantic analysis for ${request?.operation ?? "semantic analysis"} because ${semanticEmbeddingModel} was unavailable within the interactive analysis budget.`,
-    error,
-  );
-  return fromWasmValue(wasm.runOperation(request));
-}
-
 async function modelEmbeddingEvidence(texts) {
   if (!Array.isArray(texts) || texts.length === 0) {
     throw new Error("Semantic model analysis requires at least one text unit.");
@@ -249,11 +241,7 @@ async function runModelBackedSemanticMap(wasm, request) {
     return fromWasmValue(wasm.runOperation(request));
   }
 
-  try {
-    return await computeModelBackedSemanticMap(wasm, request, units.texts);
-  } catch (error) {
-    return hashedSemanticFallback(wasm, request, error);
-  }
+  return computeModelBackedSemanticMap(wasm, request, units.texts);
 }
 
 function validSemanticCorpusItems(input) {
@@ -308,11 +296,7 @@ async function runModelBackedSemanticCorpus(wasm, request) {
     return fromWasmValue(wasm.runOperation(request));
   }
 
-  try {
-    return await computeModelBackedSemanticCorpus(wasm, request, Array.from(texts));
-  } catch (error) {
-    return hashedSemanticFallback(wasm, request, error);
-  }
+  return computeModelBackedSemanticCorpus(wasm, request, Array.from(texts));
 }
 
 export function createTextAnalysisRuntime(wasm, coreWasm) {
