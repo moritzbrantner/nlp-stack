@@ -784,20 +784,6 @@ function Fact({ label, value }: { label: string; value: string }) {
   return <div className="border-b border-line pb-2"><dt className="text-muted">{label}</dt><dd className="mt-1 font-medium text-ink">{value}</dd></div>;
 }
 
-function JsonTable({ value, empty }: { value: JsonRecord | null; empty: string }) {
-  if (!value || Object.keys(value).length === 0) return <p className="mt-2 text-sm text-muted">{empty}</p>;
-  return <dl className="mt-3 grid gap-2 text-sm">{Object.entries(value).map(([key, entry]) => (
-    <div key={key} className="flex items-start justify-between gap-4 border-b border-line py-2"><dt className="text-muted">{humanize(key)}</dt><dd className="max-w-[65%] text-right font-medium text-ink"><JsonInline value={entry} /></dd></div>
-  ))}</dl>;
-}
-
-function JsonInline({ value }: { value: unknown }) {
-  if (value == null) return <>—</>;
-  if (typeof value === "number") return <>{formatNumber(value)}</>;
-  if (typeof value === "string" || typeof value === "boolean") return <>{String(value)}</>;
-  return <>{JSON.stringify(value)}</>;
-}
-
 function JsonBlock({ value }: { value: unknown }) {
   return <pre className="mt-3 max-h-[36rem] overflow-auto whitespace-pre-wrap break-words rounded-md bg-zinc-950 p-4 text-xs leading-5 text-zinc-100">{JSON.stringify(value ?? null, null, 2)}</pre>;
 }
@@ -845,10 +831,6 @@ function formatPercent(value: unknown): string {
   return typeof value === "number" && Number.isFinite(value)
     ? new Intl.NumberFormat(undefined, { style: "percent", maximumFractionDigits: 2 }).format(value)
     : "—";
-}
-
-function humanize(value: string): string {
-  return value.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
 }
 
 function documentId(sourceLabel: string): string {
