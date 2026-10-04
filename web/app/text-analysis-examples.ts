@@ -3,7 +3,6 @@ export type ExampleResultView =
   | "semantic-corpus"
   | "overview"
   | "keywords"
-  | "linguistics"
   | "semantic-map";
 
 export interface TextAnalysisExample {
@@ -22,7 +21,7 @@ export const textAnalysisExamples: TextAnalysisExample[] = [
     label: "Technical release",
     category: "Technical prose",
     description: "A substantial engineering release note with repeated concepts, named places, tradeoffs, and implementation boundaries.",
-    demonstrates: "word profile, keywords, entities",
+    demonstrates: "word profile, keywords, semantic map",
     focus: "word-corpus",
     text:
       "Alice opened the September release review in Berlin with a summary of the semantic search roadmap. The Rust text-analysis package now exposes document statistics, keywords, entities, linguistic evidence, embeddings, and semantic-map structure through one package surface. The browser still owns document decoding because PDF extraction and OCR are transport concerns rather than semantic-analysis responsibilities. Corpus statistics remain in the shared analysis layer so command-line tools, native applications, and the browser can compare the same evidence.\n\nBob asked whether semantic retrieval would replace exact lexical search. Alice said no: exact matching remains valuable when a user knows the wording or needs an auditable baseline. The semantic path instead targets paraphrases, conceptually related passages, and vocabulary mismatches that lexical ranking cannot recover well. The team evaluates both methods against the same queries and source passages, then records which method retrieved each relevant result. Engineers also keep model identity and vector dimensions with the output so an embedding change cannot masquerade as an equivalent run.\n\nThe release also changes how larger corpora are handled. Exact cosine similarity remains useful for small evaluations, while indexed search is measured separately once the corpus grows. Representative passages always retain their source identifiers, and derived concepts point back to the sentences that formed them. That provenance matters during review because editors need to understand why a concept was selected rather than accept an unexplained score. The next release will focus on model-backed semantic quality, better topic grouping, and realistic long-form examples instead of adding another parallel analysis surface.",
@@ -52,7 +51,7 @@ export const textAnalysisExamples: TextAnalysisExample[] = [
     label: "The blue notebook",
     category: "Narrative",
     description: "A longer narrative with recurring motifs, separated memories, people, places, and a return to earlier meanings.",
-    demonstrates: "summary, entities, semantic map, narrative recurrence",
+    demonstrates: "semantic map, narrative recurrence, document facts",
     focus: "semantic-map",
     text:
       "Elena arrived in Freiburg just before the evening rain, carrying a blue notebook wrapped in brown paper. She had promised her brother Tomas that she would return it to the old library before closing time. At the station, a violinist played a slow melody beneath the departures board while commuters hurried toward the trams. The tune reminded Elena of summer visits to the Black Forest when their father used to whistle while identifying plants along the trail.\n\nShe crossed the square and passed the cathedral as the rain became heavier. Inside a café she opened the parcel for the first time. The notebook contained field notes from a botanist named Marta Weiss, who had catalogued orchids and wetland plants forty years earlier. Several pages described a rare orchid growing near a spring above the Dreisam valley, but the final location was written only as a sketch of a footpath and three old beech trees. Elena understood why Tomas had been reluctant to give the notebook away: their father had copied that same sketch into one of his own hiking journals.\n\nThe library doors were still open when she arrived. Herr Bauer, the evening librarian, recognized the notebook immediately and said it had disappeared during an archive move many years ago. He showed Elena a catalogue card bearing Marta Weiss's name and a note that her field collection had never been completely indexed. Elena asked whether the orchid site had ever been found again. Herr Bauer said a university survey had searched for it twice, but the landscape had changed and the old path names no longer matched modern maps.\n\nFor a moment Elena considered photographing every page before returning the book. Instead she photographed only the catalogue card and the sketch her father had copied, then handed the original to the librarian. Herr Bauer promised that the notebook would be digitized with its provenance rather than separated into anonymous images. That mattered to Elena because the handwriting, dates, and sequence of observations told a story that isolated photographs would lose.\n\nWhen she stepped outside, the rain had stopped. The violinist at the station was playing the same melody as before, and Elena finally remembered its name. She called Tomas and told him that returning the notebook had not erased their connection to their father; it had placed that memory where other people could follow it. Tomas was silent for a while, then asked whether they could hike the old spring path together in October. Elena looked at the photograph of the three beech trees and said yes. The notebook was now behind library glass, but the unfinished search it contained had become theirs.",
@@ -62,8 +61,8 @@ export const textAnalysisExamples: TextAnalysisExample[] = [
     label: "Multilingual project note",
     category: "Mixed language",
     description: "English, German, and Spanish appear in one source with Unicode punctuation, accents, and repeated cross-language concepts.",
-    demonstrates: "script profile, tokenization, linguistics",
-    focus: "linguistics",
+    demonstrates: "script profile, tokenization, semantic structure",
+    focus: "overview",
     text:
       "Project note: The browser analysis should keep source evidence attached to every derived result. In Stuttgart besprechen wir morgen die nächsten Schritte für die Suche, die Dokumentanalyse und die Qualität der Beispiele. Die Testdokumente sollen länger werden, damit wiederkehrende Themen und echte Themenwechsel sichtbar sind. Lucía añade: «La evidencia debe permanecer vinculada a la fuente, especialmente cuando resumimos documentos largos o agrupamos ideas parecidas.» También necesitamos distinguir una traducción real de dos frases que solamente comparten algunas palabras. Danach vergleichen wir lexical search, semantische Nachbarschaften und die Qualität der extrahierten Begriffe. The final decision should be understandable across languages: model-derived similarities may assist discovery, but the original passage remains the evidence a reviewer can inspect.",
   },
