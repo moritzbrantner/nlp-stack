@@ -20,6 +20,15 @@ test("keeps single-document semantics separate from multi-document corpus themes
 
   await expect(page.getByRole("heading", { name: "Semantic map" })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/Source: Meeting dialogue/i)).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Linguistics" })).toHaveCount(0);
+
+  await page.getByRole("tab", { name: "Entities" }).click();
+  await expect(page.getByRole("heading", { name: "Named entities" })).toBeVisible();
+  await expect(page.getByText(/fixture\/browser-ner-model/)).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Maya", exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/No capitalization heuristic or rule-based entity fallback is used/)).toBeVisible();
+
+  await page.getByRole("tab", { name: "Semantic map" }).click();
 
   await page.getByRole("tab", { name: "Corpus themes" }).click();
   await expect(page.getByRole("heading", { name: "Corpus themes" })).toBeVisible();
@@ -49,7 +58,6 @@ test("keeps single-document semantics separate from multi-document corpus themes
   await expect(page.getByRole("heading", { name: "Corpus themes" })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/Corpus: 2 sources/i)).toBeVisible();
   await expect(page.getByText(/Embedding evidence: fixture\/browser-semantic-model/)).toBeVisible();
-  await expect(page.getByText(/hashed TF-IDF backend/i)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Theme evidence" })).toBeVisible();
   await expect(page.getByText(/semantic.*retrieval|retrieval.*semantic/i).first()).toBeVisible();
   await expect(page.getByText(/Analysis ready. Corpus themes use 2 supplied sources/i)).toBeVisible();

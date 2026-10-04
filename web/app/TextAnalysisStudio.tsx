@@ -43,7 +43,6 @@ const resultGroups: { label: string; tabs: [ResultTab, string][] }[] = [
       ["overview", "Overview"],
       ["keywords", "Keywords"],
       ["entities", "Entities"],
-      ["linguistics", "Linguistics"],
       ["semantic-map", "Semantic map"],
     ],
   },
@@ -147,8 +146,9 @@ export function TextAnalysisStudio() {
               summarySentences: 5,
               ngramSizes: [2, 3],
               shingleSizes: [3, 5],
-              linguistics: { mode: "heuristicBalanced" },
-              embedding: { mode: "hashed", dimensions: 128, useIdf: false },
+              linguistics: { mode: "off" },
+              embedding: { mode: "off" },
+              namedEntities: { mode: "huggingFace" },
             },
           }, { signal: controller.signal }),
         ),
@@ -161,7 +161,7 @@ export function TextAnalysisStudio() {
               neighborsPerUnit: 4,
               neighborThreshold: 0.25,
               clusterThreshold: 0.6,
-              includeLinguisticGraph: true,
+              includeLinguisticGraph: false,
               includeNeighborhoodEvidence: false,
             },
           }, { signal: controller.signal }),
@@ -265,14 +265,13 @@ export function TextAnalysisStudio() {
   const lexical = asRecord(documentReport?.lexical);
   const core = asRecord(documentReport?.core);
   const enrichedStats = asRecord(documentReport?.enrichedStats);
-  const linguistic = asRecord(documentReport?.linguistic);
   const semantic = asRecord(semanticReport?.semantic);
   const corpusLexical = asRecord(corpusReport?.lexical);
   const keywords = asRecordArray(lexical?.keywords);
   const phraseKeywords = asRecordArray(lexical?.phraseKeywords);
   const topTerms = asRecordArray(lexical?.topTerms);
-  const entities = asRecordArray(lexical?.ruleEntities);
-  const summary = asRecordArray(lexical?.extractiveSummary);
+  const entities = asRecordArray(documentReport?.namedEntities);
+  const entityModel = asRecord(documentReport?.namedEntityModel);
   const clusters = asRecordArray(semantic?.clusters);
   const units = asRecordArray(semantic?.units);
   const timeline = asRecordArray(semantic?.timeline);
@@ -436,13 +435,11 @@ export function TextAnalysisStudio() {
                 core={core}
                 lexical={lexical}
                 enrichedStats={enrichedStats}
-                summary={summary}
                 clusters={clusters}
               />
             ) : null}
             {activeTab === "keywords" ? <KeywordsPanel keywords={keywords} phraseKeywords={phraseKeywords} topTerms={topTerms} /> : null}
-            {activeTab === "entities" ? <EntitiesPanel entities={entities} /> : null}
-            {activeTab === "linguistics" ? <LinguisticsPanel linguistic={linguistic} /> : null}
+            {activeTab === "entities" ? <EntitiesPanel entities={entities} model={entityModel} /> : null}
             {activeTab === "semantic-map" ? <SemanticMapPanel clusters={clusters} timeline={timeline} unitsById={unitsById} semantic={semantic} /> : null}
             {activeTab === "technical" ? <TechnicalPanel documentReport={documentReport} semanticReport={semanticReport} corpusReport={corpusReport} /> : null}
           </div>
@@ -630,7 +627,7 @@ function SemanticCorpusPanel({ report }: { report: JsonRecord | null }) {
           Recurring, cohesion-preserving themes across the supplied sources. A cluster must have at least two supporting sentence units before it is promoted as a theme; one-off evidence remains available in Technical instead of becoming a fake concept.
         </p>
         <p className="mt-2 max-w-3xl text-xs leading-5 text-muted">
-          Embedding evidence: {modelName}{dimensions > 0 ? ` · ${dimensions} dimensions` : ""}. The built-in hashed TF-IDF backend is a deterministic local baseline, not a learned sentence model.
+          Embedding evidence: {modelName}{dimensions > 0 ? ` · ${dimensions} dimensions` : ""}. Browser semantic analysis requires learned Hugging Face model evidence; it does not substitute a hashed semantic fallback.
         </p>
         <dl className="mt-4 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
           <Fact label="Corpus items" value={formatInteger(report?.itemCount)} />
@@ -688,32 +685,20 @@ function SemanticCorpusPanel({ report }: { report: JsonRecord | null }) {
   );
 }
 
-function OverviewPanel({ documentReport, core, lexical, enrichedStats, summary, clusters }: {
+function OverviewPanel({ documentReport, core, lexical, enrichedStats, clusters }: {
   documentReport: JsonRecord;
   core: JsonRecord | null;
   lexical: JsonRecord | null;
   enrichedStats: JsonRecord | null;
-  summary: JsonRecord[];
   clusters: JsonRecord[];
 }) {
   const scriptProfile = asRecord(core?.scriptProfile);
   const readability = asRecord(lexical?.readability);
-  const sentiment = asRecord(lexical?.sentiment);
   return (
     <div className="grid gap-8">
       <section>
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Document view</p>
-        <h4 className="mt-1 text-xl font-semibold text-ink">Extractive summary</h4>
-        {summary.length ? (
-          <ol className="mt-3 grid gap-3">
-            {summary.map((item, index) => (
-              <li key={`${stringValue(item.index)}-${index}`} className="border-l-2 border-line pl-4 text-sm leading-6 text-ink">{stringValue(item.text)}</li>
-            ))}
-          </ol>
-        ) : <p className="mt-2 text-sm text-muted">No summary sentences were produced.</p>}
-      </section>
-      <section>
-        <h4 className="text-lg font-semibold text-ink">Document facts</h4>
+        <h4 className="mt-1 text-xl font-semibold text-ink">Document facts</h4>
         <dl className="mt-3 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <Fact label="Language" value={stringValue(documentReport.language, "undetermined")} />
           <Fact label="Dominant script" value={stringValue(scriptProfile?.dominantScript, "undetermined")} />
@@ -726,8 +711,7 @@ function OverviewPanel({ documentReport, core, lexical, enrichedStats, summary, 
           <Fact label="Average word characters" value={formatNumber(readability?.averageWordChars)} />
         </dl>
       </section>
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div><h4 className="text-lg font-semibold text-ink">Sentiment evidence</h4><JsonTable value={sentiment} empty="No lexical sentiment evidence." /></div>
+      <section>
         <div>
           <h4 className="text-lg font-semibold text-ink">Leading semantic concepts</h4>
           {clusters.length ? (
@@ -759,34 +743,43 @@ function RankedTextList({ title, items }: { title: string; items: JsonRecord[] }
   );
 }
 
-function EntitiesPanel({ entities }: { entities: JsonRecord[] }) {
+function EntitiesPanel({ entities, model }: { entities: JsonRecord[]; model: JsonRecord | null }) {
   return (
     <section>
-      <h4 className="text-lg font-semibold text-ink">Rule-based entity evidence</h4>
-      <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">These are deterministic mentions from the lexical analysis, not claims beyond the source text.</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Model-backed NLP</p>
+      <h4 className="mt-1 text-xl font-semibold text-ink">Named entities</h4>
+      <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
+        Named entity recognition from the Hugging Face token-classification model {stringValue(model?.name, "unknown model")}. No capitalization heuristic or rule-based entity fallback is used.
+      </p>
       {entities.length ? (
-        <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[32rem] border-collapse text-left text-sm">
-          <thead><tr className="border-b border-line text-muted"><th className="py-2 pr-4 font-medium">Mention</th><th className="py-2 pr-4 font-medium">Kind</th><th className="py-2 font-medium">Span</th></tr></thead>
-          <tbody>{entities.map((entity, index) => (
-            <tr key={`${stringValue(entity.text)}-${index}`} className="border-b border-line/70"><td className="py-3 pr-4 font-medium text-ink">{stringValue(entity.text)}</td><td className="py-3 pr-4 text-muted">{stringValue(entity.kind)}</td><td className="py-3 text-muted"><JsonInline value={entity.span} /></td></tr>
-          ))}</tbody>
-        </table></div>
-      ) : <p className="mt-3 text-sm text-muted">No rule-based entity mentions were found.</p>}
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b border-line text-muted">
+                <th className="py-2 pr-4 font-medium">Entity</th>
+                <th className="py-2 pr-4 font-medium">Type</th>
+                <th className="py-2 pr-4 text-right font-medium">Confidence</th>
+                <th className="py-2 font-medium">UTF-8 span</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entities.map((entity, index) => {
+                const span = asRecord(entity.span);
+                return (
+                  <tr key={`${stringValue(entity.text)}-${index}`} className="border-b border-line/70">
+                    <td className="py-3 pr-4 font-medium text-ink">{stringValue(entity.text)}</td>
+                    <td className="py-3 pr-4 text-muted">{stringValue(entity.kind)}</td>
+                    <td className="py-3 pr-4 text-right text-muted">{formatPercent(entity.score)}</td>
+                    <td className="py-3 text-muted">{formatInteger(span?.byte_start)}–{formatInteger(span?.byte_end)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : <p className="mt-3 text-sm text-muted">The model did not identify any named entities.</p>}
     </section>
   );
-}
-
-function LinguisticsPanel({ linguistic }: { linguistic: JsonRecord | null }) {
-  const sections = [
-    ["language", "Language"], ["tokenizer", "Tokenizer"], ["lemmas", "Lemmas"], ["morphology", "Morphology"],
-    ["pos", "Part of speech"], ["chunks", "Chunks"], ["dependencies", "Dependencies"], ["entities", "Linguistic entities"],
-    ["canonicalEntities", "Canonical entities"], ["coreference", "Coreference"], ["events", "Events"], ["relations", "Relations"],
-    ["discourse", "Discourse"], ["outline", "Outline"], ["topics", "Topics"], ["style", "Style"],
-  ] as const;
-  if (!linguistic) return <p className="text-sm text-muted">No linguistic section was produced.</p>;
-  return <div className="grid gap-3">{sections.map(([key, label]) => (
-    <details key={key} className="rounded-md border border-line bg-surface px-4 py-3" open={key === "topics" || key === "style" || key === "outline"}><summary className="cursor-pointer text-sm font-semibold text-ink">{label}</summary><JsonBlock value={linguistic[key]} /></details>
-  ))}</div>;
 }
 
 function SemanticMapPanel({ clusters, timeline, unitsById, semantic }: { clusters: JsonRecord[]; timeline: JsonRecord[]; unitsById: Map<string, JsonRecord>; semantic: JsonRecord | null }) {
@@ -833,20 +826,6 @@ function TechnicalPanel({ documentReport, semanticReport, corpusReport }: { docu
 
 function Fact({ label, value }: { label: string; value: string }) {
   return <div className="border-b border-line pb-2"><dt className="text-muted">{label}</dt><dd className="mt-1 font-medium text-ink">{value}</dd></div>;
-}
-
-function JsonTable({ value, empty }: { value: JsonRecord | null; empty: string }) {
-  if (!value || Object.keys(value).length === 0) return <p className="mt-2 text-sm text-muted">{empty}</p>;
-  return <dl className="mt-3 grid gap-2 text-sm">{Object.entries(value).map(([key, entry]) => (
-    <div key={key} className="flex items-start justify-between gap-4 border-b border-line py-2"><dt className="text-muted">{humanize(key)}</dt><dd className="max-w-[65%] text-right font-medium text-ink"><JsonInline value={entry} /></dd></div>
-  ))}</dl>;
-}
-
-function JsonInline({ value }: { value: unknown }) {
-  if (value == null) return <>—</>;
-  if (typeof value === "number") return <>{formatNumber(value)}</>;
-  if (typeof value === "string" || typeof value === "boolean") return <>{String(value)}</>;
-  return <>{JSON.stringify(value)}</>;
 }
 
 function JsonBlock({ value }: { value: unknown }) {
@@ -896,10 +875,6 @@ function formatPercent(value: unknown): string {
   return typeof value === "number" && Number.isFinite(value)
     ? new Intl.NumberFormat(undefined, { style: "percent", maximumFractionDigits: 2 }).format(value)
     : "—";
-}
-
-function humanize(value: string): string {
-  return value.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
 }
 
 function documentId(sourceLabel: string): string {
