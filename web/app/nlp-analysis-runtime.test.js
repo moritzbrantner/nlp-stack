@@ -26,12 +26,22 @@ beforeEach(async () => {
   failModel = false;
   vi.stubGlobal("Worker", class {
     listeners = new Map();
+    constructor(url) { this.url = String(url); }
     addEventListener(type, listener) { this.listeners.set(type, listener); }
-    postMessage({ id, texts }) {
+    postMessage({ id, texts, segments }) {
       workerRequests += 1;
-      const data = failModel ? { id, error: "Model unavailable" } : {
-        id, modelName: "fixture/model", dimensions: 2, vectors: texts.map(() => [1, 0]),
-      };
+      let data;
+      if (failModel) {
+        data = { id, error: "Model unavailable" };
+      } else if (this.url.includes("nlp-entity-worker.js")) {
+        data = {
+          id,
+          modelName: "fixture/ner-model",
+          entities: [{ text: "Alice", kind: "PER", score: 0.99, span: { byte_start: 0, byte_end: 5 }, sentenceIndex: 0 }],
+        };
+      } else {
+        data = { id, modelName: "fixture/model", dimensions: 2, vectors: texts.map(() => [1, 0]) };
+      }
       queueMicrotask(() => this.listeners.get("message")({ data }));
     }
     terminate() {}
@@ -91,6 +101,38 @@ describe.each(["analysis.semantic-map", "analysis.semantic-corpus"])("%s browser
     failModel = true;
     await expect(runtime.runOperation(request(operation))).rejects.toThrow("Model unavailable");
   });
+});
+
+it("attaches Hugging Face named entities to browser document analysis", async () => {
+  const response = await runtime.runOperation({
+    operation: "analysis.document",
+    input: {
+      id: "doc",
+      text: "Alice works in Berlin.",
+      linguistics: { mode: "off" },
+      embedding: { mode: "off" },
+      namedEntities: { mode: "huggingFace" },
+    },
+  });
+
+  expect(response.value.result.namedEntityModel.name).toBe("fixture/ner-model");
+  expect(response.value.result.namedEntities).toEqual([
+    expect.objectContaining({ text: "Alice", kind: "PER", score: 0.99 }),
+  ]);
+});
+
+it("fails document analysis instead of falling back to heuristic entities when NER fails", async () => {
+  failModel = true;
+  await expect(runtime.runOperation({
+    operation: "analysis.document",
+    input: {
+      id: "doc",
+      text: "Alice works in Berlin.",
+      linguistics: { mode: "off" },
+      embedding: { mode: "off" },
+      namedEntities: { mode: "huggingFace" },
+    },
+  })).rejects.toThrow("Model unavailable");
 });
 
 it("renders the model identity from the real Rust corpus response", async () => {
