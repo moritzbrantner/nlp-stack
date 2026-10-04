@@ -87,11 +87,9 @@ describe.each(["analysis.semantic-map", "analysis.semantic-corpus"])("%s browser
     expect(workerRequests).toBeGreaterThan(0);
   });
 
-  it("falls back to local analysis when the model fails", async () => {
+  it("fails instead of substituting heuristic semantic analysis when the model fails", async () => {
     failModel = true;
-    vi.spyOn(console, "warn").mockImplementation(() => {});
-    const response = await runtime.runOperation(request(operation));
-    expect(response.value.result.semantic.embeddingModel.backend).toBe("hashed");
+    await expect(runtime.runOperation(request(operation))).rejects.toThrow("Model unavailable");
   });
 });
 
