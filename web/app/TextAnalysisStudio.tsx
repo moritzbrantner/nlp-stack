@@ -27,7 +27,7 @@ import {
 import { loadAnalysisRuntime, type AnalysisRuntime } from "./analysis-runtime";
 
 type JsonRecord = Record<string, unknown>;
-type ResultTab = ExampleResultView | "entities" | "technical";
+type ResultTab = ExampleResultView | "technical";
 
 const resultGroups: { label: string; tabs: [ResultTab, string][] }[] = [
   {
@@ -42,8 +42,6 @@ const resultGroups: { label: string; tabs: [ResultTab, string][] }[] = [
     tabs: [
       ["overview", "Overview"],
       ["keywords", "Keywords"],
-      ["entities", "Entities"],
-      ["linguistics", "Linguistics"],
       ["semantic-map", "Semantic map"],
     ],
   },
@@ -147,8 +145,8 @@ export function TextAnalysisStudio() {
               summarySentences: 5,
               ngramSizes: [2, 3],
               shingleSizes: [3, 5],
-              linguistics: { mode: "heuristicBalanced" },
-              embedding: { mode: "hashed", dimensions: 128, useIdf: false },
+              linguistics: { mode: "off" },
+              embedding: { mode: "off" },
             },
           }, { signal: controller.signal }),
         ),
@@ -161,7 +159,7 @@ export function TextAnalysisStudio() {
               neighborsPerUnit: 4,
               neighborThreshold: 0.25,
               clusterThreshold: 0.6,
-              includeLinguisticGraph: true,
+              includeLinguisticGraph: false,
               includeNeighborhoodEvidence: false,
             },
           }, { signal: controller.signal }),
@@ -265,14 +263,11 @@ export function TextAnalysisStudio() {
   const lexical = asRecord(documentReport?.lexical);
   const core = asRecord(documentReport?.core);
   const enrichedStats = asRecord(documentReport?.enrichedStats);
-  const linguistic = asRecord(documentReport?.linguistic);
   const semantic = asRecord(semanticReport?.semantic);
   const corpusLexical = asRecord(corpusReport?.lexical);
   const keywords = asRecordArray(lexical?.keywords);
   const phraseKeywords = asRecordArray(lexical?.phraseKeywords);
   const topTerms = asRecordArray(lexical?.topTerms);
-  const entities = asRecordArray(lexical?.ruleEntities);
-  const summary = asRecordArray(lexical?.extractiveSummary);
   const clusters = asRecordArray(semantic?.clusters);
   const units = asRecordArray(semantic?.units);
   const timeline = asRecordArray(semantic?.timeline);
@@ -436,13 +431,10 @@ export function TextAnalysisStudio() {
                 core={core}
                 lexical={lexical}
                 enrichedStats={enrichedStats}
-                summary={summary}
                 clusters={clusters}
               />
             ) : null}
             {activeTab === "keywords" ? <KeywordsPanel keywords={keywords} phraseKeywords={phraseKeywords} topTerms={topTerms} /> : null}
-            {activeTab === "entities" ? <EntitiesPanel entities={entities} /> : null}
-            {activeTab === "linguistics" ? <LinguisticsPanel linguistic={linguistic} /> : null}
             {activeTab === "semantic-map" ? <SemanticMapPanel clusters={clusters} timeline={timeline} unitsById={unitsById} semantic={semantic} /> : null}
             {activeTab === "technical" ? <TechnicalPanel documentReport={documentReport} semanticReport={semanticReport} corpusReport={corpusReport} /> : null}
           </div>
@@ -630,7 +622,7 @@ function SemanticCorpusPanel({ report }: { report: JsonRecord | null }) {
           Recurring, cohesion-preserving themes across the supplied sources. A cluster must have at least two supporting sentence units before it is promoted as a theme; one-off evidence remains available in Technical instead of becoming a fake concept.
         </p>
         <p className="mt-2 max-w-3xl text-xs leading-5 text-muted">
-          Embedding evidence: {modelName}{dimensions > 0 ? ` · ${dimensions} dimensions` : ""}. The built-in hashed TF-IDF backend is a deterministic local baseline, not a learned sentence model.
+          Embedding evidence: {modelName}{dimensions > 0 ? ` · ${dimensions} dimensions` : ""}. Browser semantic analysis requires learned Hugging Face model evidence; it does not substitute a hashed semantic fallback.
         </p>
         <dl className="mt-4 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
           <Fact label="Corpus items" value={formatInteger(report?.itemCount)} />
@@ -688,32 +680,20 @@ function SemanticCorpusPanel({ report }: { report: JsonRecord | null }) {
   );
 }
 
-function OverviewPanel({ documentReport, core, lexical, enrichedStats, summary, clusters }: {
+function OverviewPanel({ documentReport, core, lexical, enrichedStats, clusters }: {
   documentReport: JsonRecord;
   core: JsonRecord | null;
   lexical: JsonRecord | null;
   enrichedStats: JsonRecord | null;
-  summary: JsonRecord[];
   clusters: JsonRecord[];
 }) {
   const scriptProfile = asRecord(core?.scriptProfile);
   const readability = asRecord(lexical?.readability);
-  const sentiment = asRecord(lexical?.sentiment);
   return (
     <div className="grid gap-8">
       <section>
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Document view</p>
-        <h4 className="mt-1 text-xl font-semibold text-ink">Extractive summary</h4>
-        {summary.length ? (
-          <ol className="mt-3 grid gap-3">
-            {summary.map((item, index) => (
-              <li key={`${stringValue(item.index)}-${index}`} className="border-l-2 border-line pl-4 text-sm leading-6 text-ink">{stringValue(item.text)}</li>
-            ))}
-          </ol>
-        ) : <p className="mt-2 text-sm text-muted">No summary sentences were produced.</p>}
-      </section>
-      <section>
-        <h4 className="text-lg font-semibold text-ink">Document facts</h4>
+        <h4 className="mt-1 text-xl font-semibold text-ink">Document facts</h4>
         <dl className="mt-3 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <Fact label="Language" value={stringValue(documentReport.language, "undetermined")} />
           <Fact label="Dominant script" value={stringValue(scriptProfile?.dominantScript, "undetermined")} />
@@ -726,8 +706,7 @@ function OverviewPanel({ documentReport, core, lexical, enrichedStats, summary, 
           <Fact label="Average word characters" value={formatNumber(readability?.averageWordChars)} />
         </dl>
       </section>
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div><h4 className="text-lg font-semibold text-ink">Sentiment evidence</h4><JsonTable value={sentiment} empty="No lexical sentiment evidence." /></div>
+      <section>
         <div>
           <h4 className="text-lg font-semibold text-ink">Leading semantic concepts</h4>
           {clusters.length ? (
@@ -757,36 +736,6 @@ function RankedTextList({ title, items }: { title: string; items: JsonRecord[] }
       ))}</ol> : <p className="mt-2 text-sm text-muted">No items.</p>}
     </section>
   );
-}
-
-function EntitiesPanel({ entities }: { entities: JsonRecord[] }) {
-  return (
-    <section>
-      <h4 className="text-lg font-semibold text-ink">Rule-based entity evidence</h4>
-      <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">These are deterministic mentions from the lexical analysis, not claims beyond the source text.</p>
-      {entities.length ? (
-        <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[32rem] border-collapse text-left text-sm">
-          <thead><tr className="border-b border-line text-muted"><th className="py-2 pr-4 font-medium">Mention</th><th className="py-2 pr-4 font-medium">Kind</th><th className="py-2 font-medium">Span</th></tr></thead>
-          <tbody>{entities.map((entity, index) => (
-            <tr key={`${stringValue(entity.text)}-${index}`} className="border-b border-line/70"><td className="py-3 pr-4 font-medium text-ink">{stringValue(entity.text)}</td><td className="py-3 pr-4 text-muted">{stringValue(entity.kind)}</td><td className="py-3 text-muted"><JsonInline value={entity.span} /></td></tr>
-          ))}</tbody>
-        </table></div>
-      ) : <p className="mt-3 text-sm text-muted">No rule-based entity mentions were found.</p>}
-    </section>
-  );
-}
-
-function LinguisticsPanel({ linguistic }: { linguistic: JsonRecord | null }) {
-  const sections = [
-    ["language", "Language"], ["tokenizer", "Tokenizer"], ["lemmas", "Lemmas"], ["morphology", "Morphology"],
-    ["pos", "Part of speech"], ["chunks", "Chunks"], ["dependencies", "Dependencies"], ["entities", "Linguistic entities"],
-    ["canonicalEntities", "Canonical entities"], ["coreference", "Coreference"], ["events", "Events"], ["relations", "Relations"],
-    ["discourse", "Discourse"], ["outline", "Outline"], ["topics", "Topics"], ["style", "Style"],
-  ] as const;
-  if (!linguistic) return <p className="text-sm text-muted">No linguistic section was produced.</p>;
-  return <div className="grid gap-3">{sections.map(([key, label]) => (
-    <details key={key} className="rounded-md border border-line bg-surface px-4 py-3" open={key === "topics" || key === "style" || key === "outline"}><summary className="cursor-pointer text-sm font-semibold text-ink">{label}</summary><JsonBlock value={linguistic[key]} /></details>
-  ))}</div>;
 }
 
 function SemanticMapPanel({ clusters, timeline, unitsById, semantic }: { clusters: JsonRecord[]; timeline: JsonRecord[]; unitsById: Map<string, JsonRecord>; semantic: JsonRecord | null }) {
