@@ -27,7 +27,7 @@ import {
 import { loadAnalysisRuntime, type AnalysisRuntime } from "./analysis-runtime";
 
 type JsonRecord = Record<string, unknown>;
-type ResultTab = ExampleResultView | "technical";
+type ResultTab = ExampleResultView | "entities" | "technical";
 
 const resultGroups: { label: string; tabs: [ResultTab, string][] }[] = [
   {
@@ -42,6 +42,7 @@ const resultGroups: { label: string; tabs: [ResultTab, string][] }[] = [
     tabs: [
       ["overview", "Overview"],
       ["keywords", "Keywords"],
+      ["entities", "Entities"],
       ["semantic-map", "Semantic map"],
     ],
   },
@@ -147,6 +148,7 @@ export function TextAnalysisStudio() {
               shingleSizes: [3, 5],
               linguistics: { mode: "off" },
               embedding: { mode: "off" },
+              namedEntities: { mode: "huggingFace" },
             },
           }, { signal: controller.signal }),
         ),
@@ -268,6 +270,8 @@ export function TextAnalysisStudio() {
   const keywords = asRecordArray(lexical?.keywords);
   const phraseKeywords = asRecordArray(lexical?.phraseKeywords);
   const topTerms = asRecordArray(lexical?.topTerms);
+  const entities = asRecordArray(documentReport?.namedEntities);
+  const entityModel = asRecord(documentReport?.namedEntityModel);
   const clusters = asRecordArray(semantic?.clusters);
   const units = asRecordArray(semantic?.units);
   const timeline = asRecordArray(semantic?.timeline);
@@ -435,6 +439,7 @@ export function TextAnalysisStudio() {
               />
             ) : null}
             {activeTab === "keywords" ? <KeywordsPanel keywords={keywords} phraseKeywords={phraseKeywords} topTerms={topTerms} /> : null}
+            {activeTab === "entities" ? <EntitiesPanel entities={entities} model={entityModel} /> : null}
             {activeTab === "semantic-map" ? <SemanticMapPanel clusters={clusters} timeline={timeline} unitsById={unitsById} semantic={semantic} /> : null}
             {activeTab === "technical" ? <TechnicalPanel documentReport={documentReport} semanticReport={semanticReport} corpusReport={corpusReport} /> : null}
           </div>
@@ -734,6 +739,45 @@ function RankedTextList({ title, items }: { title: string; items: JsonRecord[] }
           <span className="shrink-0 text-muted">{typeof item.score === "number" ? formatNumber(item.score) : typeof item.count === "number" ? `${item.count}×` : ""}</span>
         </li>
       ))}</ol> : <p className="mt-2 text-sm text-muted">No items.</p>}
+    </section>
+  );
+}
+
+function EntitiesPanel({ entities, model }: { entities: JsonRecord[]; model: JsonRecord | null }) {
+  return (
+    <section>
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Model-backed NLP</p>
+      <h4 className="mt-1 text-xl font-semibold text-ink">Named entities</h4>
+      <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
+        Named entity recognition from the Hugging Face token-classification model {stringValue(model?.name, "unknown model")}. No capitalization heuristic or rule-based entity fallback is used.
+      </p>
+      {entities.length ? (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b border-line text-muted">
+                <th className="py-2 pr-4 font-medium">Entity</th>
+                <th className="py-2 pr-4 font-medium">Type</th>
+                <th className="py-2 pr-4 text-right font-medium">Confidence</th>
+                <th className="py-2 font-medium">UTF-8 span</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entities.map((entity, index) => {
+                const span = asRecord(entity.span);
+                return (
+                  <tr key={`${stringValue(entity.text)}-${index}`} className="border-b border-line/70">
+                    <td className="py-3 pr-4 font-medium text-ink">{stringValue(entity.text)}</td>
+                    <td className="py-3 pr-4 text-muted">{stringValue(entity.kind)}</td>
+                    <td className="py-3 pr-4 text-right text-muted">{formatPercent(entity.score)}</td>
+                    <td className="py-3 text-muted">{formatInteger(span?.byte_start)}–{formatInteger(span?.byte_end)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : <p className="mt-3 text-sm text-muted">The model did not identify any named entities.</p>}
     </section>
   );
 }
