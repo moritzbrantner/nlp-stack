@@ -93,7 +93,6 @@ const packageAppConfig: PackageAppConfig = {
       input: { text: "Statistics over repeated transcript text. ".repeat(64) },
       iterations: 100,
       warmupIterations: 5,
-      outputCountPath: ["value"],
     },
   ],
   resultTabs: [
@@ -226,7 +225,7 @@ function TokenSummary({ value }: { value: Record<string, unknown> }) {
 }
 
 function StatisticsSummary({ value }: { value: Record<string, unknown> }) {
-  const stats = asRecord(value.value);
+  const stats = value;
   return (
     <div className="space-y-5">
       <StatGrid
