@@ -51,7 +51,7 @@ PUBLIC_ITEM_PATTERN = re.compile(
     r"\bpub\b(?:\s*\([^)]*\))?\s+"
     r"(?:(?:unsafe|auto)\s+)*"
     r"(?:struct|trait|enum|type|union|fn|const|static|mod)\s+"
-    r"([A-Za-z_][A-Za-z0-9_]*)\b"
+    r"(?:r#)?([A-Za-z_][A-Za-z0-9_]*)\b"
 )
 # Public re-exports, including grouped imports and `as` aliases.
 PUBLIC_USE_PATTERN = re.compile(r"\bpub\b(?:\s*\([^)]*\))?\s+use\b([^;]*);")

@@ -119,6 +119,8 @@ class TextCoreA2BoundaryTests(unittest.TestCase):
             "type alias": "pub type TextPipeline = Vec<u8>;\n",
             "enum": "pub enum TextPipeline { Empty }\n",
             "restricted struct": "pub(crate) struct TextPipeline;\n",
+            "raw identifier": "pub struct r#TextPipeline;\n",
+            "raw identifier re-export": "pub use crate::inner::r#TextPipeline;\n",
             "re-export": "pub use crate::inner::TextPipeline;\n",
             "aliased re-export": "pub use crate::inner::Runner as TextPipeline;\n",
             "grouped re-export": "pub use crate::inner::{\n    Other,\n    TextPipeline,\n};\n",
