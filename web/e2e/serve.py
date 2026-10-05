@@ -15,6 +15,8 @@ class PagesHandler(SimpleHTTPRequestHandler):
     def translate_path(self, path: str) -> str:
         if urlsplit(path).path == "/nlp-semantic-worker.js":
             return str(WEB_ROOT / "e2e/fixtures/semantic-worker.js")
+        if urlsplit(path).path == "/nlp-entity-worker.js":
+            return str(WEB_ROOT / "e2e/fixtures/entity-worker.js")
         return super().translate_path(path)
 
 
