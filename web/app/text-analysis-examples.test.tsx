@@ -8,7 +8,7 @@ describe("text analysis examples", () => {
     expect(new Set(textAnalysisExamples.map((example) => example.id)).size).toBe(textAnalysisExamples.length);
     expect(new Set(textAnalysisExamples.map((example) => example.category)).size).toBeGreaterThanOrEqual(4);
     expect(textAnalysisExamples.some((example) => example.focus === "semantic-map")).toBe(true);
-    expect(textAnalysisExamples.some((example) => example.focus === "linguistics")).toBe(true);
+    expect(textAnalysisExamples.some((example) => example.demonstrates.includes("named entities"))).toBe(true);
     expect(textAnalysisExamples.every((example) => example.focus !== "semantic-corpus")).toBe(true);
     expect(textAnalysisExamples.every((example) => example.text.trim().length > 100)).toBe(true);
   });
