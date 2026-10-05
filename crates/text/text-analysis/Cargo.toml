@@ -32,7 +32,7 @@ model-runtime = { workspace = true, optional = true }
 default = []
 candle = ["text-linguistics/candle", "text-embeddings/candle", "text-classification/candle"]
 cuda = ["candle", "text-embeddings/cuda", "text-linguistics/cuda"]
-model-bundles = ["dep:model-runtime", "model-runtime/jobs", "text-linguistics/model-bundles", "text-embeddings/model-bundles", "text-classification/model-bundles"]
+model-bundles = ["dep:model-runtime", "text-linguistics/model-bundles", "text-embeddings/model-bundles", "text-classification/model-bundles"]
 onnx = ["text-embeddings/onnx", "text-classification/onnx", "dep:model-runtime"]
 tokenizers = ["text-embeddings/tokenizers", "text-linguistics/tokenizers"]
 local-models = ["text-classification/local-models", "candle", "onnx", "model-bundles"]

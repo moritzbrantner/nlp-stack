@@ -37,7 +37,6 @@ unicode-segmentation = "1.12.0"
 # activate the exact foundation source revision declared in
 # .coding-tooling.source-deps.json; committed manifests stay registry-based.
 data-inversion-core = { package = "moenarch-data-inversion-core", version = "=0.1.1" }
-jobs-core = { package = "moenarch-jobs-core", version = "=0.1.2" }
 math-sparse-data = { package = "moenarch-math-sparse-data", version = "=0.1.1" }
 media-core = { package = "moenarch-media-core", version = "=0.1.0" }
 model-runtime = { package = "moenarch-model-runtime", version = "=0.1.1" }
