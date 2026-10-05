@@ -93,7 +93,6 @@ const packageAppConfig: PackageAppConfig = {
       input: { text: "Statistics over repeated transcript text. ".repeat(64) },
       iterations: 100,
       warmupIterations: 5,
-      outputCountPath: ["value"],
     },
   ],
   resultTabs: [
