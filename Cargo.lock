@@ -1920,7 +1920,6 @@ name = "moenarch-text-core"
 version = "0.1.1"
 dependencies = [
  "criterion",
- "moenarch-jobs-core",
  "moenarch-media-core",
  "moenarch-runtime-core",
  "serde",

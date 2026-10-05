@@ -19,7 +19,6 @@ KERNEL_DEPENDENCY_ALLOWLIST = {
 # The debt ledger must shrink as they are removed. Adding another name requires
 # changing this guard explicitly rather than merely editing the ledger.
 ORIGINAL_CROSS_DOMAIN_DEPENDENCIES = {
-    "jobs-core": "jobs_core",
     "media-core": "media_core",
     "runtime-core": "runtime_core",
 }

@@ -419,7 +419,7 @@ export function createTextAnalysisRuntime(wasm, coreWasm) {
         const statistics = surfaceResult(fromWasmValue(coreWasm.runOperation({
           operation: "text.statistics", input: { text },
         })));
-        sentenceCount += statistics.value.sentenceCount;
+        sentenceCount += statistics.sentenceCount;
         assertAnalysisSentenceBudget(sentenceCount);
       }
       if (request?.operation === "analysis.document" && input?.namedEntities?.mode === "huggingFace") {
