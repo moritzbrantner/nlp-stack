@@ -33,11 +33,29 @@ ORIGINAL_MIRROR_CONTRACTS = {
     "TimestampContract",
 }
 
+FORBIDDEN_KERNEL_FRAMEWORK_TYPES = {
+    "TextAnalysis",
+    "TextAnalysisResult",
+    "TextAnalyzer",
+    "TextPipeline",
+    "TextPipelineBuilder",
+}
+
 CONTRACT_PATTERN = re.compile(
     r"\bpub\s+struct\s+([A-Za-z_][A-Za-z0-9_]*Contract)\b"
 )
 TEXT_SPAN_OPEN_PATTERN = re.compile(r"\bTextSpan\s*\{")
 RETURN_TYPE_PREFIX_PATTERN = re.compile(r"->\s*$")
+# Any visibility-qualified item (`pub`, `pub(crate)`, ...) that defines a name.
+PUBLIC_ITEM_PATTERN = re.compile(
+    r"\bpub\b(?:\s*\([^)]*\))?\s+"
+    r"(?:(?:unsafe|auto)\s+)*"
+    r"(?:struct|trait|enum|type|union|fn|const|static|mod)\s+"
+    r"(?:r#)?([A-Za-z_][A-Za-z0-9_]*)\b"
+)
+# Public re-exports, including grouped imports and `as` aliases.
+PUBLIC_USE_PATTERN = re.compile(r"\bpub\b(?:\s*\([^)]*\))?\s+use\b([^;]*);")
+IDENTIFIER_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
 def _contains_import(content: str, crate_name: str) -> bool:
@@ -51,6 +69,13 @@ def _contains_direct_text_span_constructor(content: str) -> bool:
             continue
         return True
     return False
+
+
+def _forbidden_framework_names(content: str) -> set[str]:
+    exposed = set(PUBLIC_ITEM_PATTERN.findall(content))
+    for use_tree in PUBLIC_USE_PATTERN.findall(content):
+        exposed.update(IDENTIFIER_PATTERN.findall(use_tree))
+    return exposed & FORBIDDEN_KERNEL_FRAMEWORK_TYPES
 
 
 def _display_paths(paths: set[Path]) -> str:
@@ -133,6 +158,8 @@ def check_contract(root: Path) -> list[str]:
 
     actual_source_files = {crate_name: set() for crate_name in known_rust_crates}
     actual_contract_locations: dict[str, set[Path]] = {}
+    forbidden_framework_locations: dict[str, set[Path]] = {}
+    public_glob_locations: set[Path] = set()
     for path in sorted(src.rglob("*.rs")):
         relative = path.relative_to(core)
         content = path.read_text(encoding="utf-8")
@@ -143,6 +170,28 @@ def check_contract(root: Path) -> list[str]:
 
         for contract_name in CONTRACT_PATTERN.findall(content):
             actual_contract_locations.setdefault(contract_name, set()).add(relative)
+
+        if any("*" in use_tree for use_tree in PUBLIC_USE_PATTERN.findall(content)):
+            public_glob_locations.add(relative)
+
+        for type_name in _forbidden_framework_names(content):
+            forbidden_framework_locations.setdefault(type_name, set()).add(relative)
+
+    if forbidden_framework_locations:
+        details = ", ".join(
+            f"{name} ({_display_paths(paths)})"
+            for name, paths in sorted(forbidden_framework_locations.items())
+        )
+        errors.append(
+            "text-core regained forbidden analyzer/pipeline framework types: " + details
+        )
+
+    if public_glob_locations:
+        errors.append(
+            "text-core must not use public glob re-exports (their exported names "
+            "cannot be checked against the A2 boundary): "
+            + _display_paths(public_glob_locations)
+        )
 
     for crate_name in sorted(known_rust_crates):
         declared = declared_source_files.get(crate_name, set())
