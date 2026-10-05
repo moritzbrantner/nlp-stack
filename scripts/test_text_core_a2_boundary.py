@@ -114,6 +114,43 @@ class TextCoreA2BoundaryTests(unittest.TestCase):
             )
         )
 
+    def test_analyzer_pipeline_aliases_and_reexports_cannot_return(self) -> None:
+        exposures = {
+            "type alias": "pub type TextPipeline = Vec<u8>;\n",
+            "enum": "pub enum TextPipeline { Empty }\n",
+            "restricted struct": "pub(crate) struct TextPipeline;\n",
+            "re-export": "pub use crate::inner::TextPipeline;\n",
+            "aliased re-export": "pub use crate::inner::Runner as TextPipeline;\n",
+            "grouped re-export": "pub use crate::inner::{\n    Other,\n    TextPipeline,\n};\n",
+        }
+        for label, source in exposures.items():
+            with self.subTest(label):
+                temporary, root = self._fixture()
+                self.addCleanup(temporary.cleanup)
+                lib = root / "crates" / "text" / "text-core" / "src" / "lib.rs"
+                lib.write_text(lib.read_text(encoding="utf-8") + source, encoding="utf-8")
+
+                self.assertTrue(
+                    any(
+                        error.startswith(
+                            "text-core regained forbidden analyzer/pipeline framework types: "
+                            "TextPipeline"
+                        )
+                        for error in check_contract(root)
+                    )
+                )
+
+    def test_reexport_of_unrelated_names_is_not_flagged(self) -> None:
+        temporary, root = self._fixture()
+        self.addCleanup(temporary.cleanup)
+        lib = root / "crates" / "text" / "text-core" / "src" / "lib.rs"
+        lib.write_text(
+            lib.read_text(encoding="utf-8") + "pub use crate::inner::TextSpan;\n",
+            encoding="utf-8",
+        )
+
+        self.assertEqual(check_contract(root), [])
+
     def test_new_parallel_contract_type_is_rejected(self) -> None:
         temporary, root = self._fixture()
         self.addCleanup(temporary.cleanup)
