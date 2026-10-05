@@ -20,7 +20,6 @@ runtime-core.workspace = true
 candle-core = { workspace = true, optional = true }
 candle-nn = { workspace = true, optional = true }
 candle-transformers = { workspace = true, optional = true }
-jobs-core = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
 text-core.workspace = true
@@ -28,12 +27,12 @@ text-lexical.workspace = true
 text-model-runtime.workspace = true
 text-transcripts = { workspace = true, optional = true }
 tokenizers = { workspace = true, optional = true }
-model-runtime = { workspace = true, optional = true, features = ["jobs"] }
+model-runtime = { workspace = true, optional = true }
 [features]
 default = []
 tokenizers = ["dep:tokenizers", "text-model-runtime/tokenizers"]
 transcripts = ["dep:text-transcripts"]
-model-bundles = ["dep:jobs-core", "dep:model-runtime", "text-model-runtime/model-bundles"]
+model-bundles = ["dep:model-runtime", "text-model-runtime/model-bundles"]
 candle = ["tokenizers", "dep:candle-core", "dep:candle-nn", "dep:candle-transformers", "text-model-runtime/candle"]
 cuda = ["candle", "text-model-runtime/cuda", "candle-core/cuda"]
 external-tests = ["candle", "model-bundles"]
