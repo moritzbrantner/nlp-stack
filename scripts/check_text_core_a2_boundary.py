@@ -160,6 +160,7 @@ def check_contract(root: Path) -> list[str]:
     actual_source_files = {crate_name: set() for crate_name in known_rust_crates}
     actual_contract_locations: dict[str, set[Path]] = {}
     forbidden_framework_locations: dict[str, set[Path]] = {}
+    public_glob_locations: set[Path] = set()
     for path in sorted(src.rglob("*.rs")):
         relative = path.relative_to(core)
         content = path.read_text(encoding="utf-8")
@@ -171,6 +172,9 @@ def check_contract(root: Path) -> list[str]:
         for contract_name in CONTRACT_PATTERN.findall(content):
             actual_contract_locations.setdefault(contract_name, set()).add(relative)
 
+        if any("*" in use_tree for use_tree in PUBLIC_USE_PATTERN.findall(content)):
+            public_glob_locations.add(relative)
+
         for type_name in _forbidden_framework_names(content):
             forbidden_framework_locations.setdefault(type_name, set()).add(relative)
 
@@ -181,6 +185,13 @@ def check_contract(root: Path) -> list[str]:
         )
         errors.append(
             "text-core regained forbidden analyzer/pipeline framework types: " + details
+        )
+
+    if public_glob_locations:
+        errors.append(
+            "text-core must not use public glob re-exports (their exported names "
+            "cannot be checked against the A2 boundary): "
+            + _display_paths(public_glob_locations)
         )
 
     for crate_name in sorted(known_rust_crates):

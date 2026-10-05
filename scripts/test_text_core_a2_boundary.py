@@ -140,6 +140,20 @@ class TextCoreA2BoundaryTests(unittest.TestCase):
                     )
                 )
 
+    def test_public_glob_reexport_is_rejected(self) -> None:
+        for source in ("pub use media_core::*;\n", "pub(crate) use media_core::{Timestamp, inner::*};\n"):
+            with self.subTest(source):
+                temporary, root = self._fixture()
+                self.addCleanup(temporary.cleanup)
+                lib = root / "crates" / "text" / "text-core" / "src" / "lib.rs"
+                lib.write_text(lib.read_text(encoding="utf-8") + source, encoding="utf-8")
+
+                self.assertIn(
+                    "text-core must not use public glob re-exports (their exported names "
+                    "cannot be checked against the A2 boundary): src/lib.rs",
+                    check_contract(root),
+                )
+
     def test_reexport_of_unrelated_names_is_not_flagged(self) -> None:
         temporary, root = self._fixture()
         self.addCleanup(temporary.cleanup)
