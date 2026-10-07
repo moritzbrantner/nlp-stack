@@ -19,6 +19,12 @@ Ownership remains capability-driven:
 
 Semantic request/result contracts stay independent of model backend, device, download, cache, credential, and retry policy.
 
+### Semantic-map identity
+
+[ADR 0013](adr/0013-source-relative-corpus-local-semantic-maps.md) refines the domain meaning of the semantic-map work below. The implemented `SemanticCluster` structures are analysis-derived semantic regions, not yet durable corpus-local concept identities. Durable concepts are reconciled across map revisions and persisted by the corpus owner; this horizon does not require an immediate rename or rewrite of the existing baseline.
+
+Timeline, hotspot, graph, and other workbench representations are views over semantic-map evidence rather than the definition of the map itself.
+
 ## Implemented first batch
 
 Issues #34–#36 established the first deterministic semantic-map baseline.
