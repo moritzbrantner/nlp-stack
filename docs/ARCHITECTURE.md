@@ -153,6 +153,16 @@ A bridge crate is justified only when there is substantial reusable semantic tra
 
 `text-analysis` is not an orchestration engine. Recipes begin in the consuming application. Promote a recipe into `text-analysis` only after at least two independent consumers need substantially the same stateless composition. It must not own model acquisition/runtime policy, persistence, indexing infrastructure, or deployment lifecycle.
 
+## Semantic maps and epistemic boundary
+
+[ADR 0013](adr/0013-source-relative-corpus-local-semantic-maps.md) defines semantic maps as source-relative and corpus-local. Analysis-derived similarity clusters are semantic regions; durable concept identities are a separate reconciled layer that may persist across map revisions.
+
+`nlp-stack` owns typed semantic analysis and reusable reconciliation behavior, but not corpus persistence. Corpus/application owners persist map revisions and lineage and supply prior state when reconciliation is required. Cross-corpus analysis may report correspondence evidence without creating global concept identity.
+
+Semantic-map outputs describe what supplied material expresses or relates; they do not assert world truth. Downstream epistemic consumers such as `belief-lab` may reference these source-relative objects when normalizing propositions and evaluating support, contradiction, and belief.
+
+Timeline, hotspot, graph, dimensionality-reduction, speaker, and comparison surfaces are projections over semantic-map state rather than the canonical identity model. Existing report and workbench structures remain valid baseline behavior and may migrate incrementally.
+
 ## Registry and adapters
 
 `nlp-package-registry` is an outermost leaf composition root. It may depend on many capabilities so aggregate CLI/server/WASM boundaries can discover and dispatch them, but semantic/domain crates must never depend on the registry.
