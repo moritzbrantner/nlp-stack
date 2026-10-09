@@ -1926,9 +1926,9 @@
     ],
     "known_consumer_repositories": [
       "moritzbrantner/philosophy-extractor",
-      "moritzbrantner/stutter-tracker",
       "moritzbrantner/subtitle-merger",
       "moritzbrantner/visual-analysis",
+      "moritzbrantner/vox",
       "moritzbrantner/youtube-corpus"
     ],
     "excluded_authorities": [

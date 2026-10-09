@@ -53,9 +53,9 @@ REQUIRED_EXCLUDED_AUTHORITIES = {
 }
 REQUIRED_KNOWN_CONSUMERS = {
     "moritzbrantner/philosophy-extractor",
-    "moritzbrantner/stutter-tracker",
     "moritzbrantner/subtitle-merger",
     "moritzbrantner/visual-analysis",
+    "moritzbrantner/vox",
     "moritzbrantner/youtube-corpus",
 }
 # Repositories whose sources NLP capabilities may resolve from besides crates.io/npm.
