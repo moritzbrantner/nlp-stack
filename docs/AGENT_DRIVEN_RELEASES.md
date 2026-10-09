@@ -40,7 +40,7 @@ product source. It compiles native-whisperx against the local candidate.
 media-similarity, youtube-corpus, document-search, and philosophy-extractor run
 unchanged compatibility baselines; their candidate migrations remain deferred
 to rust-packages issues #124, #125, #127, and #128 until registry-only proof is
-available. video-analysis-studio and stutter-tracker remain on pinned
+available. video-analysis-studio and vox (formerly stutter-tracker) remain on pinned
 compatibility packages, and the rust-packages ownership baseline is also pinned.
 Candidate compatibility and deferred baseline evidence are distinct outcomes.
 

@@ -65,7 +65,7 @@ clone_pinned "youtube-corpus" "8ab21570348e7d636685a51f110f11fc2eacf363"
 clone_pinned "document-search" "0221b65b7aebc7a638662c5651bcd549d431b3d8"
 clone_pinned "philosophy-extractor" "f945e77657c7c6cc0d56446c23482b68648ee2a4"
 clone_pinned "video-analysis-studio" "93ceeb1c43764be9d31c35258145604559e0a0aa"
-clone_pinned "stutter-tracker" "6c68b7a343ac8470405a79f240263f9e8ca7af80"
+clone_pinned "vox" "6c68b7a343ac8470405a79f240263f9e8ca7af80"
 clone_pinned "rust-packages" "b8b29cf8db0b86ed1b133a18155adf24992f9483"
 
 patch_config="$scratch_root/nlp-wave-1-patches.toml"
@@ -96,8 +96,8 @@ rg --fixed-strings 'text-retrieval = { path = "../rust-packages/crates/text/text
 # silently inventing a migration mapping inside a publication gate.
 rg --fixed-strings 'text-analysis-features = { version = "0.1.0", path = "../rust-packages/crates/text/text-analysis-features" }' "$scratch_root/video-analysis-studio/Cargo.toml"
 rg --fixed-strings 'text-analysis-transcription = { version = "0.1.0", path = "../rust-packages/crates/text/text-analysis-transcription" }' "$scratch_root/video-analysis-studio/Cargo.toml"
-rg --fixed-strings 'rev = "78a9c6e9eb33730b60c9584ceffb9dc982f5b9da", package = "text-analysis-core"' "$scratch_root/stutter-tracker/apps/desktop/src-tauri/Cargo.toml"
-rg --fixed-strings 'rev = "78a9c6e9eb33730b60c9584ceffb9dc982f5b9da", package = "text-analysis-transcription"' "$scratch_root/stutter-tracker/apps/desktop/src-tauri/Cargo.toml"
+rg --fixed-strings 'rev = "78a9c6e9eb33730b60c9584ceffb9dc982f5b9da", package = "text-analysis-core"' "$scratch_root/vox/apps/desktop/src-tauri/Cargo.toml"
+rg --fixed-strings 'rev = "78a9c6e9eb33730b60c9584ceffb9dc982f5b9da", package = "text-analysis-transcription"' "$scratch_root/vox/apps/desktop/src-tauri/Cargo.toml"
 jq -e '
   [.packages[] | select(
     .ecosystem == "cargo"

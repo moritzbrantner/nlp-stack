@@ -238,7 +238,7 @@ class CheckedReleaseManifestTests(unittest.TestCase):
             "document-search",
             "philosophy-extractor",
             "video-analysis-studio",
-            "stutter-tracker",
+            "vox",
             "rust-packages",
         )
         for repository in repositories:
