@@ -5,6 +5,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 cargo metadata --locked --format-version 1 >/dev/null
 bun install --frozen-lockfile
+scripts/check-model-feature-compatibility.sh registry
 python3 scripts/check_repository_boundaries.py --check
 python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json
 python3 -m unittest discover -s scripts -p 'test_*.py'
