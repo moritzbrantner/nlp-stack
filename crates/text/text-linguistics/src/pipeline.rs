@@ -602,6 +602,8 @@ fn analyze_text_with_config_and_labeler(
     let dependency_parser = DependencyParser;
     let dependencies = dependency_parser.parse_document(&sentences, &tokens, &pos);
     let heuristic_entities = extract_named_entities(text, &sentences, &tokens, &pos);
+    let used_entity_model = entity_labeler.is_some()
+        || options.entity_recognition.mode == EntityRecognitionMode::LocalModel;
     let entities = if let Some(entity_labeler) = entity_labeler {
         entities_with_model_labeler(
             text,
@@ -674,6 +676,7 @@ fn analyze_text_with_config_and_labeler(
         &tokenizer,
         alignments.as_ref(),
         config.prefer_model_backends,
+        used_entity_model,
     );
 
     Ok(LinguisticAnalysis {
@@ -774,9 +777,12 @@ fn model_runtime_error(error: model_runtime::ModelRuntimeError) -> DetectError {
         }
         model_runtime::ModelRuntimeError::Source(message) => DetectError::Source(message),
         model_runtime::ModelRuntimeError::Io(error) => DetectError::Io(error),
-        model_runtime::ModelRuntimeError::Cancelled => {
-            DetectError::Source("model operation cancelled".to_string())
-        }
+        // Registry 0.1.1 and the pinned workspace source share the stable
+        // variants above, while the workspace source also reports cancellation.
+        // Its Display text is "model operation cancelled". Preserve that message
+        // (and other upstream error details) without weakening the feature checks
+        // for either dependency graph.
+        other => DetectError::Source(other.to_string()),
     }
 }
 
@@ -823,9 +829,14 @@ fn analysis_provenance(
     tokenizer: &TokenizerSelection,
     alignments: Option<&TokenAlignmentMap>,
     prefer_model_backends: bool,
+    used_entity_model: bool,
 ) -> AnnotationProvenance {
-    if alignments.is_some() || (prefer_model_backends && tokenizer.source.is_some()) {
-        AnnotationProvenance::Tokenizer
+    // Entities from a sequence-labeling model make the analysis model-derived too.
+    if used_entity_model
+        || alignments.is_some()
+        || (prefer_model_backends && tokenizer.source.is_some())
+    {
+        AnnotationProvenance::Model
     } else {
         AnnotationProvenance::Heuristic
     }

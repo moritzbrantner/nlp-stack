@@ -416,6 +416,8 @@ fn model_labeler_entities_replace_capitalization_guesses() {
         .entities
         .iter()
         .any(|entity| entity.entity_type == EntityType::Date));
+    // Model-labeled entities make the analysis model-derived even with heuristic options.
+    assert_eq!(analysis.provenance, AnnotationProvenance::Model);
 }
 
 #[test]

@@ -121,7 +121,7 @@ impl TextEmbeddingBackend for ImportedSemanticEmbedder {
     fn metadata(&self) -> TextEmbeddingMetadata {
         TextEmbeddingMetadata {
             backend: TextEmbeddingBackendKind::External,
-            provenance: AnnotationProvenance::Derived,
+            provenance: AnnotationProvenance::Imported,
             model_name: Some(self.model_name.clone()),
             dimensions: Some(self.dimensions),
         }

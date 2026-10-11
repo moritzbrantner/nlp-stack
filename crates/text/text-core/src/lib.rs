@@ -298,22 +298,22 @@ impl From<f32> for AnnotationConfidence {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-/// Variants describing annotation provenance.
+/// Semantic origin of an annotation.
+///
+/// Concrete runtime or backend facts (ONNX, Candle, CUDA, tokenizer bundles,
+/// external services) belong to the producing capability's execution
+/// metadata, not to this enum.
 pub enum AnnotationProvenance {
-    /// The heuristic variant.
+    /// Directly observed in the source data without interpretation.
+    Observed,
+    /// Produced by deterministic rules or heuristics.
     Heuristic,
-    /// The tokenizer variant.
-    Tokenizer,
-    /// The ONNX variant.
-    Onnx,
-    /// The candle variant.
-    Candle,
-    /// The cuda oxide variant.
-    CudaOxide,
-    /// The external variant.
-    External,
-    /// The derived variant.
+    /// Produced by a learned model (including model tokenizers).
+    Model,
+    /// Computed from other annotations or values.
     Derived,
+    /// Supplied from outside the process and taken over as-is.
+    Imported,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1015,7 +1015,7 @@ pub fn build_annotation_graph_from_parts(
 
     TextAnnotationGraph {
         text: text.to_string(),
-        provenance: AnnotationProvenance::Tokenizer,
+        provenance: AnnotationProvenance::Heuristic,
         confidence: AnnotationConfidence::default(),
         tokens: annotated_tokens,
         sentences: annotated_sentences,
@@ -1532,7 +1532,7 @@ mod tests {
         assert_eq!(graph.tokens.len(), 8);
         assert_eq!(graph.sentences.len(), 2);
         assert_eq!(graph.paragraphs.len(), 2);
-        assert_eq!(graph.provenance, AnnotationProvenance::Tokenizer);
+        assert_eq!(graph.provenance, AnnotationProvenance::Heuristic);
         assert!(graph.confidence.get() > 0.0);
 
         let first_sentence = &graph.sentences[0];
