@@ -37,6 +37,8 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_*.py'
       - name: Format
         run: cargo fmt --all -- --check
+      - name: Model feature compatibility
+        run: scripts/check-model-feature-compatibility.sh registry
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Reclaim space after lint
