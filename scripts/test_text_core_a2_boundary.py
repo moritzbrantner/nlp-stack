@@ -56,6 +56,7 @@ class TextCoreA2BoundaryTests(unittest.TestCase):
             "pub struct TextDocumentContract {}\npub struct TextSegmentContract {}\n",
             encoding="utf-8",
         )
+        self._write_provenance(root, self.SEMANTIC_PROVENANCE_ENUM)
         self._write_debt(
             root,
             dependencies=["media-core"],
@@ -69,6 +70,112 @@ class TextCoreA2BoundaryTests(unittest.TestCase):
 
     def test_current_repository_matches_exact_a2_debt_ledger(self) -> None:
         self.assertEqual(check_contract(REPOSITORY_ROOT), [])
+
+    SEMANTIC_PROVENANCE_ENUM = (
+        "#[derive(Debug, Clone, Copy, PartialEq, Eq)]\n"
+        "/// Variants describing annotation provenance.\n"
+        "pub enum AnnotationProvenance {\n"
+        "    /// Directly observed.\n"
+        "    Observed,\n"
+        "    Heuristic,\n"
+        "    Model,\n"
+        "    Derived,\n"
+        "    Imported,\n"
+        "}\n"
+    )
+
+    def _write_provenance(self, root: Path, source: str) -> None:
+        provenance = root / "crates" / "text" / "text-core" / "src" / "provenance.rs"
+        provenance.write_text(source, encoding="utf-8")
+
+    def test_current_repository_provenance_is_semantic(self) -> None:
+        errors = check_contract(REPOSITORY_ROOT)
+        self.assertFalse(
+            [error for error in errors if "AnnotationProvenance" in error],
+            errors,
+        )
+
+    def test_semantic_provenance_set_is_accepted(self) -> None:
+        temporary, root = self._fixture()
+        self.addCleanup(temporary.cleanup)
+        self._write_provenance(root, self.SEMANTIC_PROVENANCE_ENUM)
+
+        self.assertEqual(check_contract(root), [])
+
+    def test_runtime_provenance_variants_are_rejected(self) -> None:
+        for variant in (
+            "Onnx",
+            "Candle",
+            "CudaOxide",
+            "Cuda",
+            "Tokenizer",
+            "Wgpu",
+            "Metal",
+            "External",
+            "TensorRt",
+        ):
+            with self.subTest(variant):
+                temporary, root = self._fixture()
+                self.addCleanup(temporary.cleanup)
+                self._write_provenance(
+                    root,
+                    self.SEMANTIC_PROVENANCE_ENUM.replace(
+                        "    Imported,\n",
+                        f"    Imported,\n    /// Runtime-specific.\n    {variant},\n",
+                    ),
+                )
+
+                errors = check_contract(root)
+                self.assertTrue(
+                    any(
+                        error.startswith(
+                            "text-core AnnotationProvenance contains concrete "
+                            "runtime/backend variants"
+                        )
+                        and variant in error
+                        for error in errors
+                    ),
+                    errors,
+                )
+
+    def test_missing_or_non_public_provenance_enum_is_rejected(self) -> None:
+        missing = (
+            "text-core must define `pub enum AnnotationProvenance` with the semantic "
+            "variants; no matching definition found"
+        )
+        sources = {
+            "deleted": None,
+            "renamed": self.SEMANTIC_PROVENANCE_ENUM.replace(
+                "AnnotationProvenance", "AnnotationOrigin"
+            ),
+            "non-public": self.SEMANTIC_PROVENANCE_ENUM.replace("pub enum", "enum"),
+        }
+        for label, source in sources.items():
+            with self.subTest(label):
+                temporary, root = self._fixture()
+                self.addCleanup(temporary.cleanup)
+                provenance = root / "crates" / "text" / "text-core" / "src" / "provenance.rs"
+                if source is None:
+                    provenance.unlink()
+                else:
+                    provenance.write_text(source, encoding="utf-8")
+
+                self.assertIn(missing, check_contract(root))
+
+    def test_unapproved_or_missing_semantic_variants_are_rejected(self) -> None:
+        temporary, root = self._fixture()
+        self.addCleanup(temporary.cleanup)
+        self._write_provenance(
+            root,
+            self.SEMANTIC_PROVENANCE_ENUM.replace("    Imported,\n", "    Guessed,\n"),
+        )
+
+        self.assertIn(
+            "text-core AnnotationProvenance must have exactly the semantic variants "
+            "Derived, Heuristic, Imported, Model, Observed; unexpected Guessed; "
+            "missing Imported",
+            check_contract(root),
+        )
 
     def test_new_dependency_is_rejected(self) -> None:
         temporary, root = self._fixture()
