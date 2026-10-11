@@ -26,7 +26,10 @@ jobs:
         with:
           bun-version: "1.3.14"
       - name: Install wasm-pack
-        run: cargo install wasm-pack --locked --version 0.14.0
+        uses: moritzbrantner/reusable-workflows/.github/actions/install-verified-wasm-cli@e60855ad67f3dad72c283c355d544d6d296241d7
+        with:
+          tool: wasm-pack
+          version: "0.14.0"
       - name: Install Bun workspace
         run: bun install --frozen-lockfile
       - name: Ownership and release validators
