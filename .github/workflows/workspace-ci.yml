@@ -38,7 +38,7 @@ jobs:
       - name: Format
         run: cargo fmt --all -- --check
       - name: Model feature compatibility
-        run: scripts/check-model-feature-compatibility.sh registry
+        run: bash scripts/check-model-feature-compatibility.sh registry
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Reclaim space after lint
