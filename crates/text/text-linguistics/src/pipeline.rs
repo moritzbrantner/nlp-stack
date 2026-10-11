@@ -825,7 +825,7 @@ fn analysis_provenance(
     prefer_model_backends: bool,
 ) -> AnnotationProvenance {
     if alignments.is_some() || (prefer_model_backends && tokenizer.source.is_some()) {
-        AnnotationProvenance::Tokenizer
+        AnnotationProvenance::Model
     } else {
         AnnotationProvenance::Heuristic
     }
