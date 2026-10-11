@@ -112,10 +112,12 @@ def _provenance_variants(content: str) -> set[str] | None:
 
 def check_semantic_provenance(src: Path) -> list[str]:
     errors: list[str] = []
+    found = False
     for path in sorted(src.rglob("*.rs")):
         variants = _provenance_variants(path.read_text(encoding="utf-8"))
         if variants is None:
             continue
+        found = True
         runtime_variants = sorted(
             name for name in variants if RUNTIME_PROVENANCE_PATTERN.search(name)
         )
@@ -132,6 +134,12 @@ def check_semantic_provenance(src: Path) -> list[str]:
                 + f"; unexpected {', '.join(sorted(variants - SEMANTIC_PROVENANCE_VARIANTS)) or '<none>'}"
                 + f"; missing {', '.join(sorted(SEMANTIC_PROVENANCE_VARIANTS - variants)) or '<none>'}"
             )
+    if not found:
+        # A deleted, renamed or non-public enum must not silently skip the guard.
+        errors.append(
+            "text-core must define `pub enum AnnotationProvenance` with the semantic "
+            "variants; no matching definition found"
+        )
     return errors
 
 

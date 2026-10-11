@@ -56,6 +56,7 @@ class TextCoreA2BoundaryTests(unittest.TestCase):
             "pub struct TextDocumentContract {}\npub struct TextSegmentContract {}\n",
             encoding="utf-8",
         )
+        self._write_provenance(root, self.SEMANTIC_PROVENANCE_ENUM)
         self._write_debt(
             root,
             dependencies=["media-core"],
@@ -136,6 +137,30 @@ class TextCoreA2BoundaryTests(unittest.TestCase):
                     ),
                     errors,
                 )
+
+    def test_missing_or_non_public_provenance_enum_is_rejected(self) -> None:
+        missing = (
+            "text-core must define `pub enum AnnotationProvenance` with the semantic "
+            "variants; no matching definition found"
+        )
+        sources = {
+            "deleted": None,
+            "renamed": self.SEMANTIC_PROVENANCE_ENUM.replace(
+                "AnnotationProvenance", "AnnotationOrigin"
+            ),
+            "non-public": self.SEMANTIC_PROVENANCE_ENUM.replace("pub enum", "enum"),
+        }
+        for label, source in sources.items():
+            with self.subTest(label):
+                temporary, root = self._fixture()
+                self.addCleanup(temporary.cleanup)
+                provenance = root / "crates" / "text" / "text-core" / "src" / "provenance.rs"
+                if source is None:
+                    provenance.unlink()
+                else:
+                    provenance.write_text(source, encoding="utf-8")
+
+                self.assertIn(missing, check_contract(root))
 
     def test_unapproved_or_missing_semantic_variants_are_rejected(self) -> None:
         temporary, root = self._fixture()
