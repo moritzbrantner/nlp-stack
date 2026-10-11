@@ -777,9 +777,12 @@ fn model_runtime_error(error: model_runtime::ModelRuntimeError) -> DetectError {
         }
         model_runtime::ModelRuntimeError::Source(message) => DetectError::Source(message),
         model_runtime::ModelRuntimeError::Io(error) => DetectError::Io(error),
-        model_runtime::ModelRuntimeError::Cancelled => {
-            DetectError::Source("model operation cancelled".to_string())
-        }
+        // Registry 0.1.1 and the pinned workspace source share the stable
+        // variants above, while the workspace source also reports cancellation.
+        // Its Display text is "model operation cancelled". Preserve that message
+        // (and other upstream error details) without weakening the feature checks
+        // for either dependency graph.
+        other => DetectError::Source(other.to_string()),
     }
 }
 
