@@ -41,6 +41,23 @@ FORBIDDEN_KERNEL_FRAMEWORK_TYPES = {
     "TextPipelineBuilder",
 }
 
+# Core provenance is semantic (docs/ARCHITECTURE.md). Concrete execution
+# facts (runtime, backend, device, tokenizer, model id) belong to the producing
+# capability's execution metadata, never to `AnnotationProvenance`.
+SEMANTIC_PROVENANCE_VARIANTS = {"Observed", "Heuristic", "Model", "Derived", "Imported"}
+RUNTIME_PROVENANCE_PATTERN = re.compile(
+    r"onnx|candle|cuda|tokenizer|wgpu|metal|external|tensorrt|openvino|coreml"
+    r"|vulkan|gpu|torch|ggml|llama|mlx|directml|rocm",
+    re.IGNORECASE,
+)
+PROVENANCE_ENUM_PATTERN = re.compile(
+    r"\bpub\s+enum\s+AnnotationProvenance\s*\{(?P<body>[^}]*)\}", re.DOTALL
+)
+LINE_COMMENT_PATTERN = re.compile(r"//[^\n]*")
+BLOCK_COMMENT_PATTERN = re.compile(r"/\*.*?\*/", re.DOTALL)
+ATTRIBUTE_PATTERN = re.compile(r"#\[[^\]]*\]")
+VARIANT_NAME_PATTERN = re.compile(r"^\s*(?:r#)?([A-Za-z_][A-Za-z0-9_]*)")
+
 CONTRACT_PATTERN = re.compile(
     r"\bpub\s+struct\s+([A-Za-z_][A-Za-z0-9_]*Contract)\b"
 )
@@ -76,6 +93,46 @@ def _forbidden_framework_names(content: str) -> set[str]:
     for use_tree in PUBLIC_USE_PATTERN.findall(content):
         exposed.update(IDENTIFIER_PATTERN.findall(use_tree))
     return exposed & FORBIDDEN_KERNEL_FRAMEWORK_TYPES
+
+
+def _provenance_variants(content: str) -> set[str] | None:
+    match = PROVENANCE_ENUM_PATTERN.search(content)
+    if match is None:
+        return None
+    body = BLOCK_COMMENT_PATTERN.sub("", match.group("body"))
+    body = LINE_COMMENT_PATTERN.sub("", body)
+    body = ATTRIBUTE_PATTERN.sub("", body)
+    variants: set[str] = set()
+    for chunk in body.split(","):
+        name = VARIANT_NAME_PATTERN.match(chunk)
+        if name:
+            variants.add(name.group(1))
+    return variants
+
+
+def check_semantic_provenance(src: Path) -> list[str]:
+    errors: list[str] = []
+    for path in sorted(src.rglob("*.rs")):
+        variants = _provenance_variants(path.read_text(encoding="utf-8"))
+        if variants is None:
+            continue
+        runtime_variants = sorted(
+            name for name in variants if RUNTIME_PROVENANCE_PATTERN.search(name)
+        )
+        if runtime_variants:
+            errors.append(
+                "text-core AnnotationProvenance contains concrete runtime/backend "
+                "variants (move them to capability execution metadata): "
+                + ", ".join(runtime_variants)
+            )
+        if variants != SEMANTIC_PROVENANCE_VARIANTS:
+            errors.append(
+                "text-core AnnotationProvenance must have exactly the semantic variants "
+                + ", ".join(sorted(SEMANTIC_PROVENANCE_VARIANTS))
+                + f"; unexpected {', '.join(sorted(variants - SEMANTIC_PROVENANCE_VARIANTS)) or '<none>'}"
+                + f"; missing {', '.join(sorted(SEMANTIC_PROVENANCE_VARIANTS - variants)) or '<none>'}"
+            )
+    return errors
 
 
 def _display_paths(paths: set[Path]) -> str:
@@ -176,6 +233,8 @@ def check_contract(root: Path) -> list[str]:
 
         for type_name in _forbidden_framework_names(content):
             forbidden_framework_locations.setdefault(type_name, set()).add(relative)
+
+    errors.extend(check_semantic_provenance(src))
 
     if forbidden_framework_locations:
         details = ", ".join(
