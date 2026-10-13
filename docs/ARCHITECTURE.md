@@ -161,6 +161,14 @@ A bridge crate is justified only when there is substantial reusable semantic tra
 
 Semantic-map outputs describe what supplied material expresses or relates; they do not assert world truth. Downstream epistemic consumers such as `belief-lab` may reference these source-relative objects when normalizing propositions and evaluating support, contradiction, and belief.
 
+### Source-grounded claim candidates
+
+Owner-approved direction (2026-10-13): `nlp-stack` should extract **claim candidates** from supplied natural language as source-relative linguistic observations. Each candidate must carry the exact original passage and source-local provenance. When the source explicitly attributes a claim to someone, extraction should preserve that reported attribution rather than presenting it as an independently established fact about that person.
+
+For example, from "John believes that electric cars are worse for the environment than gasoline cars," the output should identify "electric cars are worse for the environment than gasoline cars" as a claim candidate, retain the original sentence as evidence, and report the explicit textual attribution to "John." This does **not** establish whether John actually believes it or whether the claim is true.
+
+Keep this a typed linguistic/semantic capability, with execution/model policy outside semantic requests. `nlp-stack` does not turn claim candidates into durable cross-source propositions, adjudicate world truth, or assign verified person-level beliefs; those responsibilities remain with downstream epistemic consumers. Inferring implicit beliefs or claim-to-claim entailment/contradiction is not authorized by this decision and requires separate scope. This decision does not prescribe a new crate, an extraction model, or a scoring scheme.
+
 Timeline, hotspot, graph, dimensionality-reduction, speaker, and comparison surfaces are projections over semantic-map state rather than the canonical identity model. Existing report and workbench structures remain valid baseline behavior and may migrate incrementally.
 
 ## Registry and adapters
