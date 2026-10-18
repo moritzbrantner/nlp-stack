@@ -782,6 +782,8 @@ fn model_runtime_error(error: model_runtime::ModelRuntimeError) -> DetectError {
         // Its Display text is "model operation cancelled". Preserve that message
         // (and other upstream error details) without weakening the feature checks
         // for either dependency graph.
+        #[allow(unreachable_patterns)]
+        // Registry has only the stable variants; source mode adds cancellation.
         other => DetectError::Source(other.to_string()),
     }
 }
