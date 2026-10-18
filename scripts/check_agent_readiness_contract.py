@@ -6,12 +6,10 @@ import json
 from pathlib import Path
 
 REQUIRED_CONVENTION_REFS = {
-    "AGENT-001",
+    "PRINCIPLE-001",
     "AGENT-003",
-    "AGENT-007",
-    "AGENT-008",
+    "PRINCIPLE-003",
     "AGENT-009",
-    "TEST-002",
     "TEST-005",
     "TEST-006",
     "TEST-007",
