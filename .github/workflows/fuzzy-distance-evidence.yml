@@ -40,7 +40,7 @@ jobs:
           print(report["native_test_output"])
           print(json.dumps(report["summary"], indent=2))
           PY
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: fuzzy-distance-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ runner.temp }}/fuzzy-distance.json
@@ -129,7 +129,7 @@ jobs:
           (root / "fuzzy-search-regressions.json").write_text(json.dumps(report, indent=2) + "\n")
           print("Confirmed six original failures, one passing control, and all seven passing after repair in memory and SQLite builds.")
           PY
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: fuzzy-search-regressions-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ runner.temp }}/fuzzy-search-regressions.json
@@ -156,7 +156,7 @@ jobs:
           export CARGO_TARGET_DIR="$RUNNER_TEMP/lexical-vector-target"
           python3 scripts/benchmark_lexical_vectors.py --iterations 10 --samples 5 \
             --output "$RUNNER_TEMP/lexical-vectors.json"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: lexical-vectors-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ runner.temp }}/lexical-vectors.json
