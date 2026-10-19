@@ -10,8 +10,8 @@
       "version": "0.1.0",
       "devDependencies": {
         "@testing-library/react": "16.3.3",
-        "@types/react": "^19.2.14",
-        "@types/react-dom": "^19.2.3",
+        "@types/react": "19.3.0",
+        "@types/react-dom": "19.3.0",
         "jsdom": "27.4.0",
         "react": "19.3.1",
         "react-dom": "19.3.1",
@@ -35,8 +35,8 @@
         "vite": "^7.3.0",
       },
       "devDependencies": {
-        "@types/react": "^19.2.14",
-        "@types/react-dom": "^19.2.3",
+        "@types/react": "19.3.0",
+        "@types/react-dom": "19.3.0",
         "autoprefixer": "10.6.1",
         "postcss": "8.5.31",
         "tailwindcss": "3.4.19",
@@ -66,8 +66,8 @@
         "vite": "^7.3.0",
       },
       "devDependencies": {
-        "@types/react": "^19.2.14",
-        "@types/react-dom": "^19.2.3",
+        "@types/react": "19.3.0",
+        "@types/react-dom": "19.3.0",
         "autoprefixer": "10.6.1",
         "postcss": "8.5.31",
         "tailwindcss": "3.4.19",
@@ -90,8 +90,8 @@
         "vite": "^7.3.0",
       },
       "devDependencies": {
-        "@types/react": "^19.2.14",
-        "@types/react-dom": "^19.2.3",
+        "@types/react": "19.3.0",
+        "@types/react-dom": "19.3.0",
         "autoprefixer": "10.6.1",
         "postcss": "8.5.31",
         "tailwindcss": "3.4.19",
@@ -114,8 +114,8 @@
         "vite": "^7.3.0",
       },
       "devDependencies": {
-        "@types/react": "^19.2.14",
-        "@types/react-dom": "^19.2.3",
+        "@types/react": "19.3.0",
+        "@types/react-dom": "19.3.0",
         "autoprefixer": "10.6.1",
         "postcss": "8.5.31",
         "tailwindcss": "3.4.19",
@@ -138,8 +138,8 @@
         "vite": "^7.3.0",
       },
       "devDependencies": {
-        "@types/react": "^19.2.14",
-        "@types/react-dom": "^19.2.3",
+        "@types/react": "19.3.0",
+        "@types/react-dom": "19.3.0",
         "autoprefixer": "10.6.1",
         "postcss": "8.5.31",
         "tailwindcss": "3.4.19",
@@ -158,8 +158,8 @@
         "vite": "^7.3.0",
       },
       "devDependencies": {
-        "@types/react": "^19.2.14",
-        "@types/react-dom": "^19.2.3",
+        "@types/react": "19.3.0",
+        "@types/react-dom": "19.3.0",
         "autoprefixer": "10.6.1",
         "postcss": "8.5.31",
         "tailwindcss": "3.4.19",
@@ -186,8 +186,8 @@
         "vite": "^7.3.0",
       },
       "devDependencies": {
-        "@types/react": "^19.2.14",
-        "@types/react-dom": "^19.2.3",
+        "@types/react": "19.3.0",
+        "@types/react-dom": "19.3.0",
         "autoprefixer": "10.6.1",
         "postcss": "8.5.31",
         "tailwindcss": "3.4.19",
@@ -210,8 +210,8 @@
         "vite": "^7.3.0",
       },
       "devDependencies": {
-        "@types/react": "^19.2.14",
-        "@types/react-dom": "^19.2.3",
+        "@types/react": "19.3.0",
+        "@types/react-dom": "19.3.0",
         "autoprefixer": "10.6.1",
         "postcss": "8.5.31",
         "tailwindcss": "3.4.19",
@@ -234,8 +234,8 @@
         "vite": "^7.3.0",
       },
       "devDependencies": {
-        "@types/react": "^19.2.14",
-        "@types/react-dom": "^19.2.3",
+        "@types/react": "19.3.0",
+        "@types/react-dom": "19.3.0",
         "autoprefixer": "10.6.1",
         "postcss": "8.5.31",
         "tailwindcss": "3.4.19",
@@ -258,8 +258,8 @@
         "vite": "^7.3.0",
       },
       "devDependencies": {
-        "@types/react": "^19.2.14",
-        "@types/react-dom": "^19.2.3",
+        "@types/react": "19.3.0",
+        "@types/react-dom": "19.3.0",
         "autoprefixer": "10.6.1",
         "postcss": "8.5.31",
         "tailwindcss": "3.4.19",
@@ -282,8 +282,8 @@
         "vite": "^7.3.0",
       },
       "devDependencies": {
-        "@types/react": "^19.2.14",
-        "@types/react-dom": "^19.2.3",
+        "@types/react": "19.3.0",
+        "@types/react-dom": "19.3.0",
         "autoprefixer": "10.6.1",
         "postcss": "8.5.31",
         "tailwindcss": "3.4.19",
@@ -306,8 +306,8 @@
         "vite": "^7.3.0",
       },
       "devDependencies": {
-        "@types/react": "^19.2.14",
-        "@types/react-dom": "^19.2.3",
+        "@types/react": "19.3.0",
+        "@types/react-dom": "19.3.0",
         "autoprefixer": "10.6.1",
         "postcss": "8.5.31",
         "tailwindcss": "3.4.19",
@@ -330,8 +330,8 @@
         "vite": "^7.3.0",
       },
       "devDependencies": {
-        "@types/react": "^19.2.14",
-        "@types/react-dom": "^19.2.3",
+        "@types/react": "19.3.0",
+        "@types/react-dom": "19.3.0",
         "autoprefixer": "10.6.1",
         "postcss": "8.5.31",
         "tailwindcss": "3.4.19",
@@ -606,9 +606,9 @@
 
     "@types/estree": ["@types/estree@1.0.9", "", {}, "sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg=="],
 
-    "@types/react": ["@types/react@19.2.18", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-AnzbBERsrLKtk2XSfTbYRLjQPdy116Sty4q+T+Bp3IC4l6jNBvreVPAHmpq9qhXQM7CXZPjLVmGMw9sy+hxQ3w=="],
+    "@types/react": ["@types/react@19.3.0", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg=="],
 
-    "@types/react-dom": ["@types/react-dom@19.2.4", "", { "peerDependencies": { "@types/react": "^19.2.0" } }, "sha512-Bsc+QHgp+P/F02XDzNCY9jnZNCUuLki36KT7VKrTXXLdHf+vHMNZnW1rVu5DNW/rCK+fya3DATySbLM4yhtKUw=="],
+    "@types/react-dom": ["@types/react-dom@19.3.0", "", { "peerDependencies": { "@types/react": "^19.3.0" } }, "sha512-ZI7bU42mZXXKHn/qNLEw2IrbiINU7X5+vfgdixBHkCNpYWXjKgfQ/P+uyGb5CjOLB9UcnTeg3rylQtV2hym44Q=="],
 
     "@vitejs/plugin-react": ["@vitejs/plugin-react@5.2.0", "", { "dependencies": { "@babel/core": "^7.29.0", "@babel/plugin-transform-react-jsx-self": "^7.27.1", "@babel/plugin-transform-react-jsx-source": "^7.27.1", "@rolldown/pluginutils": "1.0.0-rc.3", "@types/babel__core": "^7.20.5", "react-refresh": "^0.18.0" }, "peerDependencies": { "vite": "^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0" } }, "sha512-YmKkfhOAi3wsB1PhJq5Scj3GXMn3WvtQ/JC0xoopuHoXSdmtdStOpFrYaT1kie2YgFBcIe64ROzMYRjCrYOdYw=="],
 
