@@ -17,6 +17,7 @@ jobs:
       environment-validation: ${{ steps.scope.outputs.environment-validation }}
       pages-validation: ${{ steps.scope.outputs.pages-validation }}
       allow-skipped: ${{ steps.scope.outputs.allow-skipped }}
+      docs-only: ${{ steps.scope.outputs.docs-only }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -54,6 +55,7 @@ jobs:
           if pr:
               raw = subprocess.check_output(["git", "diff", "--no-renames", "--name-only", "-z", os.environ["BASE_SHA"] + "..." + os.environ["HEAD_SHA"]])
               paths = [path for path in raw.decode().split("\0") if path]
+          docs_only = pr and bool(paths) and all(path.endswith(".md") for path in paths)
           selected = {}
           for job, spec in specs.items():
               active = pr
@@ -70,9 +72,15 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               for job, active in selected.items():
                   print(f"{job}={str(active).lower()}", file=output)
-              print("allow-skipped=" + json.dumps([job for job, active in selected.items() if not active]), file=output)
+              skipped = [job for job, active in selected.items() if not active]
+              if docs_only:
+                  skipped.extend(["verify"])
+              print("allow-skipped=" + json.dumps(skipped), file=output)
+              print("docs-only=" + str(docs_only).lower(), file=output)
 
   verify:
+    needs: validation-scope
+    if: needs.validation-scope.outputs.docs-only != 'true'
     runs-on: ubuntu-latest
     env:
       CARGO_INCREMENTAL: 0
