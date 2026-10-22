@@ -18,17 +18,17 @@ keywords = ["text", "nlp", "language", "analysis", "retrieval"]
 categories = ["text-processing", "science", "algorithms"]
 
 [workspace.dependencies]
-candle-core = "0.10.2"
-candle-nn = "0.10.2"
-candle-transformers = "0.10.2"
+candle-core = "0.11.0"
+candle-nn = "0.11.0"
+candle-transformers = "0.11.0"
 clap = { version = "4.5.51", features = ["derive"] }
-criterion = "0.5.1"
-rusqlite = "0.32.1"
+criterion = "0.8.0"
+rusqlite = "0.40.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 tempfile = "3.23.0"
 thiserror = "2.0.17"
-tokenizers = { version = "0.22.2", default-features = false, features = ["unstable_wasm"] }
+tokenizers = { version = "0.23.0", default-features = false, features = ["unstable_wasm"] }
 unicode-casefold = "0.2.0"
 unicode-normalization = "0.1.24"
 unicode-segmentation = "1.12.0"

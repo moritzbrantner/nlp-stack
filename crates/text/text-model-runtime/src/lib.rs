@@ -731,7 +731,14 @@ fn load_tokenizer(path: &Path) -> Result<tokenizers::Tokenizer> {
         let cls_id = *vocab.get("[CLS]").unwrap_or(&101);
         let sep_id = *vocab.get("[SEP]").unwrap_or(&102);
         let mut tokenizer = tokenizers::Tokenizer::new(model);
-        tokenizer.with_normalizer(Some(bert_normalizer_for_vocab(path)));
+        tokenizer
+            .with_normalizer(Some(bert_normalizer_for_vocab(path)))
+            .map_err(|err| {
+                DetectError::Source(format!(
+                    "failed to configure tokenizer normalizer for `{}`: {err}",
+                    path.display()
+                ))
+            })?;
         tokenizer.with_pre_tokenizer(Some(tokenizers::pre_tokenizers::bert::BertPreTokenizer));
         tokenizer.with_post_processor(Some(tokenizers::processors::bert::BertProcessing::new(
             ("[SEP]".to_string(), sep_id),
