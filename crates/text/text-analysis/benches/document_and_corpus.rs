@@ -1,5 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use runtime_core::{OperationId, SurfaceRequest};
+use std::hint::black_box;
 use text_analysis::semantic::{
     analyze_document_semantics, analyze_document_semantics_with, compare_semantic_neighborhoods,
     SemanticAnalysisOptions,

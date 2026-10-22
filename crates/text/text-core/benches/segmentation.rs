@@ -1,4 +1,5 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
 use text_core::{
     build_annotation_graph, detailed_text_stats, split_sentence_spans, tokenize,
     TextProcessingOptions,
