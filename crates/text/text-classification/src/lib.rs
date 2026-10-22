@@ -1,19 +1,22 @@
 #![doc = include_str!("../README.md")]
 
+mod models;
 pub mod surface;
+#[cfg(any(feature = "candle", feature = "onnx"))]
+mod tokenizer;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
+#[cfg(feature = "candle")]
+pub use models::CandleSequenceClassifier;
+#[cfg(feature = "onnx")]
+pub use models::OnnxZeroShotClassifier;
+pub use models::{PairSequenceClassifier, RawPrediction, SequenceClassifier};
 use serde::{Deserialize, Serialize};
 use text_core::tokenize_words;
 use text_core::{DetectError, Result};
 use text_lexical::{sentiment as lexical_sentiment, SentimentLexicon};
-#[cfg(all(feature = "candle", feature = "model-bundles"))]
-use text_model_runtime::CandleSequenceClassifier;
-#[cfg(all(feature = "onnx", feature = "model-bundles"))]
-use text_model_runtime::OnnxZeroShotClassifier;
-use text_model_runtime::{PairSequenceClassifier, SequenceClassifier, TextRuntimeBackend};
 
 /// Text classification capability families exposed by this crate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -367,7 +370,7 @@ pub fn classify_text_with_context(
         .clone()
         .unwrap_or_else(|| "distilbert-sst2".to_string());
     if let Some(classifier) = context.classifier.as_deref_mut() {
-        let runtime = runtime_from_backend(classifier.runtime_backend());
+        let runtime = classifier.runtime();
         let raw = classifier.classify_text(&request.text, &request.labels)?;
         return Ok(TextClassificationResponse {
             accepted: true,
@@ -403,7 +406,7 @@ pub fn analyze_sentiment_with_context(
             .into_iter()
             .map(str::to_string)
             .collect::<Vec<_>>();
-        let runtime = runtime_from_backend(classifier.runtime_backend());
+        let runtime = classifier.runtime();
         let predictions = class_predictions_from_raw(
             classifier.classify_text(&request.text, &labels)?,
             labels.len(),
@@ -458,7 +461,7 @@ pub fn zero_shot_classify_with_context(
         .map(|label| request.hypothesis_template.replace("{}", label))
         .collect::<Vec<_>>();
     if let Some(pair_classifier) = context.pair_classifier.as_deref_mut() {
-        let runtime = runtime_from_backend(pair_classifier.runtime_backend());
+        let runtime = pair_classifier.runtime();
         let mut predictions = pair_classifier
             .classify_pairs(&request.text, &hypotheses)?
             .into_iter()
@@ -711,7 +714,7 @@ fn should_run_local_model(options: &Option<TextClassificationLocalModelOptions>)
 fn run_local_classification(
     request: &TextClassificationRequest,
 ) -> Result<TextClassificationResponse> {
-    #[cfg(all(feature = "candle", feature = "model-bundles"))]
+    #[cfg(feature = "candle")]
     {
         let model_id = local_model_id(
             request.local_model.as_ref(),
@@ -737,7 +740,7 @@ fn run_local_classification(
             predictions,
         })
     }
-    #[cfg(not(all(feature = "candle", feature = "model-bundles")))]
+    #[cfg(not(feature = "candle"))]
     {
         let _ = request;
         unsupported_runtime("local text classification requires the `local-models` feature")
@@ -745,7 +748,7 @@ fn run_local_classification(
 }
 
 fn run_local_sentiment(request: &SentimentRequest) -> Result<SentimentResponse> {
-    #[cfg(all(feature = "candle", feature = "model-bundles"))]
+    #[cfg(feature = "candle")]
     {
         let model_id = local_model_id(
             request.local_model.as_ref(),
@@ -783,7 +786,7 @@ fn run_local_sentiment(request: &SentimentRequest) -> Result<SentimentResponse> 
             predictions,
         })
     }
-    #[cfg(not(all(feature = "candle", feature = "model-bundles")))]
+    #[cfg(not(feature = "candle"))]
     {
         let _ = request;
         unsupported_runtime("local sentiment requires the `local-models` feature")
@@ -794,7 +797,7 @@ fn run_local_zero_shot(
     request: &ZeroShotClassificationRequest,
     hypotheses: Vec<String>,
 ) -> Result<ZeroShotClassificationResponse> {
-    #[cfg(all(feature = "onnx", feature = "model-bundles"))]
+    #[cfg(feature = "onnx")]
     {
         let model_id = local_model_id(
             request.local_model.as_ref(),
@@ -830,7 +833,7 @@ fn run_local_zero_shot(
             hypotheses,
         })
     }
-    #[cfg(not(all(feature = "onnx", feature = "model-bundles")))]
+    #[cfg(not(feature = "onnx"))]
     {
         let _ = (request, hypotheses);
         unsupported_runtime("local zero-shot classification requires the `local-models` feature")
@@ -849,7 +852,7 @@ fn local_model_id(
         .unwrap_or_else(|| default_model_id.to_string())
 }
 
-#[cfg(feature = "model-bundles")]
+#[cfg(any(feature = "candle", feature = "onnx"))]
 fn resolve_local_bundle(
     options: Option<&TextClassificationLocalModelOptions>,
     model_id: &str,
@@ -911,19 +914,8 @@ fn missing_model<T>(message: &str) -> Result<T> {
     )))
 }
 
-fn runtime_from_backend(backend: TextRuntimeBackend) -> TextClassificationRuntime {
-    match backend {
-        TextRuntimeBackend::Candle => TextClassificationRuntime::Candle,
-        TextRuntimeBackend::Onnx => TextClassificationRuntime::Onnx,
-        TextRuntimeBackend::External => TextClassificationRuntime::ImportedPredictions,
-        TextRuntimeBackend::Tokenizers
-        | TextRuntimeBackend::CudaOxide
-        | TextRuntimeBackend::Heuristic => TextClassificationRuntime::Lexical,
-    }
-}
-
 fn class_predictions_from_raw(
-    predictions: Vec<text_model_runtime::RawPrediction>,
+    predictions: Vec<RawPrediction>,
     top_k: usize,
 ) -> Vec<TextClassPrediction> {
     let imported = predictions
@@ -1082,7 +1074,6 @@ pub fn schema_summary() -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use text_model_runtime::{RawPrediction, TextRuntimeBackend};
 
     struct FakeClassifier;
 
@@ -1099,8 +1090,8 @@ mod tests {
                 .collect())
         }
 
-        fn runtime_backend(&self) -> TextRuntimeBackend {
-            TextRuntimeBackend::External
+        fn runtime(&self) -> TextClassificationRuntime {
+            TextClassificationRuntime::ImportedPredictions
         }
     }
 
@@ -1123,8 +1114,8 @@ mod tests {
                 .collect())
         }
 
-        fn runtime_backend(&self) -> TextRuntimeBackend {
-            TextRuntimeBackend::External
+        fn runtime(&self) -> TextClassificationRuntime {
+            TextClassificationRuntime::ImportedPredictions
         }
     }
 
@@ -1261,7 +1252,7 @@ mod tests {
         assert_eq!(classify.required_feature.as_deref(), Some("local-models"));
     }
 
-    #[cfg(all(feature = "onnx", feature = "model-bundles"))]
+    #[cfg(feature = "onnx")]
     #[test]
     fn zero_shot_local_model_respects_auto_download_false() {
         let temp = tempfile::tempdir().unwrap();

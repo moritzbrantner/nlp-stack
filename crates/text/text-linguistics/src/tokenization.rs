@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
 
-use text_core::Result;
-use text_core::{TextSpan, Token};
-pub use text_model_runtime::{
+pub use crate::model_tokenizer::{
     TokenizedText, TokenizerBundle, TokenizerDownloadOptions, TokenizerPreset, TokenizerSource,
     TruncationStrategy,
 };
+use text_core::Result;
+use text_core::{TextSpan, Token};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// Variants describing tokenization mode.

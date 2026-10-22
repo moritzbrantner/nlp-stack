@@ -23,13 +23,14 @@ serde_json.workspace = true
 text-embeddings.workspace = true
 text-index.workspace = true
 text-lexical.workspace = true
-text-model-runtime.workspace = true
 text-retrieval.workspace = true
 model-runtime = { workspace = true, optional = true }
+runtime-onnx = { workspace = true, optional = true }
+tokenizers = { workspace = true, optional = true }
 
 [features]
 default = []
-local-onnx = ["text-model-runtime/local-onnx", "dep:model-runtime"]
+local-onnx = ["dep:model-runtime", "dep:runtime-onnx", "runtime-onnx/onnxruntime", "dep:tokenizers"]
 external-tests = ["local-onnx"]
 
 [dev-dependencies]

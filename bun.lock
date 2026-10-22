@@ -246,30 +246,6 @@
       "name": "@moritzbrantner/text-linguistics-wasm",
       "version": "0.1.0",
     },
-    "packages/text-model-runtime-app": {
-      "name": "@moritzbrantner/text-model-runtime-app",
-      "version": "0.1.0",
-      "dependencies": {
-        "@moritzbrantner/nlp-app-ui": "workspace:*",
-        "@moritzbrantner/text-model-runtime-wasm": "workspace:*",
-        "@vitejs/plugin-react": "^5.1.2",
-        "react": "^19.2.5",
-        "react-dom": "^19.2.5",
-        "vite": "^7.3.0",
-      },
-      "devDependencies": {
-        "@types/react": "19.3.0",
-        "@types/react-dom": "19.3.0",
-        "autoprefixer": "10.6.1",
-        "postcss": "8.5.31",
-        "tailwindcss": "3.4.19",
-        "typescript": "6.0.3",
-      },
-    },
-    "packages/text-model-runtime-wasm": {
-      "name": "@moritzbrantner/text-model-runtime-wasm",
-      "version": "0.1.0",
-    },
     "packages/text-question-answering-app": {
       "name": "@moritzbrantner/text-question-answering-app",
       "version": "0.1.0",
@@ -509,10 +485,6 @@
     "@moritzbrantner/text-linguistics-app": ["@moritzbrantner/text-linguistics-app@workspace:packages/text-linguistics-app"],
 
     "@moritzbrantner/text-linguistics-wasm": ["@moritzbrantner/text-linguistics-wasm@workspace:packages/text-linguistics-wasm"],
-
-    "@moritzbrantner/text-model-runtime-app": ["@moritzbrantner/text-model-runtime-app@workspace:packages/text-model-runtime-app"],
-
-    "@moritzbrantner/text-model-runtime-wasm": ["@moritzbrantner/text-model-runtime-wasm@workspace:packages/text-model-runtime-wasm"],
 
     "@moritzbrantner/text-question-answering-app": ["@moritzbrantner/text-question-answering-app@workspace:packages/text-question-answering-app"],
 

@@ -3,7 +3,6 @@ fn health_endpoint_reports_wrapped_library() {
     let response = text_analysis_server::response_for("GET", "/health", "");
     assert_eq!(response.status_code, 200);
     assert!(response.body.contains("text-analysis"));
-    assert!(response.body.contains("candleDevice"));
 }
 
 #[test]

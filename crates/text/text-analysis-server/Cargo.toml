@@ -24,7 +24,6 @@ runtime-core.workspace = true
 clap.workspace = true
 serde_json.workspace = true
 text-analysis = { package = "moenarch-text-analysis", version = "=0.1.1", path = "../text-analysis", features = ["candle"] }
-text-model-runtime = { package = "moenarch-text-model-runtime", version = "=0.1.1", path = "../text-model-runtime", features = ["candle"] }
 [features]
 default = []
-cuda = ["text-analysis/cuda", "text-model-runtime/cuda"]
+cuda = ["text-analysis/cuda"]

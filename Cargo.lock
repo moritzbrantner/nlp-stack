@@ -1730,7 +1730,6 @@ dependencies = [
  "moenarch-text-index",
  "moenarch-text-lexical",
  "moenarch-text-linguistics",
- "moenarch-text-model-runtime",
  "moenarch-text-question-answering",
  "moenarch-text-retrieval",
  "moenarch-text-transcripts",
@@ -1850,7 +1849,6 @@ dependencies = [
  "clap",
  "moenarch-runtime-core",
  "moenarch-text-analysis",
- "moenarch-text-model-runtime",
  "serde_json",
 ]
 
@@ -1871,14 +1869,18 @@ dependencies = [
 name = "moenarch-text-classification"
 version = "0.1.1"
 dependencies = [
+ "candle-core",
+ "candle-nn",
+ "candle-transformers",
  "moenarch-model-runtime",
  "moenarch-runtime-core",
+ "moenarch-runtime-onnx",
  "moenarch-text-core",
  "moenarch-text-lexical",
- "moenarch-text-model-runtime",
  "serde",
  "serde_json",
  "tempfile",
+ "tokenizers 0.23.2",
 ]
 
 [[package]]
@@ -1975,7 +1977,6 @@ dependencies = [
  "moenarch-runtime-onnx",
  "moenarch-text-core",
  "moenarch-text-lexical",
- "moenarch-text-model-runtime",
  "moenarch-vector-analysis-core",
  "moenarch-vector-analysis-index",
  "serde",
@@ -2000,7 +2001,6 @@ dependencies = [
  "clap",
  "moenarch-runtime-core",
  "moenarch-text-embeddings",
- "moenarch-text-model-runtime",
  "serde_json",
 ]
 
@@ -2211,7 +2211,6 @@ dependencies = [
  "moenarch-runtime-core",
  "moenarch-text-core",
  "moenarch-text-lexical",
- "moenarch-text-model-runtime",
  "moenarch-text-transcripts",
  "serde",
  "serde_json",
@@ -2236,7 +2235,6 @@ dependencies = [
  "clap",
  "moenarch-runtime-core",
  "moenarch-text-linguistics",
- "moenarch-text-model-runtime",
  "serde_json",
 ]
 
@@ -2254,55 +2252,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "moenarch-text-model-runtime"
-version = "0.1.1"
-dependencies = [
- "candle-core",
- "candle-nn",
- "candle-transformers",
- "moenarch-media-core",
- "moenarch-model-runtime",
- "moenarch-runtime-core",
- "moenarch-runtime-onnx",
- "serde",
- "serde_json",
- "tokenizers 0.23.2",
-]
-
-[[package]]
-name = "moenarch-text-model-runtime-cli"
-version = "0.1.1"
-dependencies = [
- "clap",
- "moenarch-runtime-core",
- "moenarch-text-model-runtime",
- "serde_json",
-]
-
-[[package]]
-name = "moenarch-text-model-runtime-server"
-version = "0.1.1"
-dependencies = [
- "clap",
- "moenarch-runtime-core",
- "moenarch-text-model-runtime",
- "serde_json",
-]
-
-[[package]]
-name = "moenarch-text-model-runtime-wasm"
-version = "0.1.1"
-dependencies = [
- "js-sys",
- "moenarch-runtime-core",
- "moenarch-text-model-runtime",
- "serde",
- "serde-wasm-bindgen",
- "serde_json",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "moenarch-text-question-answering"
 version = "0.1.1"
 dependencies = [
@@ -2313,10 +2262,10 @@ dependencies = [
  "moenarch-text-embeddings",
  "moenarch-text-index",
  "moenarch-text-lexical",
- "moenarch-text-model-runtime",
  "moenarch-text-retrieval",
  "serde",
  "serde_json",
+ "tokenizers 0.23.2",
 ]
 
 [[package]]
@@ -2362,7 +2311,6 @@ dependencies = [
  "moenarch-text-embeddings",
  "moenarch-text-index",
  "moenarch-text-lexical",
- "moenarch-text-model-runtime",
  "moenarch-text-transcripts",
  "moenarch-vector-analysis-index",
  "serde",

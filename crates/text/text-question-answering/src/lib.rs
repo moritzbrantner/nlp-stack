@@ -1,21 +1,24 @@
 #![doc = include_str!("../README.md")]
 
+mod models;
 mod retrieved_context;
 pub mod surface;
+#[cfg(feature = "local-onnx")]
+mod tokenizer;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use media_core::{DetectError, Result};
+#[cfg(feature = "local-onnx")]
+pub use models::OnnxQuestionAnswerer;
+pub use models::{QuestionAnsweringBackend, QuestionAnsweringDecodeOptions, RawPrediction};
 use retrieved_context::RetrievedContext;
 use serde::{Deserialize, Serialize};
 use text_embeddings::{HashedTextEmbedder, TextEmbedderBackend, TextEmbeddingConfig};
 use text_index::{
     IndexBuildOptions, IndexDocument, IndexQuery, IndexSearchResult, MemoryIndexStore, TextIndex,
 };
-#[cfg(feature = "local-onnx")]
-use text_model_runtime::{OnnxQuestionAnswerer, QuestionAnsweringDecodeOptions};
-use text_model_runtime::{QuestionAnsweringBackend, TextRuntimeBackend};
 use text_retrieval::{IngestionOptions, RetrievalIndex, SearchDocument, SearchQuery, SearchResult};
 
 /// Runtime families for extractive question answering.
@@ -416,7 +419,7 @@ pub fn answer_question_with_context(
         .clone()
         .unwrap_or_else(|| "roberta-base-squad2".to_string());
     if let Some(qa) = context.qa.as_deref_mut() {
-        let runtime = runtime_from_backend(qa.runtime_backend());
+        let runtime = qa.runtime();
         let mut answers = qa
             .answer(&request.question, &request.context)?
             .into_iter()
@@ -899,17 +902,6 @@ fn heuristic_answer_response(
     }
 }
 
-fn runtime_from_backend(backend: TextRuntimeBackend) -> QuestionAnsweringRuntime {
-    match backend {
-        TextRuntimeBackend::Candle => QuestionAnsweringRuntime::Candle,
-        TextRuntimeBackend::Onnx => QuestionAnsweringRuntime::Onnx,
-        TextRuntimeBackend::External => QuestionAnsweringRuntime::ImportedPredictions,
-        TextRuntimeBackend::Tokenizers
-        | TextRuntimeBackend::CudaOxide
-        | TextRuntimeBackend::Heuristic => QuestionAnsweringRuntime::Heuristic,
-    }
-}
-
 fn span_from_attributes(attributes: &BTreeMap<String, String>) -> Option<TextSpanRef> {
     let byte_start = attributes.get("byte_start")?.parse().ok()?;
     let byte_end = attributes.get("byte_end")?.parse().ok()?;
@@ -972,7 +964,6 @@ pub fn schema_summary() -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use text_model_runtime::{RawPrediction, TextRuntimeBackend};
 
     struct FakeQa;
 
@@ -989,8 +980,8 @@ mod tests {
             }])
         }
 
-        fn runtime_backend(&self) -> TextRuntimeBackend {
-            TextRuntimeBackend::External
+        fn runtime(&self) -> QuestionAnsweringRuntime {
+            QuestionAnsweringRuntime::ImportedPredictions
         }
     }
 
@@ -1015,8 +1006,8 @@ mod tests {
             }])
         }
 
-        fn runtime_backend(&self) -> TextRuntimeBackend {
-            TextRuntimeBackend::External
+        fn runtime(&self) -> QuestionAnsweringRuntime {
+            QuestionAnsweringRuntime::ImportedPredictions
         }
     }
 

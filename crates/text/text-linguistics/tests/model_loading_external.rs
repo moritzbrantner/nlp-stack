@@ -2,25 +2,22 @@
 
 use std::path::PathBuf;
 
-use text_model_runtime::{validate_text_model_bundle, TextModelBundleCheck, TextModelCapability};
+use model_runtime::ModelBundle;
+use text_linguistics::{CandleTokenClassifier, SequenceLabeler};
 
 #[test]
-#[ignore = "validates opt-in dslim/bert-base-NER bundle from .model-runtime"]
-fn bert_base_ner_reports_loadability() {
-    let report = validate_text_model_bundle(
-        TextModelBundleCheck::new(
-            "bert-base-ner",
-            TextModelCapability::TokenClassification,
-            PathBuf::from(".model-runtime")
-                .join("bert-base-ner")
-                .join("main"),
-            ["config.json", "vocab.txt", "model.safetensors"],
-        )
-        .required_feature("candle,model-bundles")
-        .required_setup("scripts/sync_model_bundles.sh text")
-        .smoke_operation("linguistics.entities"),
-    );
-
-    assert!(report.supported);
-    assert_eq!(report.loadable, report.bundle_present());
+#[ignore = "loads the opt-in dslim/bert-base-NER bundle synced by scripts/sync_model_bundles.sh text"]
+fn bert_base_ner_loads_and_labels_tokens() {
+    let bundle = ModelBundle::load(
+        PathBuf::from(".model-runtime")
+            .join("bert-base-ner")
+            .join("main"),
+    )
+    .unwrap();
+    let mut labeler = CandleTokenClassifier::from_bundle(bundle).unwrap();
+    assert!(!labeler.labels().is_empty());
+    assert!(!labeler
+        .label_text("Ada Lovelace lived in London.")
+        .unwrap()
+        .is_empty());
 }

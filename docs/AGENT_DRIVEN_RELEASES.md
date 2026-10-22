@@ -5,7 +5,9 @@ This guide applies only to explicitly assigned release or distribution work. Ord
 Version bumps, publication, tags, and registry-only consumer proof begin in a dedicated release task after the source graph has been validated. Release verification must deactivate managed source overrides; source-mode evidence does not weaken any authorization, packaging, provenance, or registry-only gate below.
 
 Issue #113 authorizes no publication. The checked-in JSON plan remains a
-nonpublishing inventory of all 56 Cargo and 28 Bun surfaces. Issue #2 in this
+nonpublishing inventory of all 52 Cargo and 26 Bun surfaces; packages retired
+since extraction (such as `text-model-runtime`, #17) are listed under
+`retired_packages` in the ownership inventory. Issue #2 in this
 repository is the destination-local authorization surface for the issue #114
 Cargo wave; only its exact checked TOML manifest may authorize its 52 package
 versions.
@@ -44,7 +46,7 @@ available. video-analysis-studio and vox (formerly stutter-tracker) remain on pi
 compatibility packages, and the rust-packages ownership baseline is also pinned.
 Candidate compatibility and deferred baseline evidence are distinct outcomes.
 
-All 28 Bun packages remain nonpublishing. Any npm/WASM publication requires its
+All 26 Bun packages remain nonpublishing. Any npm/WASM publication requires its
 own exact authorization after ownership is checked again against
 `platform-packages`.
 

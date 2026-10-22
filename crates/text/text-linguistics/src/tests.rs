@@ -391,10 +391,6 @@ fn model_labeler_entities_replace_capitalization_guesses() {
                 token_prediction("I-LOC", 18, 22, 0.93),
             ])
         }
-
-        fn runtime_backend(&self) -> TextRuntimeBackend {
-            TextRuntimeBackend::External
-        }
     }
 
     let text = "OpenAI opened New York on January 2024.";
