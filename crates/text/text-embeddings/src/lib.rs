@@ -532,7 +532,8 @@ impl CandleTextEmbedder {
             dimensions,
             max_tokens,
             #[cfg(feature = "candle")]
-            device: CandleDevice::Cpu,
+            // CUDA when this build and machine support it; otherwise the CPU.
+            device: CandleDevice::cuda_if_available(0).unwrap_or(CandleDevice::Cpu),
         })
     }
 }
@@ -551,7 +552,7 @@ impl CandleTextEmbedder {
         self
     }
 
-    /// Runs the model on `device` instead of the CPU.
+    /// Runs the model on `device` instead of the default (CUDA if available, else CPU).
     #[cfg(feature = "candle")]
     pub fn on_device(mut self, device: CandleDevice) -> Self {
         self.device = device;
