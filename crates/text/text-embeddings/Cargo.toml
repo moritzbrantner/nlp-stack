@@ -26,18 +26,17 @@ serde.workspace = true
 serde_json.workspace = true
 text-core.workspace = true
 text-lexical.workspace = true
-text-model-runtime.workspace = true
 tokenizers = { workspace = true, optional = true }
 vector-analysis-core.workspace = true
 vector-analysis-index.workspace = true
 model-runtime = { workspace = true, optional = true }
 [features]
 default = []
-model-bundles = ["dep:model-runtime", "tokenizers", "text-model-runtime/model-bundles"]
-tokenizers = ["dep:tokenizers", "text-model-runtime/tokenizers"]
-onnx = ["tokenizers", "model-bundles", "runtime-onnx/onnxruntime", "text-model-runtime/onnx"]
-candle = ["tokenizers", "dep:candle-core", "dep:candle-nn", "dep:candle-transformers", "text-model-runtime/candle"]
-cuda = ["candle", "text-model-runtime/cuda", "candle-core/cuda"]
+model-bundles = ["dep:model-runtime", "tokenizers"]
+tokenizers = ["dep:tokenizers"]
+onnx = ["tokenizers", "model-bundles", "runtime-onnx/onnxruntime"]
+candle = ["tokenizers", "dep:candle-core", "dep:candle-nn", "dep:candle-transformers"]
+cuda = ["candle", "candle-core/cuda"]
 external-tests = ["onnx", "candle", "model-bundles"]
 
 [dev-dependencies]

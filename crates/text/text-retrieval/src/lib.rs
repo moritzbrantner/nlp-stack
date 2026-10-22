@@ -18,7 +18,6 @@ use text_index::{
     IndexDocumentMetadata, IndexMutationReport, MemoryIndexStore, TextIndex, TextIndexError,
 };
 use text_lexical::{Bm25Corpus, Bm25Options, CorpusOptions, TextCorpus, TextCorpusDocument};
-use text_model_runtime::{TextReranker, TextRuntimeBackend};
 use vector_analysis_index::{
     SerializableVectorRecord, VectorRecord, VectorRecordMetadata, VectorSearchFilter,
     VectorSearchIndex,
@@ -655,6 +654,40 @@ pub struct RerankResponse {
     pub model_id: Option<String>,
 }
 
+/// Runtime family of a reranking backend, reported in rerank responses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RerankerRuntime {
+    /// Candle-backed native model.
+    Candle,
+    /// ONNX Runtime-backed native model.
+    Onnx,
+    /// Caller-supplied external backend.
+    External,
+    /// Deterministic heuristic backend.
+    Heuristic,
+}
+
+impl RerankerRuntime {
+    /// Stable runtime name used in response metadata.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Candle => "candle",
+            Self::Onnx => "onnx",
+            Self::External => "external",
+            Self::Heuristic => "heuristic",
+        }
+    }
+}
+
+/// Query-document reranking backend.
+pub trait TextReranker {
+    /// Scores each document for the query, in document order.
+    fn rerank(&mut self, query: &str, documents: &[String]) -> CoreResult<Vec<f32>>;
+
+    /// Runtime family that produced the scores.
+    fn runtime(&self) -> RerankerRuntime;
+}
+
 /// Caller-supplied runtime context for reranking.
 #[derive(Default)]
 pub struct RerankExecutionContext<'a> {
@@ -685,7 +718,7 @@ pub fn rerank_documents_with_context(
         ));
     }
     let backend_scores = if let Some(reranker) = context.reranker.as_deref_mut() {
-        let runtime = rerank_runtime_name(reranker.runtime_backend());
+        let runtime = reranker.runtime().as_str().to_string();
         Some((
             runtime,
             reranker.rerank(&request.query, &request.documents)?,
@@ -737,18 +770,6 @@ pub fn rerank_documents_with_context(
         runtime: backend_scores.map(|(runtime, _)| runtime),
         model_id: context.model_id.clone(),
     })
-}
-
-fn rerank_runtime_name(runtime: TextRuntimeBackend) -> String {
-    match runtime {
-        TextRuntimeBackend::Candle => "candle",
-        TextRuntimeBackend::Onnx => "onnx",
-        TextRuntimeBackend::Tokenizers => "tokenizers",
-        TextRuntimeBackend::CudaOxide => "cuda_oxide",
-        TextRuntimeBackend::External => "external",
-        TextRuntimeBackend::Heuristic => "heuristic",
-    }
-    .to_string()
 }
 
 fn lexical_overlap_score(query: &str, document: &str) -> f32 {
@@ -1630,8 +1651,8 @@ mod tests {
                 .collect())
         }
 
-        fn runtime_backend(&self) -> TextRuntimeBackend {
-            TextRuntimeBackend::External
+        fn runtime(&self) -> RerankerRuntime {
+            RerankerRuntime::External
         }
     }
 

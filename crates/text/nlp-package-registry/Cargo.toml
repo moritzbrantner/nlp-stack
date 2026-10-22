@@ -26,7 +26,6 @@ text-generation-linguistics.workspace = true
 text-index.workspace = true
 text-lexical.workspace = true
 text-linguistics.workspace = true
-text-model-runtime.workspace = true
 text-question-answering.workspace = true
 text-retrieval.workspace = true
 text-transcripts.workspace = true

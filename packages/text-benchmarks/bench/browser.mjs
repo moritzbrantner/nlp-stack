@@ -25,7 +25,6 @@ const scenarios = [
   ["text-retrieval", "retrieval.search", { documents: [{ id: "a", body: "rust text retrieval" }, { id: "b", body: "scene reports" }], query: "text", mode: "hybrid" }, 40, ["results"]],
   ["text-analysis", "analysis.document", { id: "bench", text: "Alice presented tokenizer roadmap. ".repeat(16), profile: "deterministic", embedding: { mode: "hashed", dimensions: 64 } }, 20, ["summary"]],
   ["text-linguistics", "linguistics.analyze", { text: "Alice presented the tokenizer roadmap in Berlin.", profile: "fast" }, 30, ["entities"]],
-  ["text-model-runtime", "runtime.softmax", { logits: [0.1, 0.3, 1.2, -0.7, 2.4] }, 100, ["probabilities"]],
   ["text-classification", "classification.classify", { text: "rust is reliable", labels: ["positive", "negative"], model: { fallbackPolicy: "lexical_fallback" } }, 50, ["predictions"]],
   ["text-question-answering", "qa.answer", { question: "What is reliable?", context: "Rust is reliable.", importedPredictions: [{ text: "Rust", score: 0.9 }] }, 50, ["answers"]],
   ["text-generation", "generation.markovGenerate", { trainingTexts: ["rust text analysis supports crates"], order: 2, maxTokens: 8 }, 40, ["tokens"]],

@@ -23,7 +23,6 @@ text-core.workspace = true
 text-embeddings.workspace = true
 text-index.workspace = true
 text-lexical.workspace = true
-text-model-runtime.workspace = true
 text-transcripts = { workspace = true, optional = true }
 thiserror.workspace = true
 vector-analysis-index.workspace = true

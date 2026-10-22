@@ -2,35 +2,20 @@
 
 use std::path::PathBuf;
 
-use text_model_runtime::{validate_text_model_bundle, TextModelBundleCheck, TextModelCapability};
+use model_runtime::ModelBundle;
+use text_embeddings::{CandleTextEmbedder, OnnxTextEmbedder, TextEmbeddingBackend};
 
 #[test]
-#[ignore = "validates opt-in MiniLM embedding bundles from .model-runtime"]
-fn minilm_embedding_bundles_report_loadability() {
+#[ignore = "loads opt-in MiniLM embedding bundles synced by scripts/sync_model_bundles.sh text"]
+fn minilm_embedding_bundles_load_and_embed() {
     let cache = PathBuf::from(".model-runtime");
-    let candle = validate_text_model_bundle(
-        TextModelBundleCheck::new(
-            "minilm-l6-v2",
-            TextModelCapability::Embedding,
-            cache.join("minilm-l6-v2").join("main"),
-            ["config.json", "tokenizer.json", "model.safetensors"],
-        )
-        .required_feature("candle,model-bundles")
-        .required_setup("scripts/sync_model_bundles.sh text")
-        .smoke_operation("embeddings.embed"),
-    );
-    let onnx = validate_text_model_bundle(
-        TextModelBundleCheck::new(
-            "xenova-minilm-l6-v2-onnx",
-            TextModelCapability::Embedding,
-            cache.join("xenova-minilm-l6-v2-onnx").join("main"),
-            ["config.json", "tokenizer.json", "onnx/model.onnx"],
-        )
-        .required_feature("onnx,model-bundles")
-        .required_setup("scripts/sync_model_bundles.sh text")
-        .smoke_operation("embeddings.embed"),
-    );
 
-    assert_eq!(candle.loadable, candle.bundle_present());
-    assert_eq!(onnx.loadable, onnx.bundle_present());
+    let candle_bundle = ModelBundle::load(cache.join("minilm-l6-v2").join("main")).unwrap();
+    let candle = CandleTextEmbedder::from_bundle(candle_bundle).unwrap();
+    assert!(candle.embed_text("hello world").unwrap().dimensions() > 0);
+
+    let onnx_bundle =
+        ModelBundle::load(cache.join("xenova-minilm-l6-v2-onnx").join("main")).unwrap();
+    let onnx = OnnxTextEmbedder::from_bundle(onnx_bundle).unwrap();
+    assert!(onnx.embed_text("hello world").unwrap().dimensions() > 0);
 }

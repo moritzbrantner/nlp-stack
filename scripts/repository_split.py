@@ -19,8 +19,8 @@ SOURCE_OWNERSHIP_RECORDS_SHA256 = (
     "0693b1cb2aed72e91a1612acc9a311ed9e3f77970e769cdb3ab5fce932c49f93"
 )
 SOURCE_PACKAGE_COUNT = 79
-CARGO_PACKAGE_COUNT = 56
-BUN_PACKAGE_COUNT = 28
+CARGO_PACKAGE_COUNT = 52
+BUN_PACKAGE_COUNT = 26
 
 FOUNDATION_DEPENDENCIES = {
     "moenarch-data-inversion-core": "=0.1.1",
@@ -65,11 +65,23 @@ def ownership_records(document: dict) -> list[dict]:
     return records if isinstance(records, list) else []
 
 
+def retired_ownership_records(document: dict) -> list[dict]:
+    """Records of packages deliberately removed after extraction, minus their retirement note."""
+    records = document.get("retired_packages", [])
+    if not isinstance(records, list):
+        return []
+    return [
+        {key: value for key, value in record.items() if key != "retirement"}
+        for record in records
+        if isinstance(record, dict)
+    ]
+
+
 def ownership_records_sha256(document: dict) -> str:
     records = sorted(
         (
             record
-            for record in ownership_records(document)
+            for record in ownership_records(document) + retired_ownership_records(document)
             if record.get("provenance", {}).get("kind") != "destination-authored"
         ),
         key=lambda record: str(record.get("current_package_name")),

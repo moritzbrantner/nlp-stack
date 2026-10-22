@@ -239,10 +239,6 @@ fn registered_surfaces() -> Vec<RegisteredSurface> {
             text_linguistics::surface::run_surface_operation,
         ),
         registered(
-            text_model_runtime::surface::package_surface,
-            text_model_runtime::surface::run_surface_operation,
-        ),
-        registered(
             text_question_answering::surface::package_surface,
             text_question_answering::surface::run_surface_operation,
         ),

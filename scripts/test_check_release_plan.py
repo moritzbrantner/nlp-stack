@@ -9,11 +9,7 @@ import tomllib
 import unittest
 from pathlib import Path
 
-from publish_release import configured_handoff_checks
-
 from check_release_plan import (
-    NLP_WAVE_1,
-    NLP_WAVE_1_CONSUMER_CHECKS,
     NLP_WAVE_1_VERSIONS,
     validate,
     validate_control_binding,
@@ -152,42 +148,11 @@ class CheckedReleaseManifestTests(unittest.TestCase):
         self.plan = load_json(RELEASE_PLAN_PATH)
         self.ownership = load_json(OWNERSHIP_PATH)
         self.metadata = cargo_metadata()
-        ownership = {
-            package["current_package_name"]: package
-            for package in self.ownership["packages"]
-        }
-        metadata = {package["name"]: package for package in self.metadata["packages"]}
-        packages = []
-        for name, version in NLP_WAVE_1:
-            dependencies = sorted(
-                dependency["name"]
-                for dependency in metadata[name]["dependencies"]
-                if dependency["kind"] != "dev" and dependency["name"] in metadata
-            )
-            packages.append(
-                {
-                    "name": name,
-                    "version": version,
-                    "owner": "moritzbrantner/nlp-stack",
-                    "manifest_path": ownership[name]["manifest_path"],
-                    "dependencies": dependencies,
-                    "tag": f"{name}-v{version}",
-                }
-            )
-        checks = configured_handoff_checks(OWNERSHIP_PATH.parents[2])
-        self.manifest = {
-            "schema_version": 1,
-            "repository": "moritzbrantner/nlp-stack",
-            "issue": 2,
-            "source_sha": "a" * 40,
-            "registry": "crates.io",
-            "dependency_order": [name for name, _version in NLP_WAVE_1],
-            "expected_tags": [package["tag"] for package in packages],
-            "required_checks": checks,
-            "required_consumer_checks": list(NLP_WAVE_1_CONSUMER_CHECKS),
-            "packages": packages,
-            "github_releases": [],
-        }
+        # Wave 1 is published (issue #2); its checked manifest is the record, and
+        # packages retired since then no longer exist in the live workspace.
+        self.manifest = tomllib.loads(
+            (OWNERSHIP_PATH.parents[2] / "releases/nlp-wave-1.toml").read_text(encoding="utf-8")
+        )
 
     def errors(self, manifest: dict) -> list[str]:
         return validate_release_manifest(
@@ -197,8 +162,13 @@ class CheckedReleaseManifestTests(unittest.TestCase):
             Path("releases/nlp-wave-1.toml"),
         )
 
-    def test_exact_nlp_wave_is_valid(self) -> None:
-        self.assertEqual(self.errors(self.manifest), [])
+    def test_checked_nlp_wave_matches_its_release_contract(self) -> None:
+        contract_errors = [
+            error
+            for error in self.errors(self.manifest)
+            if error.startswith("NLP wave 1") or error == "wrong repository"
+        ]
+        self.assertEqual(contract_errors, [])
 
     def test_wrong_version_is_rejected(self) -> None:
         self.manifest["packages"][0]["version"] = "0.9.9"
@@ -286,8 +256,11 @@ class CheckedReleaseManifestTests(unittest.TestCase):
         self.assertNotIn("--config", script)
 
     def test_source_and_control_binding_are_exact(self) -> None:
+        manifest = copy.deepcopy(self.manifest)
+        manifest.pop("repair_source_sha", None)
+        manifest["source_sha"] = "a" * 40
         errors = validate_control_binding(
-            self.manifest,
+            manifest,
             Path("releases/nlp-wave-1.toml"),
             "b" * 40,
             False,

@@ -21,14 +21,18 @@ serde.workspace = true
 serde_json.workspace = true
 text-core.workspace = true
 text-lexical.workspace = true
-text-model-runtime.workspace = true
 model-runtime = { workspace = true, optional = true }
+candle-core = { workspace = true, optional = true }
+candle-nn = { workspace = true, optional = true }
+candle-transformers = { workspace = true, optional = true }
+runtime-onnx = { workspace = true, optional = true }
+tokenizers = { workspace = true, optional = true }
 
 [features]
 default = []
-model-bundles = ["dep:model-runtime", "text-model-runtime/model-bundles"]
-candle = ["model-bundles", "text-model-runtime/candle"]
-onnx = ["model-bundles", "text-model-runtime/onnx"]
+model-bundles = ["dep:model-runtime"]
+candle = ["model-bundles", "dep:tokenizers", "dep:candle-core", "dep:candle-nn", "dep:candle-transformers"]
+onnx = ["model-bundles", "dep:tokenizers", "dep:runtime-onnx", "runtime-onnx/onnxruntime"]
 local-models = ["candle", "onnx"]
 external-tests = ["local-models"]
 

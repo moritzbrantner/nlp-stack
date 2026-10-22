@@ -27,15 +27,11 @@
   ],
   "dependency_order": [
     "moenarch-text-core",
-    "moenarch-text-model-runtime",
     "moenarch-text-core-cli",
     "moenarch-text-core-server",
     "moenarch-text-core-wasm",
     "moenarch-text-generation",
     "moenarch-text-lexical",
-    "moenarch-text-model-runtime-cli",
-    "moenarch-text-model-runtime-server",
-    "moenarch-text-model-runtime-wasm",
     "moenarch-text-transcripts",
     "moenarch-text-classification",
     "moenarch-text-embeddings",
@@ -88,16 +84,6 @@
     {
       "name": "moenarch-text-core",
       "manifest_path": "crates/text/text-core/Cargo.toml",
-      "old_version": "0.1.0",
-      "new_version": "0.1.0",
-      "publish": false,
-      "expected_tag": null,
-      "intended_next_release_owner": "moritzbrantner/nlp-stack",
-      "release_dependencies": []
-    },
-    {
-      "name": "moenarch-text-model-runtime",
-      "manifest_path": "crates/text/text-model-runtime/Cargo.toml",
       "old_version": "0.1.0",
       "new_version": "0.1.0",
       "publish": false,
@@ -166,42 +152,6 @@
       ]
     },
     {
-      "name": "moenarch-text-model-runtime-cli",
-      "manifest_path": "crates/text/text-model-runtime-cli/Cargo.toml",
-      "old_version": "0.1.0",
-      "new_version": "0.1.0",
-      "publish": false,
-      "expected_tag": null,
-      "intended_next_release_owner": "moritzbrantner/nlp-stack",
-      "release_dependencies": [
-        "moenarch-text-model-runtime"
-      ]
-    },
-    {
-      "name": "moenarch-text-model-runtime-server",
-      "manifest_path": "crates/text/text-model-runtime-server/Cargo.toml",
-      "old_version": "0.1.0",
-      "new_version": "0.1.0",
-      "publish": false,
-      "expected_tag": null,
-      "intended_next_release_owner": "moritzbrantner/nlp-stack",
-      "release_dependencies": [
-        "moenarch-text-model-runtime"
-      ]
-    },
-    {
-      "name": "moenarch-text-model-runtime-wasm",
-      "manifest_path": "crates/bindings/text-model-runtime-wasm/Cargo.toml",
-      "old_version": "0.1.0",
-      "new_version": "0.1.0",
-      "publish": false,
-      "expected_tag": null,
-      "intended_next_release_owner": "moritzbrantner/nlp-stack",
-      "release_dependencies": [
-        "moenarch-text-model-runtime"
-      ]
-    },
-    {
       "name": "moenarch-text-transcripts",
       "manifest_path": "crates/text/text-transcripts/Cargo.toml",
       "old_version": "0.1.1",
@@ -223,8 +173,7 @@
       "intended_next_release_owner": "moritzbrantner/nlp-stack",
       "release_dependencies": [
         "moenarch-text-core",
-        "moenarch-text-lexical",
-        "moenarch-text-model-runtime"
+        "moenarch-text-lexical"
       ]
     },
     {
@@ -237,8 +186,7 @@
       "intended_next_release_owner": "moritzbrantner/nlp-stack",
       "release_dependencies": [
         "moenarch-text-core",
-        "moenarch-text-lexical",
-        "moenarch-text-model-runtime"
+        "moenarch-text-lexical"
       ]
     },
     {
@@ -324,7 +272,6 @@
       "release_dependencies": [
         "moenarch-text-core",
         "moenarch-text-lexical",
-        "moenarch-text-model-runtime",
         "moenarch-text-transcripts"
       ]
     },
@@ -421,8 +368,7 @@
       "expected_tag": null,
       "intended_next_release_owner": "moritzbrantner/nlp-stack",
       "release_dependencies": [
-        "moenarch-text-embeddings",
-        "moenarch-text-model-runtime"
+        "moenarch-text-embeddings"
       ]
     },
     {
@@ -486,8 +432,7 @@
       "expected_tag": null,
       "intended_next_release_owner": "moritzbrantner/nlp-stack",
       "release_dependencies": [
-        "moenarch-text-linguistics",
-        "moenarch-text-model-runtime"
+        "moenarch-text-linguistics"
       ]
     },
     {
@@ -587,7 +532,6 @@
         "moenarch-text-embeddings",
         "moenarch-text-index",
         "moenarch-text-lexical",
-        "moenarch-text-model-runtime",
         "moenarch-text-transcripts"
       ]
     },
@@ -622,7 +566,6 @@
         "moenarch-text-embeddings",
         "moenarch-text-index",
         "moenarch-text-lexical",
-        "moenarch-text-model-runtime",
         "moenarch-text-retrieval"
       ]
     },
@@ -683,8 +626,7 @@
       "expected_tag": null,
       "intended_next_release_owner": "moritzbrantner/nlp-stack",
       "release_dependencies": [
-        "moenarch-text-analysis",
-        "moenarch-text-model-runtime"
+        "moenarch-text-analysis"
       ]
     },
     {
@@ -753,7 +695,6 @@
         "moenarch-text-index",
         "moenarch-text-lexical",
         "moenarch-text-linguistics",
-        "moenarch-text-model-runtime",
         "moenarch-text-question-answering",
         "moenarch-text-retrieval",
         "moenarch-text-transcripts"
@@ -767,7 +708,9 @@
       "publish": false,
       "expected_tag": null,
       "intended_next_release_owner": "moritzbrantner/nlp-stack",
-      "release_dependencies": ["moenarch-nlp-package-registry"]
+      "release_dependencies": [
+        "moenarch-nlp-package-registry"
+      ]
     },
     {
       "name": "moenarch-nlp-package-registry-server",
@@ -777,7 +720,9 @@
       "publish": false,
       "expected_tag": null,
       "intended_next_release_owner": "moritzbrantner/nlp-stack",
-      "release_dependencies": ["moenarch-nlp-package-registry"]
+      "release_dependencies": [
+        "moenarch-nlp-package-registry"
+      ]
     },
     {
       "name": "moenarch-nlp-package-registry-wasm",
@@ -787,7 +732,9 @@
       "publish": false,
       "expected_tag": null,
       "intended_next_release_owner": "moritzbrantner/nlp-stack",
-      "release_dependencies": ["moenarch-nlp-package-registry"]
+      "release_dependencies": [
+        "moenarch-nlp-package-registry"
+      ]
     }
   ],
   "npm_packages": [
@@ -973,25 +920,6 @@
     {
       "name": "@moritzbrantner/text-linguistics-wasm",
       "manifest_path": "packages/text-linguistics-wasm/package.json",
-      "version": "0.1.0",
-      "publish": false,
-      "intended_next_release_owner": "moritzbrantner/nlp-stack",
-      "workspace_dependencies": []
-    },
-    {
-      "name": "@moritzbrantner/text-model-runtime-app",
-      "manifest_path": "packages/text-model-runtime-app/package.json",
-      "version": "0.1.0",
-      "publish": false,
-      "intended_next_release_owner": "moritzbrantner/nlp-stack",
-      "workspace_dependencies": [
-        "@moritzbrantner/nlp-app-ui",
-        "@moritzbrantner/text-model-runtime-wasm"
-      ]
-    },
-    {
-      "name": "@moritzbrantner/text-model-runtime-wasm",
-      "manifest_path": "packages/text-model-runtime-wasm/package.json",
       "version": "0.1.0",
       "publish": false,
       "intended_next_release_owner": "moritzbrantner/nlp-stack",

@@ -25,6 +25,7 @@ from repository_split import (
     cargo_metadata,
     inside_root,
     load_json,
+    retired_ownership_records,
     ownership_records_sha256,
 )
 
@@ -238,9 +239,24 @@ def validate(
     if duplicates:
         errors.append("packages classified more than once: " + ", ".join(duplicates))
 
+    retired = ownership.get("retired_packages", [])
+    if not isinstance(retired, list):
+        return errors + ["retired_packages must be a list"]
+    retired_names = {record.get("current_package_name") for record in retired}
+    for record in retired:
+        retirement = record.get("retirement")
+        if not isinstance(retirement, dict) or not retirement.get("issue") or not retirement.get("reason"):
+            errors.append(f"{record.get('current_package_name')}: retirement needs an issue and a reason")
+        manifest = record.get("manifest_path")
+        if isinstance(manifest, str) and (root / manifest).exists():
+            errors.append(f"{record.get('current_package_name')}: retired package manifest still exists")
+    reclassified = sorted(name for name in retired_names if name in set(names))
+    if reclassified:
+        errors.append("packages both active and retired: " + ", ".join(reclassified))
+
     source_records = [
         record
-        for record in records
+        for record in records + retired_ownership_records(ownership)
         if record.get("provenance", {}).get("kind") != "destination-authored"
     ]
     cargo_records = {
@@ -396,7 +412,7 @@ def main() -> int:
             print(f"error: {error}", file=sys.stderr)
         return 1
     print(
-        "repository boundaries pass: 56 Cargo and 28 Bun packages; "
+        f"repository boundaries pass: {CARGO_PACKAGE_COUNT} Cargo and {BUN_PACKAGE_COUNT} Bun packages; "
         "NLP depends only on exact registry foundation versions"
     )
     return 0

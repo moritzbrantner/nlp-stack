@@ -4,6 +4,7 @@ mod discourse;
 mod entities;
 mod language;
 mod local_models;
+mod model_tokenizer;
 mod morphology;
 mod pipeline;
 pub mod surface;

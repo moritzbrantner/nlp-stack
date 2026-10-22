@@ -89,7 +89,7 @@ Errors are capability-local and typed. `text-core` must not re-export a media-wi
 
 ## Runtime and model execution
 
-`text-model-runtime` is not a durable NLP layer. Remove it as a distinct architectural package.
+`text-model-runtime` is not a durable NLP layer and has been removed (#17). Tokenizer loading, Candle/ONNX model glue, and backend traits now live in the capability that uses them: embeddings, linguistics (token classification and subword alignment), classification (sequence and zero-shot), extractive QA, and retrieval (reranker trait). Candle-backed models default to CUDA device 0 when the build enables `cuda` and the device initializes, and fall back to the CPU otherwise (owner direction, 2026-10-22); callers can pass an explicit device with `on_device`. There is no process-wide device preference.
 
 Capabilities use generic foundation facilities such as `model-runtime` and `runtime-onnx` directly and own their task-specific tokenizer/model glue. Shared NLP runtime helpers should be extracted only after real duplication demonstrates a stable common seam.
 

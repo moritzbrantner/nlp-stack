@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 pub mod surface;
+mod tokenizer;
 use std::collections::{BTreeMap, BTreeSet};
 #[cfg(feature = "model-bundles")]
 use std::fs;
@@ -28,9 +29,9 @@ use serde_json::Value;
 use text_core::{segment_document_id, tokenize_words, AnnotationProvenance, TextDocument};
 use text_core::{DetectError, Result, TextSegment};
 use text_lexical::{term_counts, CorpusOptions, TfIdfCorpus};
-pub use text_model_runtime::TokenizedText;
+pub use tokenizer::TokenizedText;
 #[cfg(feature = "tokenizers")]
-use text_model_runtime::TokenizerBundle;
+use tokenizer::TokenizerBundle;
 use vector_analysis_core::cosine_similarity;
 /// Re-exports the dense vector API.
 pub use vector_analysis_core::DenseVector;
@@ -500,6 +501,8 @@ pub struct CandleTextEmbedder {
     model_name: String,
     dimensions: Option<usize>,
     max_tokens: Option<usize>,
+    #[cfg(feature = "candle")]
+    device: CandleDevice,
 }
 
 #[cfg(all(feature = "tokenizers", feature = "model-bundles"))]
@@ -528,6 +531,9 @@ impl CandleTextEmbedder {
             model_name: bundle.manifest.name,
             dimensions,
             max_tokens,
+            #[cfg(feature = "candle")]
+            // CUDA when this build and machine support it; otherwise the CPU.
+            device: CandleDevice::cuda_if_available(0).unwrap_or(CandleDevice::Cpu),
         })
     }
 }
@@ -546,12 +552,24 @@ impl CandleTextEmbedder {
         self
     }
 
+    /// Runs the model on `device` instead of the default (CUDA if available, else CPU).
+    #[cfg(feature = "candle")]
+    pub fn on_device(mut self, device: CandleDevice) -> Self {
+        self.device = device;
+        self
+    }
+
     /// Returns embed tokenized.
     pub fn embed_tokenized(&self, tokens: &TokenizedText) -> Result<DenseVector> {
         #[cfg(feature = "candle")]
         {
-            let (values, shape) =
-                run_candle_embedder(&self.config, &self.model_paths, self.architecture, tokens)?;
+            let (values, shape) = run_candle_embedder(
+                &self.config,
+                &self.model_paths,
+                self.architecture,
+                tokens,
+                &self.device,
+            )?;
             pool_embedding_output(
                 &values,
                 &shape,
@@ -1346,9 +1364,9 @@ fn run_candle_embedder(
     model_paths: &[PathBuf],
     architecture: CandleEmbeddingArchitecture,
     tokens: &TokenizedText,
+    device: &CandleDevice,
 ) -> Result<(Vec<f32>, Vec<usize>)> {
-    let device = text_model_runtime::candle_device_from_preference()?;
-    let vb = candle_var_builder(model_paths, &device)?;
+    let vb = candle_var_builder(model_paths, device)?;
     let prefixes = model_prefix_candidates(config);
 
     let sequence_output = match architecture {
@@ -1358,9 +1376,9 @@ fn run_candle_embedder(
                     invalid_argument(format!("failed to parse BERT config for Candle: {err}"))
                 })?;
             let model = load_candle_bert_model(&vb, &config, &prefixes)?;
-            let input_ids = candle_input_ids(tokens, &device)?;
-            let token_type_ids = candle_token_type_ids(tokens, &device)?;
-            let attention_mask = candle_attention_mask_keep(tokens, &device)?;
+            let input_ids = candle_input_ids(tokens, device)?;
+            let token_type_ids = candle_token_type_ids(tokens, device)?;
+            let attention_mask = candle_attention_mask_keep(tokens, device)?;
             model
                 .forward(&input_ids, &token_type_ids, Some(&attention_mask))
                 .map_err(candle_error)?
@@ -1373,8 +1391,8 @@ fn run_candle_embedder(
                     ))
                 })?;
             let model = load_candle_distilbert_model(&vb, &config, &prefixes)?;
-            let input_ids = candle_input_ids(tokens, &device)?;
-            let attention_mask = candle_attention_mask_distil(tokens, &device)?;
+            let input_ids = candle_input_ids(tokens, device)?;
+            let attention_mask = candle_attention_mask_distil(tokens, device)?;
             model
                 .forward(&input_ids, &attention_mask)
                 .map_err(candle_error)?
