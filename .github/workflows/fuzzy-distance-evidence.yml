@@ -27,7 +27,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
-          toolchain: "1.95.0"
+          toolchain: "1.99.1"
       - name: Native correctness and before-after kernel evidence
         run: |
           python3 scripts/benchmark_fuzzy_distance.py \
@@ -61,7 +61,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
-          toolchain: "1.95.0"
+          toolchain: "1.99.1"
       - name: Repaired memory and SQLite search tests
         run: |
           export CARGO_TARGET_DIR="$RUNNER_TEMP/fuzzy-cargo-target"
@@ -150,7 +150,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
-          toolchain: "1.95.0"
+          toolchain: "1.99.1"
       - name: Query-only correctness, vector-work ratchet and paired timing
         run: |
           export CARGO_TARGET_DIR="$RUNNER_TEMP/lexical-vector-target"
