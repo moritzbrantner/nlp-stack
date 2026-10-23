@@ -141,7 +141,7 @@ jobs:
       - name: Diagnose exact environment after workspace CI failure
         if: ${{ failure() }}
         continue-on-error: true
-        uses: moritzbrantner/coding-tooling@81da4fbbdbe75a8937716cbab0b9a47c447269e8
+        uses: moritzbrantner/coding-tooling@2ceb2b57c946fd042fdf098c05427519c146a62f
         with:
           operation: environment-verify
           bun-version: latest
