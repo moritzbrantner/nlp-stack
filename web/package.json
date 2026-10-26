@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "packageManager": "bun@1.4.3",
+  "packageManager": "bun@1.4.4",
   "scripts": {
     "shared-ui:build": "bun run --cwd ../packages/nlp-app-ui build",
     "dev": "bun run shared-ui:build && next dev",
