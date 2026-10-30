@@ -416,6 +416,105 @@ fn model_labeler_entities_replace_capitalization_guesses() {
     assert_eq!(analysis.provenance, AnnotationProvenance::Model);
 }
 
+struct FixedNer(Vec<RawPrediction>);
+
+impl SequenceLabeler for FixedNer {
+    fn label_text(&mut self, _text: &str) -> Result<Vec<RawPrediction>> {
+        Ok(self.0.clone())
+    }
+}
+
+fn model_entities(text: &str, predictions: Vec<RawPrediction>) -> Vec<(EntityType, String)> {
+    analyze_text_with_entity_labeler(
+        text,
+        &LinguisticAnalysisOptions::heuristic(),
+        &mut FixedNer(predictions),
+    )
+    .unwrap()
+    .entities
+    .into_iter()
+    .map(|entity| (entity.entity_type, entity.mention.text))
+    .collect()
+}
+
+#[test]
+fn model_entities_take_the_first_sub_word_label_for_the_whole_word() {
+    // "Talk with Alan Turing": the trailing "g" piece is labeled O.
+    let entities = model_entities(
+        "Talk with Alan Turing",
+        vec![
+            token_prediction("O", 0, 4, 0.99),
+            token_prediction("O", 5, 9, 0.99),
+            token_prediction("B-PER", 10, 14, 0.99),
+            token_prediction("I-PER", 15, 20, 0.98),
+            token_prediction("O", 20, 21, 0.6),
+        ],
+    );
+    assert_eq!(
+        entities,
+        vec![(EntityType::Person, "Alan Turing".to_string())]
+    );
+
+    // "Helios conference": three pieces with conflicting labels.
+    let entities = model_entities(
+        "Helios conference",
+        vec![
+            token_prediction("B-MISC", 0, 2, 0.7),
+            token_prediction("B-ORG", 2, 5, 0.6),
+            token_prediction("I-MISC", 5, 6, 0.5),
+            token_prediction("O", 7, 17, 0.99),
+        ],
+    );
+    assert_eq!(entities, vec![(EntityType::Misc, "Helios".to_string())]);
+
+    // "ADA LOVELACE": the trailing "LACE" piece is labeled O.
+    let entities = model_entities(
+        "ADA LOVELACE",
+        vec![
+            token_prediction("B-ORG", 0, 3, 0.8),
+            token_prediction("I-ORG", 4, 8, 0.7),
+            token_prediction("O", 8, 12, 0.6),
+        ],
+    );
+    assert_eq!(
+        entities,
+        vec![(EntityType::Organization, "ADA LOVELACE".to_string())]
+    );
+}
+
+#[test]
+fn model_entities_end_at_outside_words() {
+    let entities = model_entities(
+        "Alice and Bob",
+        vec![
+            token_prediction("B-PER", 0, 5, 0.99),
+            token_prediction("O", 6, 9, 0.99),
+            token_prediction("I-PER", 10, 13, 0.9),
+        ],
+    );
+    assert_eq!(
+        entities,
+        vec![
+            (EntityType::Person, "Alice".to_string()),
+            (EntityType::Person, "Bob".to_string()),
+        ]
+    );
+}
+
+#[test]
+fn model_mode_does_not_fall_back_to_capitalization_guesses() {
+    let entities = model_entities(
+        "Welcome to the show.",
+        vec![
+            token_prediction("O", 0, 7, 0.99),
+            token_prediction("O", 8, 10, 0.99),
+            token_prediction("O", 11, 14, 0.99),
+            token_prediction("O", 15, 19, 0.99),
+        ],
+    );
+    assert!(entities.is_empty(), "{entities:?}");
+}
+
 #[test]
 #[cfg(feature = "transcripts")]
 fn analyzes_subtitle_segments_per_cue_and_in_aggregate() {
