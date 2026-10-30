@@ -42,6 +42,7 @@ web/storybook-static/
 web/playwright-report/
 web/test-results/
 web/public/wasm/
+web/public/ner/
 use-case-output/**/*.mp4
 use-case-output/**/*.mov
 use-case-output/**/*.mkv

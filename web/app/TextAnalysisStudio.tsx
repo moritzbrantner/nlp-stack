@@ -749,7 +749,9 @@ function EntitiesPanel({ entities, model }: { entities: JsonRecord[]; model: Jso
       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Model-backed NLP</p>
       <h4 className="mt-1 text-xl font-semibold text-ink">Named entities</h4>
       <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
-        Named entity recognition from the Hugging Face token-classification model {stringValue(model?.name, "unknown model")}. No capitalization heuristic or rule-based entity fallback is used.
+        Named entity recognition from the Hugging Face token-classification model {stringValue(model?.name, "unknown model")} at revision {stringValue(model?.revision, "unknown").slice(0, 8)}
+        {model?.languageSource === "assumed" ? " (language assumed to be English)" : ""}
+        {model?.status === "unsupported-language" ? `; the model does not support language ${stringValue(model?.language, "unknown")}, so no entities were produced` : ""}. No capitalization heuristic or rule-based entity fallback is used.
       </p>
       {entities.length ? (
         <div className="mt-4 overflow-x-auto">
