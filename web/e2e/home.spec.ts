@@ -24,7 +24,7 @@ test("keeps single-document semantics separate from multi-document corpus themes
 
   await page.getByRole("tab", { name: "Entities" }).click();
   await expect(page.getByRole("heading", { name: "Named entities" })).toBeVisible();
-  await expect(page.getByText(/fixture\/browser-ner-model/)).toBeVisible();
+  await expect(page.getByText(/onnx-community\/distilbert-NER-ONNX at revision 3a19fe94/)).toBeVisible();
   await expect(page.getByRole("cell", { name: "Maya", exact: true }).first()).toBeVisible();
   await expect(page.getByText(/No capitalization heuristic or rule-based entity fallback is used/)).toBeVisible();
 

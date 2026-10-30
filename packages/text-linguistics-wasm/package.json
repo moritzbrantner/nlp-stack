@@ -8,6 +8,10 @@
   "files": [
     "index.d.ts",
     "index.js",
+    "browser-ner.d.ts",
+    "browser-ner.js",
+    "browser-ner-core.js",
+    "browser-ner-worker.js",
     "pkg",
     "README.md"
   ],
@@ -18,6 +22,11 @@
       "types": "./index.d.ts",
       "import": "./index.js",
       "default": "./index.js"
+    },
+    "./browser-ner": {
+      "types": "./browser-ner.d.ts",
+      "import": "./browser-ner.js",
+      "default": "./browser-ner.js"
     }
   },
   "scripts": {

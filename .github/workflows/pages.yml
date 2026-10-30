@@ -12,6 +12,7 @@ on:
       - "packages/nlp-app-ui/**"
       - "packages/text-core-wasm/**"
       - "packages/text-analysis-wasm/**"
+      - "packages/text-linguistics-wasm/browser-ner*"
       - "crates/bindings/text-core-wasm/**"
       - "crates/bindings/text-analysis-wasm/**"
       - "crates/text/**"

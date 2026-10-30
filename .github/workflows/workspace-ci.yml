@@ -48,7 +48,7 @@ jobs:
                       selected = not negative
               return selected
 
-          specs = {'environment-validation': {'paths': ['.repository-environment.toml', '.coding-tooling.source-deps.json', 'scripts/codex-environment.sh', 'scripts/check-agent-readiness.sh', 'scripts/check_agent_readiness_contract.py', 'package.json', 'bun.lock', '.node-version', 'rust-toolchain.toml', 'Cargo.toml', 'Cargo.lock', '.github/workflows/environment-v1.yml']}, 'pages-validation': {'paths': ['web/**', 'scripts/check-pages.sh', 'package.json', 'bun.lock', 'packages/nlp-app-ui/**', 'packages/text-core-wasm/**', 'packages/text-analysis-wasm/**', 'crates/bindings/text-core-wasm/**', 'crates/bindings/text-analysis-wasm/**', 'crates/text/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/pages.yml']}}
+          specs = {'environment-validation': {'paths': ['.repository-environment.toml', '.coding-tooling.source-deps.json', 'scripts/codex-environment.sh', 'scripts/check-agent-readiness.sh', 'scripts/check_agent_readiness_contract.py', 'package.json', 'bun.lock', '.node-version', 'rust-toolchain.toml', 'Cargo.toml', 'Cargo.lock', '.github/workflows/environment-v1.yml']}, 'pages-validation': {'paths': ['web/**', 'scripts/check-pages.sh', 'package.json', 'bun.lock', 'packages/nlp-app-ui/**', 'packages/text-core-wasm/**', 'packages/text-analysis-wasm/**', 'packages/text-linguistics-wasm/browser-ner*','crates/bindings/text-core-wasm/**', 'crates/bindings/text-analysis-wasm/**', 'crates/text/**', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.github/workflows/pages.yml']}}
           pr = os.environ["GITHUB_EVENT_NAME"] == "pull_request"
           event = json.loads(os.environ.get("PR_EVENT", "{}"))
           paths = []

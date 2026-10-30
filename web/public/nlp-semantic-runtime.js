@@ -1,16 +1,15 @@
 import { assertAnalysisTextBudget, assertAnalysisSentenceBudget } from "./nlp-analysis-budget.js";
+// Canonical browser NER from @moritzbrantner/text-linguistics-wasm, copied by build-wasm-assets.sh.
+import { createBrowserNer } from "./ner/browser-ner.js";
 
 const semanticEmbeddingModel = "onnx-community/all-MiniLM-L6-v2-ONNX";
 const semanticModelAttemptTimeoutMs = 10_000;
 const semanticEmbeddingBatchSize = 32;
-const namedEntityModel = "onnx-community/distilbert-NER-ONNX";
 const namedEntityModelAttemptTimeoutMs = 45_000;
 let semanticWorkerInstance = null;
 let semanticWorkerRequestSequence = 0;
 const pendingSemanticWorkerRequests = new Map();
-let entityWorkerInstance = null;
-let entityWorkerRequestSequence = 0;
-const pendingEntityWorkerRequests = new Map();
+const browserNer = createBrowserNer();
 
 function fromWasmValue(value) {
   if (value instanceof Map) {
@@ -123,90 +122,41 @@ function requestSemanticEmbeddings(texts) {
   return { id, promise };
 }
 
-function resetEntityWorker(error) {
-  const worker = entityWorkerInstance;
-  entityWorkerInstance = null;
-  worker?.terminate();
-
-  const failure = semanticWorkerError(error);
-  for (const pending of pendingEntityWorkerRequests.values()) {
-    pending.reject(failure);
-  }
-  pendingEntityWorkerRequests.clear();
-}
-
-function entityWorker() {
-  if (entityWorkerInstance) return entityWorkerInstance;
-  if (typeof Worker === "undefined") {
-    throw new Error("Web Workers are unavailable in this browser.");
-  }
-
-  const worker = new Worker(new URL("./nlp-entity-worker.js", import.meta.url), { type: "module" });
-  entityWorkerInstance = worker;
-  worker.addEventListener("message", (event) => {
-    const id = event.data?.id;
-    const pending = pendingEntityWorkerRequests.get(id);
-    if (!pending) return;
-    pendingEntityWorkerRequests.delete(id);
-    if (event.data?.error) pending.reject(new Error(event.data.error));
-    else pending.resolve(event.data);
-  });
-  worker.addEventListener("error", (event) => {
-    resetEntityWorker(event.message || "Named entity model worker failed.");
-  });
-  return worker;
-}
-
-function requestNamedEntities(segments) {
-  const id = ++entityWorkerRequestSequence;
-  const promise = new Promise((resolve, reject) => {
-    let worker;
-    try {
-      worker = entityWorker();
-    } catch (error) {
-      reject(semanticWorkerError(error));
-      return;
-    }
-    pendingEntityWorkerRequests.set(id, { resolve, reject });
-    try {
-      worker.postMessage({ id, segments });
-    } catch (error) {
-      pendingEntityWorkerRequests.delete(id);
-      reject(semanticWorkerError(error));
-    }
-  });
-  return { id, promise };
-}
-
-async function modelNamedEntities(documentResult) {
+async function modelNamedEntities(documentResult, input) {
   const sentences = Array.isArray(documentResult?.core?.sentences) ? documentResult.core.sentences : [];
   const segments = sentences
     .filter((sentence) => typeof sentence?.text === "string" && sentence.text.length > 0)
-    .map((sentence) => ({
+    .map((sentence, index) => ({
+      id: index,
       text: sentence.text,
       byteStart: Number(sentence?.span?.byte_start ?? 0),
     }));
-  if (segments.length === 0) {
-    return { modelName: namedEntityModel, entities: [] };
-  }
+  // The workbench has no language detection on this path; it states English as an
+  // assumption rather than claiming a detected language (#116/#117 own routing).
+  const knownLanguage = documentResult?.language ?? input?.languageHint;
+  const language = typeof knownLanguage === "string" ? knownLanguage : "en";
 
-  let timeoutId;
-  const request = requestNamedEntities(segments);
-  const deadline = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => {
-      const failure = new Error(`Named entity model attempt exceeded ${namedEntityModelAttemptTimeoutMs}ms.`);
-      resetEntityWorker(failure);
-      reject(failure);
-    }, namedEntityModelAttemptTimeoutMs);
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort(new Error(`Named entity model attempt exceeded ${namedEntityModelAttemptTimeoutMs}ms.`));
+  }, namedEntityModelAttemptTimeoutMs);
   try {
-    const result = await Promise.race([request.promise, deadline]);
-    if (!Array.isArray(result?.entities)) {
-      throw new Error(`Hugging Face NER model ${namedEntityModel} returned invalid entity evidence.`);
-    }
+    const result = await browserNer.analyze({ language, segments }, { signal: controller.signal });
     return {
-      modelName: result.modelName || namedEntityModel,
-      entities: result.entities,
+      model: {
+        name: result.model.id,
+        revision: result.model.revision,
+        status: result.status,
+        language: result.language,
+        languageSource: typeof knownLanguage === "string" ? "input" : "assumed",
+      },
+      entities: result.entities.map((entity) => ({
+        text: entity.text,
+        kind: entity.label,
+        score: entity.score,
+        span: { byte_start: entity.byteStart, byte_end: entity.byteEnd },
+        sentenceIndex: entity.segmentId,
+      })),
     };
   } finally {
     clearTimeout(timeoutId);
@@ -216,9 +166,9 @@ async function modelNamedEntities(documentResult) {
 async function runModelBackedDocumentAnalysis(wasm, request) {
   const response = fromWasmValue(wasm.runOperation(request));
   const result = surfaceResult(response);
-  const namedEntities = await modelNamedEntities(result);
+  const namedEntities = await modelNamedEntities(result, request?.input);
   result.namedEntities = namedEntities.entities;
-  result.namedEntityModel = { name: namedEntities.modelName };
+  result.namedEntityModel = namedEntities.model;
   return response;
 }
 

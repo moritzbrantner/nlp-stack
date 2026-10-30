@@ -31,13 +31,15 @@ beforeEach(async () => {
     postMessage({ id, texts, segments }) {
       workerRequests += 1;
       let data;
+      const ner = this.url.includes("browser-ner-worker.js");
       if (failModel) {
-        data = { id, error: "Model unavailable" };
-      } else if (this.url.includes("nlp-entity-worker.js")) {
+        data = ner ? { type: "error", id, stage: "model", message: "Model unavailable" } : { id, error: "Model unavailable" };
+      } else if (ner) {
         data = {
+          type: "result",
           id,
-          modelName: "fixture/ner-model",
-          entities: [{ text: "Alice", kind: "PER", score: 0.99, span: { byte_start: 0, byte_end: 5 }, sentenceIndex: 0 }],
+          entities: [{ segmentId: 0, label: "PER", text: "Alice", score: 0.99, start: 0, end: 5, byteStart: 0, byteEnd: 5 }],
+          segments: segments.map(({ id: segmentId }) => ({ id: segmentId, entityCount: 1, truncated: false })),
         };
       } else {
         data = { id, modelName: "fixture/model", dimensions: 2, vectors: texts.map(() => [1, 0]) };
@@ -115,7 +117,13 @@ it("attaches Hugging Face named entities to browser document analysis", async ()
     },
   });
 
-  expect(response.value.result.namedEntityModel.name).toBe("fixture/ner-model");
+  expect(response.value.result.namedEntityModel).toMatchObject({
+    name: "onnx-community/distilbert-NER-ONNX",
+    revision: "3a19fe9404a4469d91aa3d551558a97f68872f67",
+    status: "completed",
+    language: "en",
+    languageSource: "assumed",
+  });
   expect(response.value.result.namedEntities).toEqual([
     expect.objectContaining({ text: "Alice", kind: "PER", score: 0.99 }),
   ]);
