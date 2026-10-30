@@ -192,26 +192,49 @@ pub fn extract_named_entities_with_labeler(
 }
 
 /// Returns named entities from token classification predictions.
+///
+/// Sub-word predictions are aggregated onto the caller's word `tokens` first: the
+/// earliest sub-word prediction inside a word labels the whole word (the Hugging Face
+/// `aggregation_strategy="first"` rule), so entity spans never cut through a word.
+/// Words are then grouped into entities by their BIO labels; an outside word or a
+/// word without any prediction ends the current entity.
 pub fn named_entities_from_model_predictions(
     text: &str,
     sentences: &[Sentence],
     tokens: &[Token],
     predictions: &[RawPrediction],
 ) -> Vec<NamedEntity> {
-    let mut model_tokens = predictions
+    let mut pieces = predictions
         .iter()
-        .filter_map(model_entity_token)
+        .filter_map(model_piece)
         .collect::<Vec<_>>();
-    model_tokens.sort_by_key(|token| (token.byte_start, token.byte_end));
+    pieces.sort_by_key(|piece| (piece.byte_start, piece.byte_end));
 
     let mut entities = Vec::new();
     let mut current = Vec::<ModelEntityToken>::new();
-    for token in model_tokens {
-        let starts_new = token.prefix == ModelEntityPrefix::Begin
-            || current
-                .last()
-                .map(|last| last.entity_type != token.entity_type)
-                .unwrap_or(false);
+    for token in tokens {
+        let word = pieces
+            .iter()
+            .find(|piece| byte_ranges_overlap(piece.byte_start, piece.byte_end, token.span))
+            .and_then(|first| {
+                let (prefix, entity_type) = first.label?;
+                Some(ModelEntityToken {
+                    entity_type,
+                    prefix,
+                    byte_start: token.span.byte_start,
+                    byte_end: token.span.byte_end,
+                    score: first.score,
+                })
+            });
+        let starts_new = match &word {
+            None => true,
+            Some(word) => {
+                word.prefix == ModelEntityPrefix::Begin
+                    || current
+                        .last()
+                        .is_some_and(|last| last.entity_type != word.entity_type)
+            }
+        };
         if starts_new && !current.is_empty() {
             if let Some(entity) =
                 build_model_entity(entities.len(), text, sentences, tokens, &current)
@@ -220,7 +243,9 @@ pub fn named_entities_from_model_predictions(
             }
             current.clear();
         }
-        current.push(token);
+        if let Some(word) = word {
+            current.push(word);
+        }
     }
     if !current.is_empty() {
         if let Some(entity) = build_model_entity(entities.len(), text, sentences, tokens, &current)
@@ -232,14 +257,13 @@ pub fn named_entities_from_model_predictions(
     entities
 }
 
-/// Returns model entities plus deterministic rule entities not covered by the model.
+/// Returns model entities plus deterministic date/amount/law rule entities not
+/// covered by the model. Heuristic person/organization guesses are never used in
+/// model mode, even when the model finds no entities.
 pub fn merge_model_and_heuristic_entities(
     mut model_entities: Vec<NamedEntity>,
     heuristic_entities: Vec<NamedEntity>,
 ) -> Vec<NamedEntity> {
-    if model_entities.is_empty() {
-        return heuristic_entities;
-    }
     for entity in heuristic_entities {
         if !matches!(
             entity.entity_type,
@@ -583,17 +607,23 @@ struct ModelEntityToken {
     score: f32,
 }
 
-fn model_entity_token(prediction: &RawPrediction) -> Option<ModelEntityToken> {
+/// One sub-word prediction; `label` is `None` for outside (`O`) or unknown labels.
+struct ModelPiece {
+    label: Option<(ModelEntityPrefix, EntityType)>,
+    byte_start: usize,
+    byte_end: usize,
+    score: f32,
+}
+
+fn model_piece(prediction: &RawPrediction) -> Option<ModelPiece> {
     let label = prediction.label.as_deref()?;
-    let (prefix, entity_type) = parse_model_entity_label(label)?;
     let byte_start = prediction.attributes.get("byte_start")?.parse().ok()?;
     let byte_end = prediction.attributes.get("byte_end")?.parse().ok()?;
     if byte_start >= byte_end {
         return None;
     }
-    Some(ModelEntityToken {
-        entity_type,
-        prefix,
+    Some(ModelPiece {
+        label: parse_model_entity_label(label),
         byte_start,
         byte_end,
         score: prediction.score.unwrap_or(0.5),
