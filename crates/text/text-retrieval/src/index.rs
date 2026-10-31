@@ -234,18 +234,40 @@ impl<B: TextEmbedderBackend> RetrievalIndex<B> {
         let normalized_semantic = normalize_scores(&semantic_scores);
         let normalized_lexical = normalize_scores(&lexical_scores);
 
-        let mut merged_ids = normalized_semantic.keys().cloned().collect::<BTreeSet<_>>();
-        merged_ids.extend(normalized_lexical.keys().cloned());
+        let merged_ids = normalized_semantic
+            .keys()
+            .chain(normalized_lexical.keys())
+            .collect::<BTreeSet<_>>();
 
-        let mut results = merged_ids
+        // Sorting needs only the scores and id, so snippets and metadata clones are built after
+        // truncation. Reranking reads every candidate's snippet and cannot truncate first.
+        let mut ranked = merged_ids
             .into_iter()
             .filter_map(|chunk_id| {
-                let chunk = self.chunks.get(&chunk_id)?;
-                let semantic_score = normalized_semantic.get(&chunk_id).copied().unwrap_or(0.0);
-                let lexical_score = normalized_lexical.get(&chunk_id).copied().unwrap_or(0.0);
+                let chunk = self.chunks.get(chunk_id)?;
+                let semantic_score = normalized_semantic.get(chunk_id).copied().unwrap_or(0.0);
+                let lexical_score = normalized_lexical.get(chunk_id).copied().unwrap_or(0.0);
                 let score = semantic_score * query.hybrid.semantic_weight
                     + lexical_score * query.hybrid.lexical_weight;
-                Some(SearchResult {
+                Some((chunk, score, semantic_score, lexical_score))
+            })
+            .collect::<Vec<_>>();
+
+        ranked.sort_by(|left, right| {
+            right
+                .1
+                .total_cmp(&left.1)
+                .then_with(|| right.2.total_cmp(&left.2))
+                .then_with(|| right.3.total_cmp(&left.3))
+                .then_with(|| left.0.chunk_id.cmp(&right.0.chunk_id))
+        });
+        if !query.hybrid.rerank {
+            ranked.truncate(query.top_k);
+        }
+        let mut results = ranked
+            .into_iter()
+            .map(
+                |(chunk, score, semantic_score, lexical_score)| SearchResult {
                     chunk_id: chunk.chunk_id.clone(),
                     document_id: chunk.document_id.clone(),
                     score,
@@ -253,22 +275,11 @@ impl<B: TextEmbedderBackend> RetrievalIndex<B> {
                     lexical_score,
                     snippet: self.build_snippet(chunk, &normalized_query),
                     metadata: chunk.metadata.clone(),
-                })
-            })
+                },
+            )
             .collect::<Vec<_>>();
-
-        results.sort_by(|left, right| {
-            right
-                .score
-                .total_cmp(&left.score)
-                .then_with(|| right.semantic_score.total_cmp(&left.semantic_score))
-                .then_with(|| right.lexical_score.total_cmp(&left.lexical_score))
-                .then_with(|| left.chunk_id.cmp(&right.chunk_id))
-        });
         if query.hybrid.rerank {
             rerank_search_results(&query.text, &mut results, query.top_k, context)?;
-        } else {
-            results.truncate(query.top_k);
         }
         Ok(results)
     }
