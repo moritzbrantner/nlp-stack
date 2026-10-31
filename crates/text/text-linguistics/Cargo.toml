@@ -27,6 +27,7 @@ text-lexical.workspace = true
 text-transcripts = { workspace = true, optional = true }
 tokenizers = { workspace = true, optional = true }
 model-runtime = { workspace = true, optional = true }
+regex.workspace = true
 [features]
 default = []
 tokenizers = ["dep:tokenizers"]
