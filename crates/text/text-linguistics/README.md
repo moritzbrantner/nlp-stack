@@ -12,6 +12,7 @@ Heuristic-first, local-first linguistic analysis pipeline for
 - Explicit local model-backed named entities through `CandleTokenClassifier`
 - Heuristic rule extraction remains available through `LinguisticAnalysisOptions::heuristic()`
 - Coreference, events, discourse, topics, and style analysis
+- Deterministic historical temporal normalization (`normalize_temporal_expressions`): typed dates, ranges, decades and centuries with byte spans, English and German
 
 ## Stable contract
 

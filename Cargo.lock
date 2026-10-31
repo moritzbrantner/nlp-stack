@@ -2213,6 +2213,7 @@ dependencies = [
  "moenarch-text-core",
  "moenarch-text-lexical",
  "moenarch-text-transcripts",
+ "regex",
  "serde",
  "serde_json",
  "tempfile",
