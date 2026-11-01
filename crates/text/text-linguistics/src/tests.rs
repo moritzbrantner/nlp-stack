@@ -57,6 +57,12 @@ fn multilingual_preset_spec_is_pinned_by_commit() {
 }
 
 #[test]
+fn token_classifier_session_is_send_and_sync() {
+    fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<CandleTokenClassifier>();
+}
+
+#[test]
 fn local_model_options_are_explicit_and_do_not_download_by_default() {
     let options = EntityRecognitionOptions::local_model();
     assert_eq!(options.mode, EntityRecognitionMode::LocalModel);

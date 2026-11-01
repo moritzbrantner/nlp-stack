@@ -184,3 +184,26 @@ fn entity_presets_reach_gold_f1_for_their_languages() {
         }
     }
 }
+
+#[test]
+#[ignore = "downloads the multilingual NER preset and compares batched with per-text inference"]
+fn batched_inference_matches_per_text_labels() {
+    let labeler =
+        CandleTokenClassifier::from_bundle(load_preset(ModelPreset::DistilbertMultilingualNerHrl))
+            .unwrap();
+    let cases = gold_cases();
+    let texts = cases.iter().map(|case| case.text.as_str()).collect::<Vec<_>>();
+    let batched = labeler.classify_batch(&texts).unwrap();
+    for (text, batch) in texts.iter().zip(&batched) {
+        let single = labeler.classify(text).unwrap();
+        assert_eq!(single.len(), batch.len(), "{text}");
+        for (single, batch) in single.iter().zip(batch) {
+            // Labels and offsets match exactly; scores may differ in the last float bit
+            // because a batch changes the matrix-multiply shapes.
+            assert_eq!(single.label, batch.label, "{text}");
+            assert_eq!(single.attributes, batch.attributes, "{text}");
+            let (single, batch) = (single.score.unwrap(), batch.score.unwrap());
+            assert!((single - batch).abs() <= 1e-5, "{text}: {single} vs {batch}");
+        }
+    }
+}

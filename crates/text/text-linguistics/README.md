@@ -57,6 +57,12 @@ available behind the `transcripts` feature. Use
 `TextNlpConfig::rich_with_model_backends()` when tokenizer/model-backed rich
 analysis is explicitly desired.
 
+`CandleTokenClassifier::from_bundle` (or `from_bundle_on` for an explicit device)
+loads the weights and tokenizer once; every later `classify` call reuses them,
+and clones share them across threads. `classify_batch` pads up to 16 texts into
+one forward pass: labels and offsets match per-text `classify`, scores can differ
+in the last float bit.
+
 ## Package surface
 
 - Primary workflow: `linguistics.analyze` runs the deterministic linguistic
