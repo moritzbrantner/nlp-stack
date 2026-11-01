@@ -192,7 +192,10 @@ fn batched_inference_matches_per_text_labels() {
         CandleTokenClassifier::from_bundle(load_preset(ModelPreset::DistilbertMultilingualNerHrl))
             .unwrap();
     let cases = gold_cases();
-    let texts = cases.iter().map(|case| case.text.as_str()).collect::<Vec<_>>();
+    let texts = cases
+        .iter()
+        .map(|case| case.text.as_str())
+        .collect::<Vec<_>>();
     let batched = labeler.classify_batch(&texts).unwrap();
     for (text, batch) in texts.iter().zip(&batched) {
         let single = labeler.classify(text).unwrap();
@@ -203,7 +206,10 @@ fn batched_inference_matches_per_text_labels() {
             assert_eq!(single.label, batch.label, "{text}");
             assert_eq!(single.attributes, batch.attributes, "{text}");
             let (single, batch) = (single.score.unwrap(), batch.score.unwrap());
-            assert!((single - batch).abs() <= 1e-5, "{text}: {single} vs {batch}");
+            assert!(
+                (single - batch).abs() <= 1e-5,
+                "{text}: {single} vs {batch}"
+            );
         }
     }
 }
