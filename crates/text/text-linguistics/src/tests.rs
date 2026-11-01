@@ -327,20 +327,11 @@ fn morphology_annotation_tolerates_missing_lemma_and_pos_entries() {
     let annotations = annotate_morphology(&tokens, &partial_lemmas, &pos[..3]);
 
     assert_eq!(annotations.len(), 4);
-    assert!(annotations[0]
-        .tags
-        .features
-        .contains(&MorphFeature::Person3));
-    assert!(annotations[0]
-        .tags
-        .features
-        .contains(&MorphFeature::NumberPlur));
-    assert!(annotations[1]
-        .tags
-        .features
-        .contains(&MorphFeature::TensePast));
+    assert!(annotations[0].tags.has("Person", "3"));
+    assert!(annotations[0].tags.has("Number", "Plur"));
+    assert!(annotations[1].tags.has("Tense", "Past"));
     assert_eq!(annotations[3].lemma, None);
-    assert!(annotations[3].tags.features.is_empty());
+    assert!(annotations[3].tags.is_empty());
 }
 
 #[test]
@@ -780,4 +771,49 @@ fn token_prediction(label: &str, byte_start: usize, byte_end: usize, score: f32)
         .attributes
         .insert("byte_end".to_string(), byte_end.to_string());
     prediction
+}
+
+#[test]
+fn morph_tag_set_writes_ud_feats_order() {
+    let feats = parse_ud_feats("NumType=Card|Number=Sing|Gender[psor]=Masc|Gender=Fem");
+    assert_eq!(
+        feats.to_ud_string(),
+        "Gender=Fem|Gender[psor]=Masc|Number=Sing|NumType=Card"
+    );
+    assert_eq!(MorphTagSet::new().to_ud_string(), "_");
+}
+
+#[test]
+fn ud_presets_route_by_primary_language_and_split_contractions() {
+    assert_eq!(
+        UdMorphologyPreset::for_language("de-AT"),
+        Some(UdMorphologyPreset::ComboGermanGsd)
+    );
+    assert_eq!(
+        UdMorphologyPreset::for_language("es"),
+        Some(UdMorphologyPreset::ComboSpanishAncora)
+    );
+    assert_eq!(UdMorphologyPreset::for_language("en"), None);
+    assert_eq!(split_contraction("de", "Zum"), Some(["zu", "dem"]));
+    assert_eq!(split_contraction("es", "del"), Some(["de", "el"]));
+    assert_eq!(split_contraction("es", "im"), None);
+}
+
+#[cfg(feature = "candle")]
+#[test]
+fn ud_lemmatizer_applies_table_rules_and_exceptions() {
+    let de = UdLemmatizer::for_language("de").unwrap();
+    assert_eq!(de.lemmatize("Kinder", PosTag::Noun), "Kind");
+    assert_eq!(de.lemmatize("spielten", PosTag::Verb), "spielen");
+    assert_eq!(de.lemmatize("war", PosTag::Aux), "sein");
+    assert_eq!(de.lemmatize("München", PosTag::Propn), "München");
+    let es = UdLemmatizer::for_language("es").unwrap();
+    assert_eq!(es.lemmatize("niños", PosTag::Noun), "niño");
+    assert_eq!(es.lemmatize("jugaban", PosTag::Verb), "jugar");
+    assert_eq!(es.lemmatize("las", PosTag::Det), "el");
+    assert!(UdLemmatizer::for_language("en").is_none());
+
+    let table = UdLemmatizer::parse("C\tNOUN\nR\tNOUN\ter\t2\t\nE\tmänner\tNOUN\tMann\n");
+    assert_eq!(table.lemmatize("Lehrer", PosTag::Noun), "Lehr");
+    assert_eq!(table.lemmatize("Männer", PosTag::Noun), "Mann");
 }

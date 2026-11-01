@@ -104,6 +104,54 @@ TEXT_LINGUISTICS_MODEL_DIR=.model-runtime cargo test -p moenarch-text-linguistic
 The test downloads missing bundles from Hugging Face and fails when a preset
 scores below 0.8 F1 for a language it declares.
 
+## UD morphology (de/es)
+
+With `candle,model-bundles`, setting
+`LinguisticAnalysisOptions::morphology` to `MorphologyOptions::local_model()` (or
+`local_model_with_downloads()`) replaces the heuristic lemma, POS and morphology
+layers for German and Spanish. The layers come from:
+
+| Preset | Model (pinned) | Training data |
+| --- | --- | --- |
+| `UdMorphologyPreset::ComboGermanGsd` | `clarin-pl/combo-nlp-xlm-roberta-base-german-gsd-ud2.17` @ `55234be1` | UD_German-GSD 2.17 (CC BY-SA 4.0) |
+| `UdMorphologyPreset::ComboSpanishAncora` | `clarin-pl/combo-nlp-xlm-roberta-base-spanish-ancora-ud2.17` @ `3f5885ee` | UD_Spanish-AnCora 2.17 (CC BY 4.0) |
+
+`UdMorphoTagger` runs the checkpoint's XLM-RoBERTa encoder and morphological head
+in Candle. It uses first-subword pooling, per-category UD feature heads with
+COMBO's refinement layer, and COMBO's nearest-valid-feature constraint per UPOS.
+The tokenizer is `FacebookAI/xlm-roberta-base` @ `e73636d4` (MIT). COMBO's
+dependency head ships in the same checkpoint and is left to #161. Lemmas come
+from `UdLemmatizer`, not from the model. It applies suffix edit rules per UPOS
+plus an exception list, both built from the treebank training splits by
+`scripts/build_ud_lemma_tables.py` (`data/lemmas/*.tsv`; see `docs/PROVENANCE.md`
+for licences). Contractions (`zum`, `im`, `del`, `al`) are tagged as two
+syntactic words. The token keeps the adposition's UPOS and lemma and the
+article's features. Other languages, English included, keep the heuristics.
+
+Scores, measured 2026-11-01. The UD test splits use gold word segmentation, and
+lemma accuracy uses the predicted UPOS. The fixtures are
+`evaluation/corpora/morphology-multilingual-v1.jsonl`, run through the full
+pipeline with the language pinned:
+
+| | UPOS | UFeats | Lemma |
+| --- | --- | --- | --- |
+| de, UD_German-GSD test (16,499 words) | 0.973 | 0.920 | 0.972 |
+| es, UD_Spanish-AnCora test (53,622 words) | 0.991 | 0.985 | 0.992 |
+| de, gold fixtures (87 tokens) | 1.000 | 1.000 | 0.989 |
+| es, gold fixtures (83 tokens) | 0.988 | 0.988 | 1.000 |
+
+```bash
+UD_TREEBANK_DIR=path/to/ud-2.17-test-splits TEXT_LINGUISTICS_MODEL_DIR=.model-runtime \
+  cargo test -p moenarch-text-linguistics --features external-tests \
+  --test ud_morphology_external --release -- --ignored --nocapture --test-threads 1
+```
+
+`UD_TREEBANK_DIR` must hold `de_gsd-ud-test.conllu` and
+`es_ancora-ud-test.conllu` from the UD 2.17 releases. The test downloads about
+2.3 GB of checkpoints. On the UD test splits it fails below 0.95 UPOS, 0.85
+UFeats or 0.90 lemma accuracy. On the fixtures it fails below 0.90 UPOS, 0.75
+UFeats or 0.90 lemma accuracy.
+
 ## Language support (en/de/es)
 
 Issue #117 asks for the same seven operations in English, German and Spanish.
@@ -115,9 +163,16 @@ Current state:
 | Sentence segmentation | language-neutral rules | language-neutral rules | language-neutral rules |
 | Tokenization | language-neutral rules | language-neutral rules | language-neutral rules |
 | Named entities (local model) | **model, gold-scored** | **model, gold-scored** | **model, gold-scored** |
-| Lemma / morphology | English heuristics | not supported (#160) | not supported (#160) |
-| Part of speech | English heuristics | not supported (#160) | not supported (#160) |
+| Lemma / morphology (`MorphologyMode::LocalModel`) | English heuristics | **UD model + UD lemma table, scored** | **UD model + UD lemma table, scored** |
+| Part of speech (`MorphologyMode::LocalModel`) | English heuristics | **UD model, scored** | **UD model, scored** |
 | Dependency syntax | English heuristics | not supported (#161) | not supported (#161) |
+
+The browser module does not do de/es POS or morphology. The COMBO checkpoints are
+custom heads on XLM-RoBERTa base, which Transformers.js cannot load as-is, and an
+int8 ONNX export would be roughly 280 MB per language, about twice the browser NER
+model. Language detection is still the stopword heuristic: it got the language wrong
+for 3 of the 10 German and 3 of the 10 Spanish fixture sentences. Set `MorphologyOptions::language` to skip
+detection. Per-sentence routing is #162.
 
 Heuristic NER (the default `EntityRecognitionMode::Heuristic`) is
 capitalization-based and is not language-aware. Per-sentence language routing

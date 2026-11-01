@@ -1,3 +1,5 @@
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 use crate::discourse::{
@@ -12,13 +14,16 @@ use crate::entities::{
 use crate::language::{LanguageDetectionOptions, LanguageDetector, LanguageProfile, LexiconStore};
 use crate::local_models::{CandleTokenClassifier, SequenceLabeler};
 use crate::morphology::{
-    annotate_morphology, lemmatize_tokens, Lemma, LemmaOptions, MorphAnnotation, PosAnnotation,
-    PosTagger, PosTaggingOptions,
+    annotate_morphology, lemmatize_tokens, Lemma, LemmaOptions, LemmatizationResult,
+    MorphAnnotation, PosAnnotation, PosTagger, PosTaggingOptions,
 };
 use crate::syntax::{chunk_phrases, DependencyParser, DependencyTree, PhraseChunk};
 use crate::tokenization::{
     TokenAlignmentMap, TokenizationMode, TokenizerPolicy, TokenizerRegistry, TokenizerSelection,
 };
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+use crate::ud_morphology::UdMorphoTagger;
+use crate::ud_morphology::UdMorphologyPreset;
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
 use model_runtime::{HuggingFaceDownloader, ModelBundle, ModelBundleStore};
 use text_core::{
@@ -190,6 +195,70 @@ impl EntityRecognitionOptions {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// How lemmas, part of speech and morphological features are produced.
+pub enum MorphologyMode {
+    /// English heuristics for every language.
+    Heuristic,
+    /// UD-treebank-trained taggers ([`UdMorphologyPreset`]) plus UD-derived lemma tables
+    /// for languages that have a preset (de, es); English heuristics otherwise.
+    LocalModel,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+/// Lemma/POS/morphology runtime selection. Defaults are heuristic and no-download.
+pub struct MorphologyOptions {
+    /// Whether to use heuristics or the UD-trained local models.
+    pub mode: MorphologyMode,
+    /// Language whose UD model to use; `None` uses the detected primary language.
+    pub language: Option<String>,
+    /// Directory containing local model bundles when `mode` is `LocalModel`.
+    pub bundle_dir: PathBuf,
+    /// Whether missing model bundles may be downloaded.
+    pub auto_download: bool,
+    /// Whether model download progress should be printed by the downloader.
+    pub download_progress: bool,
+    /// Maximum retry count for explicit model downloads.
+    pub max_retries: usize,
+}
+
+impl Default for MorphologyOptions {
+    fn default() -> Self {
+        Self::heuristic()
+    }
+}
+
+impl MorphologyOptions {
+    /// Local UD models without downloading missing bundles.
+    pub fn local_model() -> Self {
+        Self {
+            mode: MorphologyMode::LocalModel,
+            language: None,
+            bundle_dir: PathBuf::from(".model-runtime"),
+            auto_download: false,
+            download_progress: false,
+            max_retries: 1,
+        }
+    }
+
+    /// Local UD models that may download missing bundles.
+    pub fn local_model_with_downloads() -> Self {
+        Self {
+            auto_download: true,
+            download_progress: true,
+            ..Self::local_model()
+        }
+    }
+
+    /// English heuristics only.
+    pub fn heuristic() -> Self {
+        Self {
+            mode: MorphologyMode::Heuristic,
+            ..Self::local_model()
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 /// Data type for linguistic analysis options.
 pub struct LinguisticAnalysisOptions {
@@ -203,6 +272,8 @@ pub struct LinguisticAnalysisOptions {
     pub lemma: LemmaOptions,
     /// The pos value.
     pub pos: PosTaggingOptions,
+    /// Lemma/POS/morphology backend selection.
+    pub morphology: MorphologyOptions,
     /// The entity linking value.
     pub entity_linking: EntityLinkingOptions,
     /// The entity recognition value.
@@ -232,6 +303,7 @@ impl Default for LinguisticAnalysisOptions {
             tokenizer_policy: TokenizerPolicy::default(),
             lemma: LemmaOptions::default(),
             pos: PosTaggingOptions::default(),
+            morphology: MorphologyOptions::default(),
             entity_linking: EntityLinkingOptions::default(),
             entity_recognition: EntityRecognitionOptions::default(),
             enable_alignment: false,
@@ -642,19 +714,30 @@ fn analyze_text_with_config_and_labeler(
     } else {
         None
     };
-    let lemmas = lemmatize_tokens(
-        &tokens,
-        language
-            .primary
-            .as_ref()
-            .map(|prediction| prediction.language.as_str()),
-        &options.lemma,
-    );
-    let pos_tagger = PosTagger {
-        options: options.pos.clone(),
+    let primary_language = language
+        .primary
+        .as_ref()
+        .map(|prediction| prediction.language.as_str());
+    let ud_preset = match options.morphology.mode {
+        MorphologyMode::LocalModel => options
+            .morphology
+            .language
+            .as_deref()
+            .or(primary_language)
+            .and_then(UdMorphologyPreset::for_language),
+        MorphologyMode::Heuristic => None,
     };
-    let pos = pos_tagger.tag_tokens(&tokens, &lemmas);
-    let morphology = annotate_morphology(&tokens, &lemmas, &pos);
+    let (lemmas, pos, morphology) = if let Some(preset) = ud_preset {
+        ud_model_morphology(preset, &sentences, &tokens, &options.morphology)?
+    } else {
+        let lemmas = lemmatize_tokens(&tokens, primary_language, &options.lemma);
+        let pos_tagger = PosTagger {
+            options: options.pos.clone(),
+        };
+        let pos = pos_tagger.tag_tokens(&tokens, &lemmas);
+        let morphology = annotate_morphology(&tokens, &lemmas, &pos);
+        (lemmas, pos, morphology)
+    };
     let chunks = chunk_phrases(text, &sentences, &tokens, &pos);
     let dependency_parser = DependencyParser;
     let dependencies = dependency_parser.parse_document(&sentences, &tokens, &pos);
@@ -790,6 +873,167 @@ fn local_entity_labeler(options: &EntityRecognitionOptions) -> Result<CandleToke
     Err(DetectError::InvalidArgument(
         "local entity recognition requires the `candle` and `model-bundles` features".to_string(),
     ))
+}
+
+type MorphologyLayers = (
+    LemmatizationResult,
+    Vec<PosAnnotation>,
+    Vec<MorphAnnotation>,
+);
+
+#[cfg(not(all(feature = "candle", feature = "model-bundles")))]
+fn ud_model_morphology(
+    preset: UdMorphologyPreset,
+    _sentences: &[Sentence],
+    _tokens: &[Token],
+    _options: &MorphologyOptions,
+) -> Result<MorphologyLayers> {
+    Err(DetectError::InvalidArgument(format!(
+        "UD morphology `{}` requires the `candle` and `model-bundles` features",
+        preset.as_str()
+    )))
+}
+
+/// Tags every sentence with the UD tagger for `preset` and lemmatizes with the
+/// UD-derived table. Contractions (`zum`, `del`) are tagged as their two syntactic
+/// words; the token keeps the adposition's UPOS and lemma and the article's features.
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+fn ud_model_morphology(
+    preset: UdMorphologyPreset,
+    sentences: &[Sentence],
+    tokens: &[Token],
+    options: &MorphologyOptions,
+) -> Result<MorphologyLayers> {
+    use crate::lemmas::UdLemmatizer;
+    use crate::ud_morphology::split_contraction;
+
+    let tagger = cached_ud_tagger(preset, options)?;
+    let language = preset.language();
+    let lemmatizer = UdLemmatizer::for_language(language).ok_or_else(|| {
+        DetectError::InvalidArgument(format!("no UD lemma table for `{language}`"))
+    })?;
+
+    let mut groups = sentences
+        .iter()
+        .map(|sentence| {
+            (0..tokens.len())
+                .filter(|&index| {
+                    let start = tokens[index].span.byte_start;
+                    start >= sentence.span.byte_start && start < sentence.span.byte_end
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    let grouped = groups.iter().flatten().copied().collect::<BTreeSet<_>>();
+    let rest = (0..tokens.len())
+        .filter(|index| !grouped.contains(index))
+        .collect::<Vec<_>>();
+    groups.push(rest);
+
+    let mut lemmas = vec![None; tokens.len()];
+    let mut pos = vec![None; tokens.len()];
+    let mut morphology = vec![None; tokens.len()];
+    for group in groups.iter().filter(|group| !group.is_empty()) {
+        let mut words = Vec::new();
+        let mut first_word = Vec::new();
+        let mut contractions = Vec::new();
+        for &index in group {
+            first_word.push(words.len());
+            let text = tokens[index].text.as_str();
+            if let Some(parts) = split_contraction(language, text) {
+                words.extend(parts);
+                contractions.push(Some(parts));
+            } else {
+                words.push(text);
+                contractions.push(None);
+            }
+        }
+        let tagged = tagger.tag_words(&words)?;
+        for ((&index, &word), contraction) in group.iter().zip(&first_word).zip(&contractions) {
+            let analysis = &tagged[word];
+            let (lemma, feats, reason) = match contraction {
+                Some(parts) => (
+                    lemmatizer.lemmatize(parts[0], analysis.upos),
+                    tagged[word + 1].feats.clone(),
+                    format!(
+                        "ud-model:{} contraction {}+{}",
+                        preset.as_str(),
+                        parts[0],
+                        parts[1]
+                    ),
+                ),
+                None => (
+                    lemmatizer.lemmatize(&tokens[index].text, analysis.upos),
+                    analysis.feats.clone(),
+                    format!("ud-model:{}", preset.as_str()),
+                ),
+            };
+            lemmas[index] = Some(Lemma {
+                token_index: index,
+                value: lemma.clone(),
+                language: Some(language.to_string()),
+                confidence: analysis.confidence,
+            });
+            pos[index] = Some(PosAnnotation {
+                token_index: index,
+                tag: analysis.upos,
+                confidence: analysis.confidence,
+                reason,
+            });
+            morphology[index] = Some(MorphAnnotation {
+                token_index: index,
+                lemma: Some(lemma),
+                tags: feats,
+                confidence: analysis.confidence,
+            });
+        }
+    }
+    Ok((
+        LemmatizationResult {
+            language: Some(language.to_string()),
+            lemmas: lemmas.into_iter().flatten().collect(),
+        },
+        pos.into_iter().flatten().collect(),
+        morphology.into_iter().flatten().collect(),
+    ))
+}
+
+/// Loaded UD taggers keyed by bundle directory and preset; each checkpoint is ~1.1 GB.
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+fn cached_ud_tagger(
+    preset: UdMorphologyPreset,
+    options: &MorphologyOptions,
+) -> Result<std::sync::Arc<UdMorphoTagger>> {
+    use std::collections::HashMap;
+    use std::sync::{Arc, Mutex, OnceLock};
+
+    type Cache = Mutex<HashMap<(PathBuf, &'static str), Arc<UdMorphoTagger>>>;
+    static TAGGERS: OnceLock<Cache> = OnceLock::new();
+    let key = (options.bundle_dir.clone(), preset.as_str());
+    let cache = TAGGERS.get_or_init(Default::default);
+    if let Some(tagger) = cache.lock().ok().and_then(|cache| cache.get(&key).cloned()) {
+        return Ok(tagger);
+    }
+    let store = ModelBundleStore::new(&options.bundle_dir).downloader(
+        HuggingFaceDownloader::new()
+            .progress(options.download_progress)
+            .max_retries(options.max_retries),
+    );
+    let ensure = |spec: model_runtime::HuggingFaceModelSpec| -> Result<ModelBundle> {
+        let revision = spec.revision_value().unwrap_or("main").to_string();
+        match store.load(&spec.name, &revision) {
+            Ok(bundle) => Ok(bundle),
+            Err(_) if options.auto_download => store.download(&spec).map_err(model_runtime_error),
+            Err(error) => Err(model_runtime_error(error)),
+        }
+    };
+    let model = ensure(preset.spec())?;
+    let tokenizer = ensure(UdMorphologyPreset::tokenizer_spec())?;
+    let tagger = Arc::new(UdMorphoTagger::from_bundles(preset, &model, &tokenizer)?);
+    if let Ok(mut cache) = cache.lock() {
+        cache.insert(key, Arc::clone(&tagger));
+    }
+    Ok(tagger)
 }
 
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
