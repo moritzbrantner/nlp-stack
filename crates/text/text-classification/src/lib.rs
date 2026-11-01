@@ -8,10 +8,10 @@ mod tokenizer;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
-#[cfg(feature = "candle")]
-pub use models::CandleSequenceClassifier;
 #[cfg(feature = "onnx")]
 pub use models::OnnxZeroShotClassifier;
+#[cfg(feature = "candle")]
+pub use models::{CandleSequenceClassifier, SEQUENCE_CLASSIFIER_BATCH_SIZE};
 pub use models::{PairSequenceClassifier, RawPrediction, SequenceClassifier};
 use serde::{Deserialize, Serialize};
 use text_core::tokenize_words;
@@ -721,12 +721,11 @@ fn run_local_classification(
             request.model.model_id.as_deref(),
             "distilbert-sst2",
         );
-        let bundle = resolve_local_bundle(
+        let mut classifier = local_sequence_classifier(
             request.local_model.as_ref(),
             &model_id,
             model_runtime::ModelPreset::DistilbertSst2,
         )?;
-        let mut classifier = CandleSequenceClassifier::from_bundle(bundle)?;
         let predictions = class_predictions_from_raw(
             classifier.classify_text(&request.text, &request.labels)?,
             request.top_k,
@@ -755,12 +754,11 @@ fn run_local_sentiment(request: &SentimentRequest) -> Result<SentimentResponse> 
             request.model.model_id.as_deref(),
             "distilbert-sst2",
         );
-        let bundle = resolve_local_bundle(
+        let mut classifier = local_sequence_classifier(
             request.local_model.as_ref(),
             &model_id,
             model_runtime::ModelPreset::DistilbertSst2,
         )?;
-        let mut classifier = CandleSequenceClassifier::from_bundle(bundle)?;
         let labels = ["negative", "positive"]
             .into_iter()
             .map(str::to_string)
@@ -850,6 +848,38 @@ fn local_model_id(
         .and_then(|options| options.model_id.clone())
         .or_else(|| selected_model_id.map(ToString::to_string))
         .unwrap_or_else(|| default_model_id.to_string())
+}
+
+/// Loaded sequence classifiers keyed by bundle root and model id (default device); clones
+/// share the weights, so each model is read from disk once per process.
+#[cfg(feature = "candle")]
+fn local_sequence_classifier(
+    options: Option<&TextClassificationLocalModelOptions>,
+    model_id: &str,
+    default_preset: model_runtime::ModelPreset,
+) -> Result<CandleSequenceClassifier> {
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+
+    type Cache = Mutex<HashMap<(Option<PathBuf>, String), CandleSequenceClassifier>>;
+    static CLASSIFIERS: OnceLock<Cache> = OnceLock::new();
+    let key = (
+        options.and_then(|options| options.bundle_root.clone()),
+        model_id.to_string(),
+    );
+    let cache = CLASSIFIERS.get_or_init(Default::default);
+    if let Some(classifier) = cache.lock().ok().and_then(|cache| cache.get(&key).cloned()) {
+        return Ok(classifier);
+    }
+    let classifier = CandleSequenceClassifier::from_bundle(resolve_local_bundle(
+        options,
+        model_id,
+        default_preset,
+    )?)?;
+    if let Ok(mut cache) = cache.lock() {
+        cache.insert(key, classifier.clone());
+    }
+    Ok(classifier)
 }
 
 #[cfg(any(feature = "candle", feature = "onnx"))]

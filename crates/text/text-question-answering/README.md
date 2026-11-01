@@ -19,7 +19,8 @@ server/CLI builds with `local-onnx` use
 `onnx-community/roberta-base-squad2-ONNX` by default when no imported
 predictions or caller backend are supplied. Missing bundles are resolved through
 `moritzbrantner-model-runtime` and materialized under `.model-runtime` unless
-the request disables `auto_download`.
+the request disables `auto_download`. The ONNX session and tokenizer are loaded
+once per bundle root and preset and reused by later requests.
 
 ## Package surface
 

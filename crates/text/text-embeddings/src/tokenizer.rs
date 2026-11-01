@@ -4,6 +4,8 @@
 use std::fs;
 #[cfg(feature = "tokenizers")]
 use std::path::{Path, PathBuf};
+#[cfg(feature = "tokenizers")]
+use std::sync::{Arc, OnceLock};
 
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "tokenizers")]
@@ -35,11 +37,26 @@ impl TokenizedText {
 }
 
 #[cfg(feature = "tokenizers")]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone)]
 /// Tokenizer file plus the model's maximum token count.
+///
+/// The tokenizer file is parsed on the first [`TokenizerBundle::tokenize`] call and reused
+/// afterwards; clones share the parsed tokenizer.
 pub(crate) struct TokenizerBundle {
     tokenizer_path: PathBuf,
     pub(crate) max_length: Option<usize>,
+    loaded: Arc<OnceLock<tokenizers::Tokenizer>>,
+}
+
+#[cfg(feature = "tokenizers")]
+impl std::fmt::Debug for TokenizerBundle {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("TokenizerBundle")
+            .field("tokenizer_path", &self.tokenizer_path)
+            .field("max_length", &self.max_length)
+            .finish_non_exhaustive()
+    }
 }
 
 #[cfg(feature = "tokenizers")]
@@ -49,18 +66,28 @@ impl TokenizerBundle {
         Self {
             tokenizer_path: tokenizer_path.into(),
             max_length: None,
+            loaded: Default::default(),
         }
     }
 
-    #[cfg(feature = "model-bundles")]
+    /// Parses the tokenizer file once and returns the shared tokenizer.
+    fn tokenizer(&self) -> Result<&tokenizers::Tokenizer> {
+        if let Some(tokenizer) = self.loaded.get() {
+            return Ok(tokenizer);
+        }
+        let tokenizer = load_tokenizer(&self.tokenizer_path)?;
+        Ok(self.loaded.get_or_init(|| tokenizer))
+    }
+
+    #[cfg(all(feature = "candle", feature = "model-bundles"))]
     pub(crate) fn max_length(mut self, max_length: usize) -> Self {
         self.max_length = Some(max_length);
         self
     }
 
     pub(crate) fn tokenize(&self, text: &str) -> Result<TokenizedText> {
-        let tokenizer = load_tokenizer(&self.tokenizer_path)?;
-        let encoding = tokenizer
+        let encoding = self
+            .tokenizer()?
             .encode(text, true)
             .map_err(|err| DetectError::Source(format!("failed to tokenize text: {err}")))?;
         let mut tokenized = TokenizedText {

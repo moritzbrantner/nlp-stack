@@ -73,22 +73,60 @@ enum CandleSequenceClassifierArchitecture {
 }
 
 #[cfg(feature = "candle")]
-#[derive(Debug, Clone)]
-/// Candle sequence-classification facade for local text classification.
+/// Sequences per forward pass in [`CandleSequenceClassifier::classify_batch`].
+pub const SEQUENCE_CLASSIFIER_BATCH_SIZE: usize = 16;
+
+#[cfg(feature = "candle")]
+#[derive(Clone)]
+/// Candle sequence-classification session for local text classification.
+///
+/// The weights are loaded once in [`CandleSequenceClassifier::from_bundle`] and reused by
+/// every call; clones share them. The session is `Send + Sync`.
 pub struct CandleSequenceClassifier {
     tokenizer: TokenizerBundle,
     labels: Vec<String>,
-    config: Value,
-    model_paths: Vec<PathBuf>,
+    model: std::sync::Arc<CandleSequenceClassifierModel>,
+}
+
+#[cfg(feature = "candle")]
+impl std::fmt::Debug for CandleSequenceClassifier {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("CandleSequenceClassifier")
+            .field("tokenizer", &self.tokenizer)
+            .field("labels", &self.labels)
+            .field("architecture", &self.model.architecture)
+            .field("device", &self.model.device)
+            .finish()
+    }
+}
+
+#[cfg(feature = "candle")]
+enum CandleEncoder {
+    Bert(candle_bert::BertModel),
+    DistilBert(candle_distilbert::DistilBertModel),
+}
+
+#[cfg(feature = "candle")]
+struct CandleSequenceClassifierModel {
     architecture: CandleSequenceClassifierArchitecture,
-    #[cfg(feature = "candle")]
+    encoder: CandleEncoder,
+    pre_classifier: Option<CandleLinear>,
+    classifier: CandleLinear,
     device: CandleDevice,
 }
 
 #[cfg(feature = "candle")]
 impl CandleSequenceClassifier {
-    /// Builds from a model bundle.
+    /// Loads the model from a bundle onto the default device (CUDA when this build and
+    /// machine support it, otherwise the CPU).
     pub fn from_bundle(bundle: ModelBundle) -> Result<Self> {
+        let device = CandleDevice::cuda_if_available(0).unwrap_or(CandleDevice::Cpu);
+        Self::from_bundle_on(bundle, device)
+    }
+
+    /// Loads the model from a bundle onto `device`.
+    pub fn from_bundle_on(bundle: ModelBundle, device: CandleDevice) -> Result<Self> {
         if bundle.manifest.task != ModelTask::TextClassification {
             return Err(invalid_argument(format!(
                 "Candle sequence-classification bundle task must be text_classification, got {:?}",
@@ -105,23 +143,12 @@ impl CandleSequenceClassifier {
             ));
         }
         let architecture = sequence_classifier_architecture_from_config(&config)?;
+        let model = load_candle_sequence_classifier(&config, &model_paths, architecture, device)?;
         Ok(Self {
             tokenizer,
             labels: labels_from_config(&config),
-            config,
-            model_paths,
-            architecture,
-            #[cfg(feature = "candle")]
-            // CUDA when this build and machine support it; otherwise the CPU.
-            device: CandleDevice::cuda_if_available(0).unwrap_or(CandleDevice::Cpu),
+            model: std::sync::Arc::new(model),
         })
-    }
-
-    /// Runs the model on `device` instead of the default (CUDA if available, else CPU).
-    #[cfg(feature = "candle")]
-    pub fn on_device(mut self, device: CandleDevice) -> Self {
-        self.device = device;
-        self
     }
 
     /// Returns labels.
@@ -130,32 +157,46 @@ impl CandleSequenceClassifier {
     }
 
     /// Classifies text.
-    pub fn classify(&mut self, text: &str) -> Result<Vec<RawPrediction>> {
-        #[cfg(feature = "candle")]
-        {
-            let tokens = self.tokenizer.tokenize(text)?;
-            let logits = run_candle_sequence_classifier(
-                &self.config,
-                &self.model_paths,
-                self.architecture,
-                &tokens,
-                &self.device,
-            )?;
-            sequence_predictions_from_logits(&logits, &self.labels)
+    pub fn classify(&self, text: &str) -> Result<Vec<RawPrediction>> {
+        let tokens = self.tokenizer.tokenize(text)?;
+        let mut predictions = self.classify_tokenized_batch(&[&tokens])?;
+        predictions
+            .pop()
+            .ok_or_else(|| invalid_argument("Candle sequence classifier returned no logits"))
+    }
+
+    /// Classifies several texts, padding up to [`SEQUENCE_CLASSIFIER_BATCH_SIZE`] of them into
+    /// one forward pass. Returns one ranked prediction list per text, in input order; labels
+    /// and their order match per-text [`Self::classify`], scores can differ in the last
+    /// float bits.
+    pub fn classify_batch(&self, texts: &[&str]) -> Result<Vec<Vec<RawPrediction>>> {
+        let tokens = texts
+            .iter()
+            .map(|text| self.tokenizer.tokenize(text))
+            .collect::<Result<Vec<_>>>()?;
+        self.classify_tokenized_batch(&tokens.iter().collect::<Vec<_>>())
+    }
+
+    fn classify_tokenized_batch(
+        &self,
+        inputs: &[&TokenizedText],
+    ) -> Result<Vec<Vec<RawPrediction>>> {
+        // Batch sequences of similar length together to keep padding small.
+        let mut order = (0..inputs.len()).collect::<Vec<_>>();
+        order.sort_by_key(|&index| inputs[index].input_ids.len());
+        let mut results = vec![Vec::new(); inputs.len()];
+        for chunk in order.chunks(SEQUENCE_CLASSIFIER_BATCH_SIZE) {
+            let batch = chunk.iter().map(|&index| inputs[index]).collect::<Vec<_>>();
+            let (logits, label_count) = self.model.forward(&batch)?;
+            for (row, &index) in chunk.iter().enumerate() {
+                let start = row * label_count;
+                results[index] = sequence_predictions_from_logits(
+                    &logits[start..start + label_count],
+                    &self.labels,
+                )?;
+            }
         }
-        #[cfg(not(feature = "candle"))]
-        {
-            let _ = (
-                text,
-                &self.tokenizer,
-                &self.config,
-                &self.model_paths,
-                self.architecture,
-            );
-            Err(invalid_argument(
-                "native Candle sequence classification requires the `candle` feature",
-            ))
-        }
+        Ok(results)
     }
 }
 
@@ -508,32 +549,22 @@ fn runtime_onnx_error(error: runtime_onnx::OnnxRuntimeError) -> DetectError {
 }
 
 #[cfg(feature = "candle")]
-fn run_candle_sequence_classifier(
+fn load_candle_sequence_classifier(
     config: &Value,
     model_paths: &[PathBuf],
     architecture: CandleSequenceClassifierArchitecture,
-    tokens: &TokenizedText,
-    device: &CandleDevice,
-) -> Result<Vec<f32>> {
-    let vb = candle_var_builder(model_paths, device)?;
+    device: CandleDevice,
+) -> Result<CandleSequenceClassifierModel> {
+    let vb = candle_var_builder(model_paths, &device)?;
     let prefixes = model_prefix_candidates(config);
-
-    let (sequence_output, used_prefix) = match architecture {
+    let (encoder, used_prefix) = match architecture {
         CandleSequenceClassifierArchitecture::Bert => {
             let config: candle_bert::Config =
                 serde_json::from_value(config.clone()).map_err(|err| {
                     invalid_argument(format!("failed to parse BERT config for Candle: {err}"))
                 })?;
             let (model, used_prefix) = load_candle_bert_model(&vb, &config, &prefixes)?;
-            let input_ids = candle_input_ids(tokens, device)?;
-            let token_type_ids = candle_token_type_ids(tokens, device)?;
-            let attention_mask = candle_attention_mask_keep(tokens, device)?;
-            (
-                model
-                    .forward(&input_ids, &token_type_ids, Some(&attention_mask))
-                    .map_err(candle_error)?,
-                used_prefix,
-            )
+            (CandleEncoder::Bert(model), used_prefix)
         }
         CandleSequenceClassifierArchitecture::DistilBert => {
             let config: candle_distilbert::Config = serde_json::from_value(config.clone())
@@ -543,39 +574,71 @@ fn run_candle_sequence_classifier(
                     ))
                 })?;
             let (model, used_prefix) = load_candle_distilbert_model(&vb, &config, &prefixes)?;
-            let input_ids = candle_input_ids(tokens, device)?;
-            let attention_mask = candle_attention_mask_distil(tokens, device)?;
-            (
-                model
-                    .forward(&input_ids, &attention_mask)
-                    .map_err(candle_error)?,
-                used_prefix,
-            )
+            (CandleEncoder::DistilBert(model), used_prefix)
         }
     };
-
-    let pooled = sequence_output
-        .narrow(1, 0, 1)
-        .map_err(candle_error)?
-        .squeeze(1)
-        .map_err(candle_error)?;
     let pre_classifier_candidates = prioritized_layer_candidates(&used_prefix, "pre_classifier");
-    let hidden = match load_first_candle_linear(&vb, &pre_classifier_candidates)? {
-        Some(pre_classifier) => pre_classifier
-            .forward(&pooled)
-            .map_err(candle_error)?
-            .relu()
-            .map_err(candle_error)?,
-        None => pooled,
-    };
+    let pre_classifier = load_first_candle_linear(&vb, &pre_classifier_candidates)?;
     let classifier_candidates = prioritized_layer_candidates(&used_prefix, "classifier");
     let classifier = load_required_candle_linear(&vb, &classifier_candidates, "classifier")?;
-    let logits = classifier.forward(&hidden).map_err(candle_error)?;
-    logits
-        .flatten_all()
-        .map_err(candle_error)?
-        .to_vec1::<f32>()
-        .map_err(candle_error)
+    Ok(CandleSequenceClassifierModel {
+        architecture,
+        encoder,
+        pre_classifier,
+        classifier,
+        device,
+    })
+}
+
+#[cfg(feature = "candle")]
+impl CandleSequenceClassifierModel {
+    /// Runs one padded batch; returns row-major logits `[batch, labels]` plus the label count.
+    fn forward(&self, batch: &[&TokenizedText]) -> Result<(Vec<f32>, usize)> {
+        let sequence = batch
+            .iter()
+            .map(|tokens| tokens.input_ids.len())
+            .max()
+            .unwrap_or(0);
+        let device = &self.device;
+        let input_ids = candle_input_ids(batch, sequence, device)?;
+        let sequence_output = match &self.encoder {
+            CandleEncoder::Bert(model) => {
+                let token_type_ids = candle_token_type_ids(batch, sequence, device)?;
+                let attention_mask = candle_attention_mask_keep(batch, sequence, device)?;
+                model
+                    .forward(&input_ids, &token_type_ids, Some(&attention_mask))
+                    .map_err(candle_error)?
+            }
+            CandleEncoder::DistilBert(model) => {
+                let attention_mask = candle_attention_mask_distil(batch, sequence, device)?;
+                model
+                    .forward(&input_ids, &attention_mask)
+                    .map_err(candle_error)?
+            }
+        };
+        // The first ([CLS]) position of each row; padding sits at the end.
+        let pooled = sequence_output
+            .narrow(1, 0, 1)
+            .map_err(candle_error)?
+            .squeeze(1)
+            .map_err(candle_error)?;
+        let hidden = match &self.pre_classifier {
+            Some(pre_classifier) => pre_classifier
+                .forward(&pooled)
+                .map_err(candle_error)?
+                .relu()
+                .map_err(candle_error)?,
+            None => pooled,
+        };
+        let logits = self.classifier.forward(&hidden).map_err(candle_error)?;
+        let label_count = logits.dims().last().copied().unwrap_or(0);
+        let values = logits
+            .flatten_all()
+            .map_err(candle_error)?
+            .to_vec1::<f32>()
+            .map_err(candle_error)?;
+        Ok((values, label_count))
+    }
 }
 
 #[cfg(feature = "candle")]
@@ -715,64 +778,97 @@ fn push_unique_string(values: &mut Vec<String>, value: String) {
     }
 }
 
+/// Stacks one row per sequence into `[batch, sequence]`, padding each row with `pad`.
 #[cfg(feature = "candle")]
-fn candle_input_ids(tokens: &TokenizedText, device: &CandleDevice) -> Result<CandleTensor> {
-    let values = tokens
-        .input_ids
+fn padded_rows<T: Copy>(
+    batch: &[&TokenizedText],
+    sequence: usize,
+    pad: T,
+    row: impl Fn(&TokenizedText) -> Result<Vec<T>>,
+) -> Result<Vec<T>> {
+    let mut values = Vec::with_capacity(batch.len() * sequence);
+    for tokens in batch {
+        let mut cells = row(tokens)?;
+        cells.resize(sequence, pad);
+        values.extend(cells);
+    }
+    Ok(values)
+}
+
+#[cfg(feature = "candle")]
+fn u32_ids(values: &[i64], what: &str) -> Result<Vec<u32>> {
+    values
         .iter()
         .map(|value| {
             u32::try_from(*value).map_err(|_| {
                 invalid_argument(format!(
-                    "tokenizer produced an out-of-range input id for Candle: {value}"
+                    "tokenizer produced an out-of-range {what} for Candle: {value}"
                 ))
             })
         })
-        .collect::<Result<Vec<_>>>()?;
-    CandleTensor::from_vec(values, (1, tokens.input_ids.len()), device).map_err(candle_error)
+        .collect()
 }
 
 #[cfg(feature = "candle")]
-fn candle_token_type_ids(tokens: &TokenizedText, device: &CandleDevice) -> Result<CandleTensor> {
-    let values = match &tokens.token_type_ids {
-        Some(values) => values
-            .iter()
-            .map(|value| {
-                u32::try_from(*value).map_err(|_| {
-                    invalid_argument(format!(
-                        "tokenizer produced an out-of-range token type id for Candle: {value}"
-                    ))
-                })
-            })
-            .collect::<Result<Vec<_>>>()?,
-        None => vec![0_u32; tokens.input_ids.len()],
-    };
-    CandleTensor::from_vec(values, (1, tokens.input_ids.len()), device).map_err(candle_error)
+fn candle_input_ids(
+    batch: &[&TokenizedText],
+    sequence: usize,
+    device: &CandleDevice,
+) -> Result<CandleTensor> {
+    let values = padded_rows(batch, sequence, 0_u32, |tokens| {
+        u32_ids(&tokens.input_ids, "input id")
+    })?;
+    CandleTensor::from_vec(values, (batch.len(), sequence), device).map_err(candle_error)
 }
 
+#[cfg(feature = "candle")]
+fn candle_token_type_ids(
+    batch: &[&TokenizedText],
+    sequence: usize,
+    device: &CandleDevice,
+) -> Result<CandleTensor> {
+    let values = padded_rows(batch, sequence, 0_u32, |tokens| {
+        match &tokens.token_type_ids {
+            Some(values) => u32_ids(values, "token type id"),
+            None => Ok(vec![0_u32; tokens.input_ids.len()]),
+        }
+    })?;
+    CandleTensor::from_vec(values, (batch.len(), sequence), device).map_err(candle_error)
+}
+
+/// BERT mask: 1 attends, 0 (padding included) is masked.
 #[cfg(feature = "candle")]
 fn candle_attention_mask_keep(
-    tokens: &TokenizedText,
+    batch: &[&TokenizedText],
+    sequence: usize,
     device: &CandleDevice,
 ) -> Result<CandleTensor> {
-    let values = tokens
-        .attention_mask
-        .iter()
-        .map(|value| if *value == 0 { 0_u32 } else { 1_u32 })
-        .collect::<Vec<_>>();
-    CandleTensor::from_vec(values, (1, tokens.attention_mask.len()), device).map_err(candle_error)
+    let values = padded_rows(batch, sequence, 0_u32, |tokens| {
+        Ok(tokens
+            .attention_mask
+            .iter()
+            .map(|value| u32::from(*value != 0))
+            .collect())
+    })?;
+    CandleTensor::from_vec(values, (batch.len(), sequence), device).map_err(candle_error)
 }
 
+/// DistilBERT mask: 1 is masked (padding included), shaped `[batch, 1, 1, sequence]` so it
+/// broadcasts over heads and query positions.
 #[cfg(feature = "candle")]
 fn candle_attention_mask_distil(
-    tokens: &TokenizedText,
+    batch: &[&TokenizedText],
+    sequence: usize,
     device: &CandleDevice,
 ) -> Result<CandleTensor> {
-    let values = tokens
-        .attention_mask
-        .iter()
-        .map(|value| if *value == 0 { 1_u8 } else { 0_u8 })
-        .collect::<Vec<_>>();
-    CandleTensor::from_vec(values, (1, tokens.attention_mask.len()), device).map_err(candle_error)
+    let values = padded_rows(batch, sequence, 1_u8, |tokens| {
+        Ok(tokens
+            .attention_mask
+            .iter()
+            .map(|value| u8::from(*value == 0))
+            .collect())
+    })?;
+    CandleTensor::from_vec(values, (batch.len(), 1, 1, sequence), device).map_err(candle_error)
 }
 
 #[cfg(feature = "candle")]
@@ -795,6 +891,13 @@ mod tests {
         let total = scores.iter().sum::<f32>();
         assert!((total - 1.0).abs() < 0.0001);
         assert!(scores[2] > scores[1]);
+    }
+
+    #[cfg(feature = "candle")]
+    #[test]
+    fn sequence_classifier_session_is_send_and_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<CandleSequenceClassifier>();
     }
 
     #[cfg(feature = "candle")]
