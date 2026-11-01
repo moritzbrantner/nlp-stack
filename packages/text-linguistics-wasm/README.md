@@ -42,6 +42,10 @@ ner.dispose();
   (Transformers.js 4.2 in Bun, 2026-11-01): en 0.971, de 0.985, es 1.000. The previous
   English-only `onnx-community/distilbert-NER-ONNX` (q4) scored en 0.971, de 0.609,
   es 0.444.
+- Every model file (config, tokenizer and weights) is fetched at the pinned commit and kept
+  in the browser's Cache Storage (`transformers-cache`). Once cached, startup sends no
+  request to Hugging Face, so the module works offline. A failed load rejects with a
+  `BrowserNerError` (`stage: "model"`) whose message says the download failed (offline?).
 - Aborting a request terminates the worker and rejects every in-flight request, so a
   canceled request never resolves. The next request starts a fresh worker.
 - Consume it from a pushed revision of this repository; no npm publication is required, and
