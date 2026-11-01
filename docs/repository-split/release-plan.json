@@ -563,6 +563,7 @@
       "expected_tag": null,
       "intended_next_release_owner": "moritzbrantner/nlp-stack",
       "release_dependencies": [
+        "moenarch-text-core",
         "moenarch-text-embeddings",
         "moenarch-text-index",
         "moenarch-text-lexical",
