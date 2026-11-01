@@ -1,4 +1,11 @@
-import { languageName, sentenceViews, type OperationStatus } from "./sentence-operations";
+import {
+  languageName,
+  sentenceViews,
+  type OperationStatus,
+  type PassageView,
+  type ReportingNode,
+  type ReportingView,
+} from "./sentence-operations";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -17,6 +24,71 @@ const statusStyles: Record<OperationStatus, string> = {
   unknown: "border-zinc-300 bg-white text-zinc-700",
   "rust-only": "border-sky-300 bg-sky-50 text-sky-900",
 };
+
+function Passage({ passage, label }: { passage: PassageView; label: string }) {
+  return (
+    <span title={`${label}, UTF-8 bytes ${passage.byteStart}–${passage.byteEnd}`} data-byte-start={passage.byteStart} data-byte-end={passage.byteEnd}>
+      {passage.text}
+    </span>
+  );
+}
+
+function ReportingTree({ node }: { node: ReportingNode }) {
+  const kind = node.kind === "belief" ? "belief" : "speech";
+  return (
+    <li className="mt-2" aria-label={`${kind} construction: ${node.source?.text ?? "no stated source"} ${node.cue.text}`}>
+      <p className="text-sm text-ink">
+        <span className="font-semibold">
+          {node.source ? <Passage passage={node.source} label="source" /> : <em className="font-normal text-muted">no stated source</em>}
+        </span>
+        {" — "}
+        <em><Passage passage={node.cue} label="cue" /></em>
+        <span className="ml-2 text-xs text-muted">
+          {kind} · {node.form === "direct" ? "quotation" : "clausal complement"} · cue bytes {node.cue.byteStart}–{node.cue.byteEnd} · parse confidence {node.confidence.toFixed(2)}
+        </span>
+      </p>
+      <div className="ml-4 border-l-2 border-line pl-3">
+        <p className="text-sm text-muted">
+          content “<Passage passage={node.content} label="content" />” · bytes {node.content.byteStart}–{node.content.byteEnd}
+        </p>
+        {node.children.length > 0 ? (
+          <ul>
+            {node.children.map((child) => <ReportingTree key={child.id} node={child} />)}
+          </ul>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
+function ReportingSection({ reporting }: { reporting: ReportingView }) {
+  return (
+    <div className="mt-3" aria-label="Reported speech and belief">
+      <p className="text-sm font-semibold text-ink">
+        Reported speech and belief{" "}
+        <span className={`ml-1 inline-block rounded-full border px-2 py-0.5 text-xs font-semibold ${statusStyles[reporting.status]}`}>
+          {statusLabels[reporting.status]}
+        </span>
+      </p>
+      <p className="mt-1 text-xs text-muted">
+        {reporting.producer ? <span className="font-mono text-ink">{reporting.producer}</span> : null}
+        {reporting.producer && reporting.detail ? " · " : null}
+        {reporting.detail}
+      </p>
+      {reporting.roots.length > 0 ? (
+        <>
+          <ul>{reporting.roots.map((node) => <ReportingTree key={node.id} node={node} />)}</ul>
+          <p className="mt-2 text-xs text-muted">
+            This records what the text reports. It does not say that a source endorses the content, that anyone holds the
+            belief, or that the content is true.
+          </p>
+        </>
+      ) : reporting.status === "supported" ? (
+        <p className="mt-1 text-xs text-muted">No reporting or belief construction in this sentence.</p>
+      ) : null}
+    </div>
+  );
+}
 
 export function SentencesPanel({ documentReport }: { documentReport: JsonRecord | null }) {
   const sentences = sentenceViews(documentReport);
@@ -73,6 +145,7 @@ export function SentencesPanel({ documentReport }: { documentReport: JsonRecord 
                 </tbody>
               </table>
             </div>
+            <ReportingSection reporting={sentence.reporting} />
           </article>
         ))}
       </div>

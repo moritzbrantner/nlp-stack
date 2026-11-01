@@ -21,6 +21,35 @@ export interface SentenceView {
   language: string | null;
   detection: string;
   rows: OperationRow[];
+  reporting: ReportingView;
+}
+
+/** A passage of the source text with its UTF-8 half-open byte span. */
+export interface PassageView {
+  text: string;
+  byteStart: number;
+  byteEnd: number;
+}
+
+/** One reporting/belief construction (`text_linguistics::ReportingConstruction`) with its nested children. */
+export interface ReportingNode {
+  id: number;
+  kind: "speech" | "belief";
+  form: "indirect" | "direct";
+  source: PassageView | null;
+  cue: PassageView;
+  cueLemma: string;
+  content: PassageView;
+  confidence: number;
+  children: ReportingNode[];
+}
+
+/** The sentence's reporting evidence: support status plus its outermost constructions. */
+export interface ReportingView {
+  status: OperationStatus;
+  producer: string | null;
+  detail: string;
+  roots: ReportingNode[];
 }
 
 const operationLabels: [string, string][] = [
@@ -122,10 +151,54 @@ function rustRow(label: string, operation: string, language: string | null, repo
   return { operation, label, status, producer, detail };
 }
 
+function passage(value: unknown): PassageView | null {
+  const item = record(value);
+  const span = record(item?.span);
+  if (!item || !span) return null;
+  return { text: text(item.text) ?? "", byteStart: Number(span.byte_start ?? 0), byteEnd: Number(span.byte_end ?? 0) };
+}
+
+function reportingNode(item: JsonRecord, byId: Map<number, JsonRecord>, depth = 0): ReportingNode {
+  const children = depth > 16
+    ? []
+    : (Array.isArray(item.children) ? item.children : [])
+      .map((id) => byId.get(Number(id)))
+      .filter((child): child is JsonRecord => child !== undefined)
+      .map((child) => reportingNode(child, byId, depth + 1));
+  return {
+    id: Number(item.id),
+    kind: item.kind === "belief" ? "belief" : "speech",
+    form: item.form === "direct" ? "direct" : "indirect",
+    source: passage(item.source),
+    cue: passage(item.cue) ?? { text: "", byteStart: 0, byteEnd: 0 },
+    cueLemma: text(item.cueLemma) ?? "",
+    content: passage(item.content) ?? { text: "", byteStart: 0, byteEnd: 0 },
+    confidence: Number(item.confidence ?? 0),
+    children,
+  };
+}
+
+/** The Rust reporting evidence (`linguistic.reporting`) for one linguistic sentence. */
+function reportingView(reporting: JsonRecord | null, sentenceIndex: number | null): ReportingView {
+  const report = records(reporting?.sentences).find((item) => Number(item.sentenceIndex) === sentenceIndex) ?? null;
+  if (!report) {
+    return { status: "unknown", producer: null, detail: "no reporting evidence for this sentence", roots: [] };
+  }
+  const constructions = records(reporting?.constructions).filter((item) => Number(item.sentenceIndex) === sentenceIndex);
+  const byId = new Map(constructions.map((item) => [Number(item.id), item]));
+  const roots = constructions
+    .filter((item) => item.parent === null || item.parent === undefined)
+    .map((item) => reportingNode(item, byId));
+  const support = text(report.support) ?? "unknown";
+  const status = (["supported", "partial", "unsupported", "unknown"] as const).find((value) => value === support) ?? "unknown";
+  return { status, producer: text(report.producer), detail: text(report.reason) ?? "", roots };
+}
+
 /** One view per core sentence, in source order. */
 export function sentenceViews(documentReport: JsonRecord | null): SentenceView[] {
   const core = record(documentReport?.core);
   const routing = records(record(documentReport?.linguistic)?.sentences);
+  const reporting = record(record(documentReport?.linguistic)?.reporting);
   const model = record(documentReport?.namedEntityModel);
   const nerReports = records(model?.sentences);
   return records(core?.sentences).map((sentence, index) => {
@@ -149,6 +222,7 @@ export function sentenceViews(documentReport: JsonRecord | null): SentenceView[]
       language,
       detection: detectionSummary(record(routed?.detection), routed?.languagePinned === true),
       rows,
+      reporting: reportingView(reporting, routed ? Number(routed.sentenceIndex) : null),
     };
   });
 }

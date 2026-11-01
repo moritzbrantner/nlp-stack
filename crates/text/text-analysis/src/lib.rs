@@ -346,6 +346,9 @@ pub struct LinguisticAnalysisSection {
     pub language: serde_json::Value,
     /// Per-sentence language routing records (`text_linguistics::SentenceAnalysis`).
     pub sentences: serde_json::Value,
+    /// Nested reported-speech and belief constructions with per-sentence support
+    /// (`text_linguistics::ReportingEvidence`).
+    pub reporting: serde_json::Value,
     pub tokenizer: serde_json::Value,
     pub lemmas: serde_json::Value,
     pub morphology: serde_json::Value,
