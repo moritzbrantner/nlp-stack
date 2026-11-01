@@ -162,10 +162,10 @@ fn falls_back_to_und_for_empty_text() {
 
     assert_eq!(primary.language, "und");
     assert_eq!(primary.confidence, 0.0);
-    assert_eq!(primary.reason, "script fallback");
+    assert_eq!(primary.reason, "no text");
     assert_eq!(profile.token_count, 0);
     assert!(profile.alternatives.is_empty());
-    assert!(profile.sentence_predictions.is_empty());
+    assert!(profile.sentences.is_empty());
 }
 
 #[test]
@@ -855,6 +855,280 @@ fn ud_deprels_parse_into_relation_and_subtype() {
             Some(relation)
         );
     }
+}
+
+const MIXED_SAMPLE: &str =
+    "Sarah says John is late. Er glaubt, dass John nicht kommen wird. María explicó que Ana llegó tarde.";
+
+fn report(
+    analysis: &LinguisticAnalysis,
+    sentence: usize,
+    operation: LinguisticOperation,
+) -> &OperationReport {
+    analysis.sentence_analyses[sentence]
+        .operation(operation)
+        .expect("every operation is reported")
+}
+
+fn sentence_token_indices(analysis: &LinguisticAnalysis, sentence: usize) -> Vec<usize> {
+    let span = analysis.sentences[sentence].span;
+    (0..analysis.tokens.len())
+        .filter(|&index| {
+            let start = analysis.tokens[index].span.byte_start;
+            start >= span.byte_start && start < span.byte_end
+        })
+        .collect()
+}
+
+#[test]
+fn routes_each_sentence_by_its_own_language() {
+    let analysis = analyze_text(MIXED_SAMPLE, &LinguisticAnalysisOptions::heuristic()).unwrap();
+    let languages = analysis
+        .sentence_analyses
+        .iter()
+        .map(|sentence| sentence.language.as_deref())
+        .collect::<Vec<_>>();
+    assert_eq!(languages, [Some("en"), Some("de"), Some("es")]);
+    assert!(analysis.language.is_mixed);
+
+    // Spans are canonical UTF-8 byte offsets and recover the exact source text.
+    for (sentence, record) in analysis.sentences.iter().zip(&analysis.sentence_analyses) {
+        assert_eq!(record.span, sentence.span);
+        assert_eq!(
+            &MIXED_SAMPLE[record.span.byte_start..record.span.byte_end],
+            sentence.text
+        );
+        assert_eq!(record.operations.len(), LinguisticOperation::ALL.len());
+    }
+    let spanish = &analysis.sentence_analyses[2];
+    assert_eq!(
+        &MIXED_SAMPLE[spanish.span.byte_start..spanish.span.byte_end],
+        "María explicó que Ana llegó tarde."
+    );
+    assert_eq!(spanish.span.byte_end, MIXED_SAMPLE.len());
+
+    // English gets the (unscored) English heuristics; German and Spanish do not get
+    // English-model results presented as their own.
+    let english = report(&analysis, 0, LinguisticOperation::PartOfSpeech);
+    assert_eq!(english.support, OperationSupport::Partial);
+    assert_eq!(english.producer.as_deref(), Some("heuristic:english-rules"));
+    for sentence in [1, 2] {
+        for operation in [
+            LinguisticOperation::Morphology,
+            LinguisticOperation::PartOfSpeech,
+            LinguisticOperation::DependencySyntax,
+        ] {
+            let report = report(&analysis, sentence, operation);
+            assert_eq!(
+                report.support,
+                OperationSupport::Unsupported,
+                "{operation:?}"
+            );
+            assert!(report.reason.contains("LocalModel"), "{}", report.reason);
+        }
+        for operation in [
+            LinguisticOperation::LanguageDetection,
+            LinguisticOperation::SentenceSegmentation,
+            LinguisticOperation::Tokenization,
+        ] {
+            assert_eq!(
+                report(&analysis, sentence, operation).support,
+                OperationSupport::Supported
+            );
+        }
+    }
+    let english_tokens = sentence_token_indices(&analysis, 0);
+    let german_tokens = sentence_token_indices(&analysis, 1);
+    let tagged = |index: usize| analysis.pos.iter().any(|pos| pos.token_index == index);
+    assert!(english_tokens.iter().all(|&index| tagged(index)));
+    assert!(german_tokens.iter().all(|&index| !tagged(index)));
+    assert!(analysis
+        .lemmas
+        .iter()
+        .all(|lemma| english_tokens.contains(&lemma.token_index)));
+    assert!(analysis
+        .dependencies
+        .iter()
+        .all(|tree| tree.sentence_index == 0));
+
+    // Heuristic NER is labelled partial for every language, not hidden.
+    for sentence in 0..3 {
+        assert_eq!(
+            report(&analysis, sentence, LinguisticOperation::NamedEntities).support,
+            OperationSupport::Partial
+        );
+    }
+}
+
+#[test]
+fn undecided_and_unsupported_sentences_keep_their_neighbours() {
+    let text = "Sarah says John is late. Ok. Le chat dort sur le canapé depuis ce matin. Привет, как дела у тебя сегодня?";
+    let analysis = analyze_text(text, &LinguisticAnalysisOptions::heuristic()).unwrap();
+    assert_eq!(analysis.sentences.len(), 4);
+    let [english, short, french, russian] = &analysis.sentence_analyses[..] else {
+        panic!("four sentence records");
+    };
+    assert_eq!(english.language.as_deref(), Some("en"));
+    assert!(analysis
+        .pos
+        .iter()
+        .any(|pos| sentence_token_indices(&analysis, 0).contains(&pos.token_index)));
+
+    assert_eq!(short.detection.decision, LanguageDecision::TooShort);
+    assert_eq!(short.language, None);
+    assert_eq!(
+        report(&analysis, 1, LinguisticOperation::LanguageDetection).support,
+        OperationSupport::Unknown
+    );
+    assert_eq!(
+        report(&analysis, 1, LinguisticOperation::PartOfSpeech).support,
+        OperationSupport::Unknown
+    );
+    assert_eq!(
+        report(&analysis, 1, LinguisticOperation::Tokenization).support,
+        OperationSupport::Supported
+    );
+
+    assert_eq!(french.language.as_deref(), Some("fr"));
+    let french_pos = report(&analysis, 2, LinguisticOperation::PartOfSpeech);
+    assert_eq!(french_pos.support, OperationSupport::Unsupported);
+    assert_eq!(french_pos.reason, "no model for `fr`");
+
+    assert_eq!(
+        russian.detection.decision,
+        LanguageDecision::UnsupportedScript
+    );
+    assert_eq!(russian.language, None);
+    assert_eq!(russian.detection.candidates[0].language, "ru");
+    assert_eq!(russian.detection.candidates[0].confidence, 0.0);
+}
+
+#[test]
+fn an_english_name_does_not_make_a_german_sentence_english() {
+    let detector = LanguageDetector::default();
+    for text in [
+        "Er glaubt, dass John nicht kommen wird.",
+        "John Smith wohnt seit drei Jahren in München.",
+    ] {
+        let profile = detector.detect_text(text);
+        let sentence = &profile.sentences[0];
+        assert_eq!(sentence.decision, LanguageDecision::Detected, "{text}");
+        assert_eq!(sentence.language().unwrap().language, "de", "{text}");
+    }
+}
+
+#[test]
+fn ambiguous_sentences_report_their_candidates() {
+    let detector = LanguageDetector {
+        options: LanguageDetectionOptions {
+            min_margin: 0.99,
+            ..LanguageDetectionOptions::default()
+        },
+    };
+    let profile = detector.detect_text("Hotel Berlin Taxi.");
+    let sentence = &profile.sentences[0];
+    assert_eq!(sentence.decision, LanguageDecision::Ambiguous);
+    assert!(sentence.language().is_none());
+    assert!(!sentence.candidates.is_empty());
+    assert!(sentence.candidates.len() <= 4);
+}
+
+#[test]
+fn a_pinned_language_routes_every_sentence() {
+    let mut options = LinguisticAnalysisOptions::heuristic();
+    options.processing.language = Some("en-US".to_string());
+    let analysis = analyze_text(MIXED_SAMPLE, &options).unwrap();
+    for sentence in &analysis.sentence_analyses {
+        assert_eq!(sentence.language.as_deref(), Some("en"));
+        assert!(sentence.language_pinned);
+        assert_eq!(
+            sentence
+                .operation(LinguisticOperation::LanguageDetection)
+                .unwrap()
+                .producer
+                .as_deref(),
+            Some("caller")
+        );
+    }
+}
+
+#[test]
+fn routing_is_deterministic() {
+    let options = LinguisticAnalysisOptions::heuristic();
+    let first = analyze_text(MIXED_SAMPLE, &options).unwrap();
+    let second = analyze_text(MIXED_SAMPLE, &options).unwrap();
+    assert_eq!(first.sentence_analyses, second.sentence_analyses);
+}
+
+/// No gold-fixture sentence is routed to the wrong language, and sentences labelled
+/// undecidable stay undecided. A labelled sentence may come back undecided; those
+/// are counted and printed.
+#[test]
+fn never_misroutes_a_gold_fixture_sentence() {
+    let detector = LanguageDetector::default();
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../evaluation/corpora");
+    let mut checked = 0;
+    let mut undecided = Vec::new();
+    for corpus in [
+        "named-entities-multilingual-v1.jsonl",
+        "morphology-multilingual-v1.jsonl",
+        "dependencies-multilingual-v1.jsonl",
+        "sentence-languages-multilingual-v1.jsonl",
+    ] {
+        for line in std::fs::read_to_string(root.join(corpus)).unwrap().lines() {
+            let case: serde_json::Value = serde_json::from_str(line).unwrap();
+            let text = case["text"].as_str().unwrap();
+            let profile = detector.detect_text(text);
+            let expected = case["sentences"]
+                .as_array()
+                .map(|sentences| {
+                    sentences
+                        .iter()
+                        .map(|sentence| sentence["language"].as_str().map(ToString::to_string))
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_else(|| vec![case["language"].as_str().map(ToString::to_string)]);
+            let detected = profile
+                .sentences
+                .iter()
+                .map(|sentence| {
+                    sentence
+                        .language()
+                        .map(|prediction| prediction.language.clone())
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(detected.len(), expected.len(), "{corpus} {}", case["id"]);
+            for (index, (detected, expected)) in detected.iter().zip(&expected).enumerate() {
+                match (detected, expected) {
+                    (None, Some(_)) => undecided.push(format!("{} #{index}", case["id"])),
+                    _ => assert_eq!(detected, expected, "{corpus} {} #{index}", case["id"]),
+                }
+            }
+            if let Some(sentences) = case["sentences"].as_array() {
+                let spans = profile
+                    .sentences
+                    .iter()
+                    .map(|sentence| (sentence.span.byte_start, sentence.span.byte_end))
+                    .collect::<Vec<_>>();
+                let gold = sentences
+                    .iter()
+                    .map(|sentence| {
+                        let start = sentence["byteStart"].as_u64().unwrap() as usize;
+                        let end = sentence["byteEnd"].as_u64().unwrap() as usize;
+                        assert_eq!(&text[start..end], sentence["text"].as_str().unwrap());
+                        (start, end)
+                    })
+                    .collect::<Vec<_>>();
+                assert_eq!(spans, gold, "{} spans", case["id"]);
+            }
+            checked += expected.len();
+        }
+    }
+    eprintln!(
+        "gold sentences: {checked}, undecided though labelled: {} {undecided:?}",
+        undecided.len()
+    );
+    assert!(checked >= 100, "{checked} sentences");
 }
 
 #[cfg(feature = "candle")]

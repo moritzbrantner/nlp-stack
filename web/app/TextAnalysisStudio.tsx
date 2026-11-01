@@ -25,6 +25,7 @@ import {
 } from "./text-analysis-examples";
 
 import { loadAnalysisRuntime, type AnalysisRuntime } from "./analysis-runtime";
+import { SentencesPanel } from "./SentencesPanel";
 
 type JsonRecord = Record<string, unknown>;
 type ResultTab = ExampleResultView | "entities" | "technical";
@@ -41,6 +42,7 @@ const resultGroups: { label: string; tabs: [ResultTab, string][] }[] = [
     label: "Document",
     tabs: [
       ["overview", "Overview"],
+      ["sentences", "Sentences"],
       ["keywords", "Keywords"],
       ["entities", "Entities"],
       ["semantic-map", "Semantic map"],
@@ -146,7 +148,7 @@ export function TextAnalysisStudio() {
               summarySentences: 5,
               ngramSizes: [2, 3],
               shingleSizes: [3, 5],
-              linguistics: { mode: "off" },
+              linguistics: { mode: "heuristicFast" },
               embedding: { mode: "off" },
               namedEntities: { mode: "huggingFace" },
             },
@@ -439,6 +441,7 @@ export function TextAnalysisStudio() {
               />
             ) : null}
             {activeTab === "keywords" ? <KeywordsPanel keywords={keywords} phraseKeywords={phraseKeywords} topTerms={topTerms} /> : null}
+            {activeTab === "sentences" ? <SentencesPanel documentReport={documentReport} /> : null}
             {activeTab === "entities" ? <EntitiesPanel entities={entities} model={entityModel} /> : null}
             {activeTab === "semantic-map" ? <SemanticMapPanel clusters={clusters} timeline={timeline} unitsById={unitsById} semantic={semantic} /> : null}
             {activeTab === "technical" ? <TechnicalPanel documentReport={documentReport} semanticReport={semanticReport} corpusReport={corpusReport} /> : null}
@@ -744,14 +747,15 @@ function RankedTextList({ title, items }: { title: string; items: JsonRecord[] }
 }
 
 function EntitiesPanel({ entities, model }: { entities: JsonRecord[]; model: JsonRecord | null }) {
+  const sentences = asRecordArray(model?.sentences);
+  const skipped = sentences.filter((sentence) => sentence.status !== "completed").length;
   return (
     <section>
       <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Model-backed NLP</p>
       <h4 className="mt-1 text-xl font-semibold text-ink">Named entities</h4>
       <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
-        Named entity recognition from the Hugging Face token-classification model {stringValue(model?.name, "unknown model")} at revision {stringValue(model?.revision, "unknown").slice(0, 8)}
-        {model?.languageSource === "assumed" ? " (language assumed to be English)" : ""}
-        {model?.status === "unsupported-language" ? `; the model does not support language ${stringValue(model?.language, "unknown")}, so no entities were produced` : ""}. No capitalization heuristic or rule-based entity fallback is used.
+        Named entity recognition from the Hugging Face token-classification model {stringValue(model?.name, "unknown model")} at revision {stringValue(model?.revision, "unknown").slice(0, 8)}, run on each sentence in its detected language ({asArray(model?.supportedLanguages).join(", ")})
+        {skipped ? `; ${skipped} of ${sentences.length} sentences were not labelled because their language is unsupported or undecided (see Sentences)` : ""}. No capitalization heuristic or rule-based entity fallback is used.
       </p>
       {entities.length ? (
         <div className="mt-4 overflow-x-auto">

@@ -35,11 +35,18 @@ beforeEach(async () => {
       if (failModel) {
         data = ner ? { type: "error", id, stage: "model", message: "Model unavailable" } : { id, error: "Model unavailable" };
       } else if (ner) {
+        // Labels a leading "Alice" in each segment.
+        const labelled = segments.filter((segment) => segment.text.startsWith("Alice"));
         data = {
           type: "result",
           id,
-          entities: [{ segmentId: 0, label: "PER", text: "Alice", score: 0.99, start: 0, end: 5, byteStart: 0, byteEnd: 5 }],
-          segments: segments.map(({ id: segmentId }) => ({ id: segmentId, entityCount: 1, truncated: false })),
+          entities: labelled.map((segment) => ({
+            segmentId: segment.id, label: "PER", text: "Alice", score: 0.99, start: 0, end: 5,
+            byteStart: segment.byteStart, byteEnd: segment.byteStart + 5,
+          })),
+          segments: segments.map((segment) => ({
+            id: segment.id, entityCount: Number(segment.text.startsWith("Alice")), truncated: false,
+          })),
         };
       } else {
         data = { id, modelName: "fixture/model", dimensions: 2, vectors: texts.map(() => [1, 0]) };
@@ -105,28 +112,51 @@ describe.each(["analysis.semantic-map", "analysis.semantic-corpus"])("%s browser
   });
 });
 
-it("attaches Hugging Face named entities to browser document analysis", async () => {
-  const response = await runtime.runOperation({
+function documentRequest(text) {
+  return {
     operation: "analysis.document",
     input: {
       id: "doc",
-      text: "Alice works in Berlin.",
-      linguistics: { mode: "off" },
+      text,
+      linguistics: { mode: "heuristicFast" },
       embedding: { mode: "off" },
       namedEntities: { mode: "huggingFace" },
     },
-  });
+  };
+}
 
-  expect(response.value.result.namedEntityModel).toMatchObject({
+it("routes Hugging Face named entities by each sentence's detected language", async () => {
+  const text = "Alice works in Berlin with her team. Alice wohnt seit drei Jahren in Kreuzberg.";
+  const response = await runtime.runOperation(documentRequest(text));
+  const { namedEntityModel, namedEntities, linguistic } = response.value.result;
+
+  expect(linguistic.sentences.map((sentence) => sentence.language)).toEqual(["en", "de"]);
+  expect(namedEntityModel).toMatchObject({
     name: "Xenova/distilbert-base-multilingual-cased-ner-hrl",
     revision: "c2a4dbf593c57f47004c5bc2d3770d311aee9c43",
-    status: "completed",
-    language: "en",
-    languageSource: "assumed",
+    supportedLanguages: ["en", "de", "es"],
+    sentences: [
+      { sentenceIndex: 0, language: "en", languageSource: "detected", status: "completed", entityCount: 1 },
+      { sentenceIndex: 1, language: "de", languageSource: "detected", status: "completed", entityCount: 1 },
+    ],
   });
-  expect(response.value.result.namedEntities).toEqual([
-    expect.objectContaining({ text: "Alice", kind: "PER", score: 0.99 }),
+  // One model request per language.
+  expect(workerRequests).toBe(2);
+  const secondStart = new TextEncoder().encode("Alice works in Berlin with her team. ").length;
+  expect(namedEntities).toEqual([
+    expect.objectContaining({ text: "Alice", kind: "PER", language: "en", sentenceIndex: 0, span: { byte_start: 0, byte_end: 5 } }),
+    expect.objectContaining({ text: "Alice", kind: "PER", language: "de", sentenceIndex: 1, span: { byte_start: secondStart, byte_end: secondStart + 5 } }),
   ]);
+});
+
+it("reports undecided and unsupported sentences without running the model on them", async () => {
+  const response = await runtime.runOperation(documentRequest("Ok. Le chat dort sur le canapé depuis ce matin."));
+  expect(response.value.result.namedEntityModel.sentences).toEqual([
+    expect.objectContaining({ language: null, status: "unknown-language", entityCount: 0 }),
+    expect.objectContaining({ language: "fr", status: "unsupported-language", entityCount: 0 }),
+  ]);
+  expect(response.value.result.namedEntities).toEqual([]);
+  expect(workerRequests).toBe(0);
 });
 
 it("fails document analysis instead of falling back to heuristic entities when NER fails", async () => {
@@ -135,8 +165,8 @@ it("fails document analysis instead of falling back to heuristic entities when N
     operation: "analysis.document",
     input: {
       id: "doc",
-      text: "Alice works in Berlin.",
-      linguistics: { mode: "off" },
+      text: "Alice works in Berlin with her team.",
+      linguistics: { mode: "heuristicFast" },
       embedding: { mode: "off" },
       namedEntities: { mode: "huggingFace" },
     },

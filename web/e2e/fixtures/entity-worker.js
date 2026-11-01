@@ -9,6 +9,11 @@ const labels = new Map([
   ["Lina", "B-PER"],
   ["Sam", "B-PER"],
   ["Berlin", "B-LOC"],
+  ["Sarah", "B-PER"],
+  ["John", "B-PER"],
+  ["María", "B-PER"],
+  ["Ana", "B-PER"],
+  ["Lyon", "B-LOC"],
 ]);
 
 function predictions(text) {

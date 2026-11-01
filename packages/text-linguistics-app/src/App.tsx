@@ -118,7 +118,7 @@ const packageAppConfig: PackageAppConfig = {
       "linguistics.analyze": {
         title: "Linguistic analysis",
         summaryFields: ["profile", "language", "tokenCount", "entityCount", "relationCount", "eventCount"],
-        listFields: ["tokens", "lemmas", "posTags", "entities", "relations", "events", "topics"],
+        listFields: ["tokens", "sentenceAnalyses", "lemmas", "posTags", "entities", "relations", "events", "topics"],
         objectFields: ["language", "style", "syntax", "model"],
         explanation: () => "The WASM path runs the deterministic linguistic pipeline; the overview server can also expose model catalog metadata without forcing optional native model execution.",
       },
@@ -132,9 +132,9 @@ const packageAppConfig: PackageAppConfig = {
       "linguistics.language": {
         title: "Language detection",
         summaryFields: ["language", "confidence", "isMixed", "tokenCount"],
-        listFields: ["alternatives", "sentencePredictions"],
+        listFields: ["alternatives", "sentences"],
         objectFields: ["primary", "result"],
-        explanation: () => "The language workflow runs the focused detector only, returning primary language, script signals, alternatives, and optional sentence-level predictions.",
+        explanation: () => "The language workflow runs the focused detector only, returning primary language, script signals, alternatives, and per-sentence decisions (detected, ambiguous, too short, unsupported script).",
       },
     },
   }),
