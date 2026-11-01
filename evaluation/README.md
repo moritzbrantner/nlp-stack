@@ -57,6 +57,10 @@ Semantic-similarity and topic-shift gold cases may include an optional non-empty
 
 These fixtures are still calibration evidence, not production benchmarks. They make language-specific regressions visible without introducing a preferred embedding model or a minimum quality threshold. Larger labelled corpora and model-backed comparisons should be added with explicit provenance before semantic quality gates are considered.
 
+## Named-entity gold fixtures
+
+`named-entities-multilingual-v1.jsonl` holds 36 short, self-written sentences (12 each in English, German and Spanish) with hand-labelled PER/ORG/LOC spans as UTF-8 half-open byte offsets (`byteStart`/`byteEnd`) plus the span text. Articles are outside the span ("the United Nations" -> `United Nations`). The opt-in Rust test `crates/text/text-linguistics/tests/model_loading_external.rs` scores every local NER preset on it with exact-span micro F1 and fails below 0.8 for a language the preset declares. The browser NER test checks that the corpus spans are exact and that its languages match the browser module's declared languages. It is a small regression and model-selection fixture, not a production benchmark.
+
 ## Adding a capability suite
 
 Keep each suite independently runnable and independently interpretable. Add a versioned corpus, a prediction shape, a deterministic evaluator using the reusable metrics where possible, a baseline report that states which system produced it, and the narrowest adapter needed to obtain predictions through the capability's stable public seam.

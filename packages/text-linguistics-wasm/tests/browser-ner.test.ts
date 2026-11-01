@@ -40,7 +40,7 @@ class FakeWorker {
   postMessage(message: any) {
     if (FakeWorker.hang) return;
     const emit = (data: any) => queueMicrotask(() => !this.terminated && this.listeners.get("message")?.({ data }));
-    emit({ type: "progress", id: message.id, detail: { status: "progress", file: "onnx/model_q4.onnx", progress: 50 } });
+    emit({ type: "progress", id: message.id, detail: { status: "progress", file: "onnx/model_quantized.onnx", progress: 50 } });
     if (FakeWorker.failNextLoad) {
       FakeWorker.failNextLoad = false;
       emit({ type: "error", id: message.id, stage: "model", message: "network error fetching model" });
@@ -111,8 +111,8 @@ test("analyze returns provenance and absolute UTF-8 spans for supported language
   expect(result.status).toBe("completed");
   expect(result.language).toBe("en");
   expect(result.producer.module).toBe("browser-ner");
-  expect(result.model.id).toBe("onnx-community/distilbert-NER-ONNX");
-  expect(result.model.supportedLanguages).toEqual(["en"]);
+  expect(result.model.id).toBe("Xenova/distilbert-base-multilingual-cased-ner-hrl");
+  expect(result.model.supportedLanguages).toEqual(["en", "de", "es"]);
   const source = new TextEncoder().encode("María visitó Madrid ayer.");
   const madrid = result.entities.find((entity) => entity.text === "Madrid")!;
   expect(madrid).toMatchObject({ segmentId: "cue-2", label: "LOC" });
@@ -126,10 +126,37 @@ test("analyze returns provenance and absolute UTF-8 spans for supported language
   expect(FakeWorker.created).toBe(1);
 });
 
+test("German and Spanish segments are labeled by the multilingual model", async () => {
+  FakeWorker.created = 0;
+  const ner = await adapter();
+  for (const language of ["de-DE", "es"]) {
+    const result = await ner.analyze({ language, segments: [{ id: "s", text: "María visitó Madrid ayer." }] });
+    expect(result.status).toBe("completed");
+    expect(result.entities.map(({ label, text }) => [label, text])).toContainEqual(["LOC", "Madrid"]);
+  }
+  expect(FakeWorker.created).toBe(1);
+});
+
+test("the declared languages match the gold NER fixtures, whose spans are exact", async () => {
+  const { BROWSER_NER_MODEL } = await import("../browser-ner.js");
+  const corpus = await Bun.file(new URL("../../../evaluation/corpora/named-entities-multilingual-v1.jsonl", import.meta.url)).text();
+  const cases = corpus.split("\n").filter(Boolean).map((line) => JSON.parse(line));
+  expect([...new Set(cases.map((item) => item.language))].sort()).toEqual([...BROWSER_NER_MODEL.supportedLanguages].sort());
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  for (const item of cases) {
+    const bytes = encoder.encode(item.text);
+    for (const entity of item.entities) {
+      expect(decoder.decode(bytes.slice(entity.byteStart, entity.byteEnd))).toBe(entity.text);
+      expect(["PER", "ORG", "LOC"]).toContain(entity.label);
+    }
+  }
+});
+
 test("unsupported or unknown languages are reported without loading the model", async () => {
   FakeWorker.created = 0;
   const ner = await adapter();
-  for (const language of ["de", null]) {
+  for (const language of ["fr", null]) {
     const result = await ner.analyze({ language, segments: [{ text: "Anna besuchte München." }] });
     expect(result.status).toBe("unsupported-language");
     expect(result.entities).toEqual([]);
@@ -146,7 +173,7 @@ test("model load failures surface as errors and a retry succeeds", async () => {
     stage: "model",
   });
   expect(progress.length).toBeGreaterThan(0);
-  await expect(ner.prepare()).resolves.toMatchObject({ model: { id: "onnx-community/distilbert-NER-ONNX" } });
+  await expect(ner.prepare()).resolves.toMatchObject({ model: { id: "Xenova/distilbert-base-multilingual-cased-ner-hrl" } });
 });
 
 test("a canceled request rejects and never completes; the next request uses a fresh worker", async () => {

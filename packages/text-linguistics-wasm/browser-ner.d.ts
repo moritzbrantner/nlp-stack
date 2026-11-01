@@ -30,7 +30,7 @@ export interface BrowserNerSegment {
 
 export interface BrowserNerEntity {
   segmentId: string | number;
-  /** Model label without BIO prefix: PER, ORG, LOC or MISC. */
+  /** Model label without BIO prefix: PER, ORG, LOC or DATE. */
   label: string;
   /** Exact source slice: `segment.text.slice(start, end)`. */
   text: string;

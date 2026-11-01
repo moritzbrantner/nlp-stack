@@ -54,24 +54,80 @@ pub enum EntityRecognitionMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// Local entity model presets understood by text-linguistics.
 pub enum ModelPreset {
-    /// BERT base NER token-classification model.
+    /// English-only `dslim/bert-base-NER` (CoNLL-2003: PER/ORG/LOC/MISC).
     BertBaseNer,
+    /// Multilingual `Davlan/distilbert-base-multilingual-cased-ner-hrl` (AFL-3.0:
+    /// PER/ORG/LOC/DATE), pinned by commit. The default for English, German and Spanish.
+    DistilbertMultilingualNerHrl,
 }
 
+/// Pinned Hugging Face commit of `Davlan/distilbert-base-multilingual-cased-ner-hrl`.
+pub const MULTILINGUAL_NER_HRL_REVISION: &str = "d421f57d5b1d36b375408588669e9340f9b11a89";
+
 impl ModelPreset {
+    /// Every local entity preset.
+    pub const ALL: &'static [Self] = &[Self::BertBaseNer, Self::DistilbertMultilingualNerHrl];
+
     /// Stable preset id.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::BertBaseNer => "bert-base-ner",
+            Self::DistilbertMultilingualNerHrl => "distilbert-multilingual-ner-hrl",
         }
     }
 
-    #[cfg(all(feature = "candle", feature = "model-bundles"))]
-    pub(crate) fn spec(self) -> model_runtime::HuggingFaceModelSpec {
+    /// Hugging Face repository the preset loads.
+    pub fn repo_id(self) -> &'static str {
         match self {
-            Self::BertBaseNer => model_runtime::ModelPreset::BertBaseNer.spec(),
+            Self::BertBaseNer => "dslim/bert-base-NER",
+            Self::DistilbertMultilingualNerHrl => {
+                "Davlan/distilbert-base-multilingual-cased-ner-hrl"
+            }
         }
     }
+
+    /// ISO 639-1 languages this preset is evaluated for (see
+    /// `evaluation/corpora/named-entities-multilingual-v1.jsonl`).
+    pub fn supported_languages(self) -> &'static [&'static str] {
+        match self {
+            Self::BertBaseNer => &["en"],
+            Self::DistilbertMultilingualNerHrl => &["en", "de", "es"],
+        }
+    }
+
+    /// Whether the preset supports the primary subtag of `language` (`de-AT` -> `de`).
+    pub fn supports_language(self, language: &str) -> bool {
+        let primary = primary_language_subtag(language);
+        self.supported_languages().contains(&primary.as_str())
+    }
+
+    /// The Hugging Face bundle spec this preset downloads.
+    #[cfg(all(feature = "candle", feature = "model-bundles"))]
+    pub fn spec(self) -> model_runtime::HuggingFaceModelSpec {
+        match self {
+            Self::BertBaseNer => model_runtime::ModelPreset::BertBaseNer.spec(),
+            Self::DistilbertMultilingualNerHrl => model_runtime::HuggingFaceModelSpec::new(
+                self.repo_id(),
+                model_runtime::ModelTask::TokenClassification,
+            )
+            .name(self.as_str())
+            .revision(MULTILINGUAL_NER_HRL_REVISION)
+            .file("config.json")
+            .file("tokenizer_config.json")
+            .file("vocab.txt")
+            .optional_file("special_tokens_map.json")
+            .first_available_file(["model.safetensors", "pytorch_model.bin"]),
+        }
+    }
+}
+
+fn primary_language_subtag(language: &str) -> String {
+    language
+        .trim()
+        .split(['-', '_'])
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -86,7 +142,8 @@ pub struct EntityRecognitionOptions {
     pub mode: EntityRecognitionMode,
     /// Directory containing local model bundles when `mode` is `LocalModel`.
     pub bundle_dir: PathBuf,
-    /// Local model preset to load.
+    /// Local model preset to load. Check [`ModelPreset::supports_language`] before
+    /// trusting entities for a language.
     pub preset: ModelPreset,
     /// Whether a missing model bundle may be downloaded.
     pub auto_download: bool,
@@ -108,7 +165,7 @@ impl EntityRecognitionOptions {
         Self {
             mode: EntityRecognitionMode::LocalModel,
             bundle_dir: PathBuf::from(".model-runtime"),
-            preset: ModelPreset::BertBaseNer,
+            preset: ModelPreset::DistilbertMultilingualNerHrl,
             auto_download: false,
             download_progress: false,
             max_retries: 1,
@@ -723,13 +780,6 @@ fn entities_with_model_labeler(
 
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn local_entity_labeler(options: &EntityRecognitionOptions) -> Result<CandleTokenClassifier> {
-    if options.preset != ModelPreset::BertBaseNer {
-        return Err(DetectError::InvalidArgument(format!(
-            "unsupported local entity model preset `{}`; expected `{}`",
-            options.preset.as_str(),
-            ModelPreset::BertBaseNer.as_str()
-        )));
-    }
     let bundle = ensure_local_entity_bundle(options)?;
     CandleTokenClassifier::from_bundle(bundle)
 }

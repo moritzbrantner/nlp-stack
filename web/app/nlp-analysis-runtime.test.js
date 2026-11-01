@@ -118,8 +118,8 @@ it("attaches Hugging Face named entities to browser document analysis", async ()
   });
 
   expect(response.value.result.namedEntityModel).toMatchObject({
-    name: "onnx-community/distilbert-NER-ONNX",
-    revision: "3a19fe9404a4469d91aa3d551558a97f68872f67",
+    name: "Xenova/distilbert-base-multilingual-cased-ner-hrl",
+    revision: "c2a4dbf593c57f47004c5bc2d3770d311aee9c43",
     status: "completed",
     language: "en",
     languageSource: "assumed",

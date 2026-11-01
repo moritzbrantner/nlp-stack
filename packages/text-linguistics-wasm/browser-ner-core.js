@@ -8,14 +8,16 @@ export const BROWSER_NER_PRODUCER = Object.freeze({
 });
 
 export const BROWSER_NER_MODEL = Object.freeze({
-  id: "onnx-community/distilbert-NER-ONNX",
+  // ONNX conversion of Davlan/distilbert-base-multilingual-cased-ner-hrl (AFL-3.0).
+  id: "Xenova/distilbert-base-multilingual-cased-ner-hrl",
   // Pinned Hugging Face commit; never follow the moving `main` revision.
-  revision: "3a19fe9404a4469d91aa3d551558a97f68872f67",
-  baseModel: "dslim/distilbert-NER",
-  dtype: "q4",
-  labels: Object.freeze(["PER", "ORG", "LOC", "MISC"]),
-  // distilbert-NER is trained on English CoNLL-2003 only (#117 owns language parity).
-  supportedLanguages: Object.freeze(["en"]),
+  revision: "c2a4dbf593c57f47004c5bc2d3770d311aee9c43",
+  baseModel: "Davlan/distilbert-base-multilingual-cased-ner-hrl",
+  // int8 (`onnx/model_quantized.onnx`, ~135 MB); scores the same as fp32 on the gold fixtures.
+  dtype: "q8",
+  labels: Object.freeze(["PER", "ORG", "LOC", "DATE"]),
+  // Languages scored on evaluation/corpora/named-entities-multilingual-v1.jsonl.
+  supportedLanguages: Object.freeze(["en", "de", "es"]),
 });
 
 export const BROWSER_NER_TRANSFORMERS_MODULE_URL =
