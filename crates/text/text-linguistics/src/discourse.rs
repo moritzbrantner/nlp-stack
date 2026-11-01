@@ -376,16 +376,22 @@ pub(crate) fn build_style_profile(
     let passive_voice_hits = dependencies
         .iter()
         .filter(|tree| {
-            tree.root_token_index.is_some_and(|root| {
-                tokens[root].normalized.ends_with("ed")
-                    && tree.edges.iter().any(|edge| {
-                        edge.relation == DependencyRelation::Aux
-                            && matches!(
-                                tokens[edge.dependent_token_index].normalized.as_str(),
-                                "was" | "were" | "is" | "been"
-                            )
-                    })
-            })
+            // UD parses mark passives explicitly (`aux:pass`, `nsubj:pass`).
+            let ud_passive = tree
+                .edges
+                .iter()
+                .any(|edge| edge.subtype.as_deref() == Some("pass"));
+            ud_passive
+                || tree.root_token_index.is_some_and(|root| {
+                    tokens[root].normalized.ends_with("ed")
+                        && tree.edges.iter().any(|edge| {
+                            edge.relation == DependencyRelation::Aux
+                                && matches!(
+                                    tokens[edge.dependent_token_index].normalized.as_str(),
+                                    "was" | "were" | "is" | "been"
+                                )
+                        })
+                })
         })
         .count();
     let passive_voice_estimate = if dependencies.is_empty() {

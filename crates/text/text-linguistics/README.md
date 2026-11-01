@@ -113,14 +113,14 @@ layers for German and Spanish. The layers come from:
 
 | Preset | Model (pinned) | Training data |
 | --- | --- | --- |
-| `UdMorphologyPreset::ComboGermanGsd` | `clarin-pl/combo-nlp-xlm-roberta-base-german-gsd-ud2.17` @ `55234be1` | UD_German-GSD 2.17 (CC BY-SA 4.0) |
-| `UdMorphologyPreset::ComboSpanishAncora` | `clarin-pl/combo-nlp-xlm-roberta-base-spanish-ancora-ud2.17` @ `3f5885ee` | UD_Spanish-AnCora 2.17 (CC BY 4.0) |
+| `UdModelPreset::ComboGermanGsd` | `clarin-pl/combo-nlp-xlm-roberta-base-german-gsd-ud2.17` @ `55234be1` | UD_German-GSD 2.17 (CC BY-SA 4.0) |
+| `UdModelPreset::ComboSpanishAncora` | `clarin-pl/combo-nlp-xlm-roberta-base-spanish-ancora-ud2.17` @ `3f5885ee` | UD_Spanish-AnCora 2.17 (CC BY 4.0) |
 
-`UdMorphoTagger` runs the checkpoint's XLM-RoBERTa encoder and morphological head
+`UdModel` runs the checkpoint's XLM-RoBERTa encoder and morphological head
 in Candle. It uses first-subword pooling, per-category UD feature heads with
 COMBO's refinement layer, and COMBO's nearest-valid-feature constraint per UPOS.
-The tokenizer is `FacebookAI/xlm-roberta-base` @ `e73636d4` (MIT). COMBO's
-dependency head ships in the same checkpoint and is left to #161. Lemmas come
+The tokenizer is `FacebookAI/xlm-roberta-base` @ `e73636d4` (MIT). The same
+pass also runs the checkpoint's biaffine dependency head (see below). Lemmas come
 from `UdLemmatizer`, not from the model. It applies suffix edit rules per UPOS
 plus an exception list, both built from the treebank training splits by
 `scripts/build_ud_lemma_tables.py` (`data/lemmas/*.tsv`; see `docs/PROVENANCE.md`
@@ -143,7 +143,7 @@ pipeline with the language pinned:
 ```bash
 UD_TREEBANK_DIR=path/to/ud-2.17-test-splits TEXT_LINGUISTICS_MODEL_DIR=.model-runtime \
   cargo test -p moenarch-text-linguistics --features external-tests \
-  --test ud_morphology_external --release -- --ignored --nocapture --test-threads 1
+  --test ud_model_external --release -- --ignored --nocapture --test-threads 1
 ```
 
 `UD_TREEBANK_DIR` must hold `de_gsd-ud-test.conllu` and
@@ -151,6 +151,46 @@ UD_TREEBANK_DIR=path/to/ud-2.17-test-splits TEXT_LINGUISTICS_MODEL_DIR=.model-ru
 2.3 GB of checkpoints. On the UD test splits it fails below 0.95 UPOS, 0.85
 UFeats or 0.90 lemma accuracy. On the fixtures it fails below 0.90 UPOS, 0.75
 UFeats or 0.90 lemma accuracy.
+
+## UD dependency syntax (de/es)
+
+Setting `LinguisticAnalysisOptions::dependency_parsing` to
+`DependencyParsingOptions::local_model()` (or `local_model_with_downloads()`)
+replaces the heuristic dependency trees for German and Spanish with the
+checkpoint's biaffine dependency head. The head uses the same presets and the
+same `UdModel` as morphology. When both layers select the same model and bundle
+directory, each sentence is encoded once.
+
+The head projects each word, plus a learned root embedding, through
+`Linear -> LayerNorm -> ReLU` arc and relation MLPs. Biaffine scorers then give
+an arc score for every head/dependent pair and a relation score for each chosen
+arc. `decode_dependency_tree` runs Chu-Liu-Edmonds to find the maximum spanning
+tree. If several words attach to the root, the one with the best root score keeps
+it and the others attach to that word, as COMBO's decoder does. The result is
+always one tree with one root. Root arcs are labelled `root`, and no other arc is.
+Relations are the full UD v2 set (`DependencyRelation`) plus the treebank's
+subtype (`DependencyNode::subtype`, for example `pass` in `nsubj:pass`). A
+contraction token (`zum`, `del`) takes the attachment of its word nearest the
+root (the adposition), so the token-level result is still a tree.
+
+Scores, measured 2026-11-01. LAS compares universal relations and ignores
+subtypes, as the CoNLL 2018 scorer does. The UD test splits use gold word
+segmentation. COMBO's published scores are from the model cards: "aligned
+accuracy" (German) and full-text F1 (Spanish, whose card has no aligned row).
+
+| | UAS | LAS | LAS with subtypes | COMBO published UAS / LAS |
+| --- | --- | --- | --- | --- |
+| de, UD_German-GSD test (16,499 words) | 0.897 | 0.868 | 0.865 | 0.890 / 0.861 |
+| es, UD_Spanish-AnCora test (53,622 words) | 0.943 | 0.927 | 0.924 | 0.940 / 0.925 |
+| de, gold fixtures (87 tokens) | 1.000 | 1.000 | | |
+| es, gold fixtures (83 tokens) | 0.988 | 0.976 | | |
+
+The fixtures are `evaluation/corpora/dependencies-multilingual-v1.jsonl`, run
+through the full pipeline with the language pinned. The same opt-in test as
+above reports these scores. On the UD test splits it fails below 0.85 UAS or 0.82
+LAS, and on the fixtures below 0.90 UAS or 0.85 LAS. It also checks that every
+predicted tree is well formed. Parsing adds little to the encoder cost:
+relation scores are computed only for the decoded arcs.
 
 ## Language support (en/de/es)
 
@@ -165,14 +205,14 @@ Current state:
 | Named entities (local model) | **model, gold-scored** | **model, gold-scored** | **model, gold-scored** |
 | Lemma / morphology (`MorphologyMode::LocalModel`) | English heuristics | **UD model + UD lemma table, scored** | **UD model + UD lemma table, scored** |
 | Part of speech (`MorphologyMode::LocalModel`) | English heuristics | **UD model, scored** | **UD model, scored** |
-| Dependency syntax | English heuristics | not supported (#161) | not supported (#161) |
+| Dependency syntax (`DependencyParsingMode::LocalModel`) | English heuristics (unscored) | **UD model, scored** | **UD model, scored** |
 
-The browser module does not do de/es POS or morphology. The COMBO checkpoints are
+The browser module does not do de/es POS, morphology or dependency syntax. The COMBO checkpoints are
 custom heads on XLM-RoBERTa base, which Transformers.js cannot load as-is, and an
 int8 ONNX export would be roughly 280 MB per language, about twice the browser NER
 model. Language detection is still the stopword heuristic: it got the language wrong
-for 3 of the 10 German and 3 of the 10 Spanish fixture sentences. Set `MorphologyOptions::language` to skip
-detection. Per-sentence routing is #162.
+for 3 of the 10 German and 3 of the 10 Spanish fixture sentences. Set `MorphologyOptions::language` and
+`DependencyParsingOptions::language` to skip detection. Per-sentence routing is #162.
 
 Heuristic NER (the default `EntityRecognitionMode::Heuristic`) is
 capitalization-based and is not language-aware. Per-sentence language routing
