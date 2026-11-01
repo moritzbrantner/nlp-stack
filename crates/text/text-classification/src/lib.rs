@@ -802,14 +802,12 @@ fn run_local_zero_shot(
             request.model.model_id.as_deref(),
             "xenova-bart-large-mnli-onnx",
         );
-        let bundle = resolve_local_bundle(
-            request.local_model.as_ref(),
-            &model_id,
-            model_runtime::ModelPreset::XenovaBartLargeMnliOnnx,
-        )?;
-        let mut classifier = OnnxZeroShotClassifier::from_bundle(bundle)?;
-        let mut predictions = classifier
-            .classify_pairs(&request.text, &hypotheses)?
+        let classifier = local_zero_shot_classifier(request.local_model.as_ref(), &model_id)?;
+        let raw = classifier
+            .lock()
+            .map_err(|_| DetectError::Source("zero-shot classifier lock poisoned".to_string()))?
+            .classify_pairs(&request.text, &hypotheses)?;
+        let mut predictions = raw
             .into_iter()
             .enumerate()
             .filter_map(|(index, prediction)| {
@@ -876,6 +874,40 @@ fn local_sequence_classifier(
         model_id,
         default_preset,
     )?)?;
+    if let Ok(mut cache) = cache.lock() {
+        cache.insert(key, classifier.clone());
+    }
+    Ok(classifier)
+}
+
+/// Loaded ONNX zero-shot classifiers keyed by bundle root and model id; each model and
+/// tokenizer is read from disk once per process. The ONNX session needs `&mut`, so callers
+/// take the lock.
+#[cfg(feature = "onnx")]
+fn local_zero_shot_classifier(
+    options: Option<&TextClassificationLocalModelOptions>,
+    model_id: &str,
+) -> Result<std::sync::Arc<std::sync::Mutex<OnnxZeroShotClassifier>>> {
+    use std::collections::HashMap;
+    use std::sync::{Arc, Mutex, OnceLock};
+
+    type Cache = Mutex<HashMap<(Option<PathBuf>, String), Arc<Mutex<OnnxZeroShotClassifier>>>>;
+    static CLASSIFIERS: OnceLock<Cache> = OnceLock::new();
+    let key = (
+        options.and_then(|options| options.bundle_root.clone()),
+        model_id.to_string(),
+    );
+    let cache = CLASSIFIERS.get_or_init(Default::default);
+    if let Some(classifier) = cache.lock().ok().and_then(|cache| cache.get(&key).cloned()) {
+        return Ok(classifier);
+    }
+    let classifier = Arc::new(Mutex::new(OnnxZeroShotClassifier::from_bundle(
+        resolve_local_bundle(
+            options,
+            model_id,
+            model_runtime::ModelPreset::XenovaBartLargeMnliOnnx,
+        )?,
+    )?));
     if let Ok(mut cache) = cache.lock() {
         cache.insert(key, classifier.clone());
     }

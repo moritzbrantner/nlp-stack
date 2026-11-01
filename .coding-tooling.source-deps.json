@@ -36,7 +36,7 @@
       {
         "package": "moenarch-runtime-onnx",
         "git": "https://github.com/moritzbrantner/moenarch-foundation",
-        "rev": "9a162dfd44d3cae7f88ad993de79defc0ac94cd6",
+        "rev": "cf8d6f1052ad1d5c567e797a56d3bb8910828920",
         "localPath": "../moenarch-foundation/crates/runtime/runtime-onnx"
       },
       {
