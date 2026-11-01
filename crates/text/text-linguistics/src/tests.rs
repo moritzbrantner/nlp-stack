@@ -24,16 +24,43 @@ fn default_options_use_heuristic_entity_recognition_without_downloads() {
         options.entity_recognition.mode,
         EntityRecognitionMode::Heuristic
     );
-    assert_eq!(options.entity_recognition.preset, ModelPreset::BertBaseNer);
+    assert_eq!(
+        options.entity_recognition.preset,
+        ModelPreset::DistilbertMultilingualNerHrl
+    );
     assert!(!options.entity_recognition.auto_download);
     assert!(!options.entity_recognition.download_progress);
+}
+
+#[test]
+fn entity_presets_declare_their_supported_languages() {
+    let multilingual = ModelPreset::DistilbertMultilingualNerHrl;
+    assert_eq!(multilingual.supported_languages(), &["en", "de", "es"]);
+    assert!(multilingual.supports_language("de-AT"));
+    assert!(multilingual.supports_language("ES"));
+    assert!(!multilingual.supports_language("fr"));
+    assert!(ModelPreset::BertBaseNer.supports_language("en_US"));
+    assert!(!ModelPreset::BertBaseNer.supports_language("de"));
+    assert_eq!(
+        multilingual.repo_id(),
+        "Davlan/distilbert-base-multilingual-cased-ner-hrl"
+    );
+    assert_eq!(MULTILINGUAL_NER_HRL_REVISION.len(), 40);
+}
+
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+#[test]
+fn multilingual_preset_spec_is_pinned_by_commit() {
+    let spec = ModelPreset::DistilbertMultilingualNerHrl.spec();
+    assert_eq!(spec.name, "distilbert-multilingual-ner-hrl");
+    assert_eq!(spec.revision_value(), Some(MULTILINGUAL_NER_HRL_REVISION));
 }
 
 #[test]
 fn local_model_options_are_explicit_and_do_not_download_by_default() {
     let options = EntityRecognitionOptions::local_model();
     assert_eq!(options.mode, EntityRecognitionMode::LocalModel);
-    assert_eq!(options.preset, ModelPreset::BertBaseNer);
+    assert_eq!(options.preset, ModelPreset::DistilbertMultilingualNerHrl);
     assert!(!options.auto_download);
     assert!(!options.download_progress);
 
