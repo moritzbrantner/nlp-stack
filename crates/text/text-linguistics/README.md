@@ -214,6 +214,35 @@ LAS, and on the fixtures below 0.90 UAS or 0.85 LAS. It also checks that every
 predicted tree is well formed. Parsing adds little to the encoder cost:
 relation scores are computed only for the decoded arcs.
 
+## Nested reported speech and belief (en/de/es)
+
+`reporting_constructions(&analysis)` reads reporting and belief constructions from
+the UD dependency trees of an existing `LinguisticAnalysis`. A cue verb from a small
+per-language lexicon (`say`/`report`, `believe`/`think`; `sagen`, `glauben`;
+`decir`, `creer`) with a `ccomp` or `parataxis` complement gives one
+`ReportingConstruction`, which holds the cue, its `nsubj` source (if the text names
+one) and the content. Each is an exact UTF-8 half-open span. A construction whose cue
+lies inside another construction's content is nested under it:
+
+```text
+Sarah reports that John believes the river is polluted.
+  speech  Sarah — reports → "John believes the river is polluted"
+    belief  John — believes → "the river is polluted"
+```
+
+Speech or belief is decided only by the cue lemma. A quotation counts as speech
+(`form: Direct`) and never as belief. Passive or impersonal reports (`It is believed
+that …`) have `source: None`. Factive verbs (`know`, `realize`) are left out. The output
+records what the text reports. It does not say that a source endorses the content,
+that anyone holds the belief, or that the content is true. Its `confidence` is the
+dependency-attachment confidence.
+
+Only sentences whose dependency syntax is `Supported` (a UD model parse) are read.
+For heuristic or missing trees the sentence report says `Unsupported`/`Unknown` and
+gives the reason. The Pages workbench has only English heuristic trees, so it shows the
+section as unsupported. The opt-in `tests/reporting_external.rs` checks the en/de/es
+UD parses.
+
 ## Language detection and per-sentence routing
 
 `LanguageDetector` runs [lingua](https://github.com/pemistahl/lingua-rs) 1.8

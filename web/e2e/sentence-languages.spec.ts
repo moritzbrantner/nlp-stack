@@ -109,3 +109,20 @@ test("analyzes each en/de/es sentence in its own language and reports unsupporte
   }
   await expect(page.getByRole("cell", { name: "Lyon", exact: true })).toHaveCount(0);
 });
+
+// Nested reporting (#113) needs a UD dependency parse. The Pages analysis only has
+// English heuristic trees, so the section says so instead of guessing a structure.
+test("reports nested reporting evidence as unsupported without a UD dependency parse", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Text to analyze").fill("Sarah reports that John believes the river is polluted.");
+  await page.getByRole("button", { name: "Analyze text", exact: true }).click();
+  await page.getByRole("tab", { name: "Sentences" }).click();
+
+  const card = page.getByRole("article", { name: "Sentence 1: English (en)", exact: true });
+  await expect(card).toBeVisible({ timeout: 30_000 });
+  const reporting = card.getByLabel("Reported speech and belief");
+  await expect(reporting).toContainText("Unsupported");
+  await expect(reporting).toContainText(/heuristic:english-rules, which does not mark clausal complements/);
+  await expect(reporting.getByRole("listitem")).toHaveCount(0);
+  await expect(page.getByText(/Sarah\s+—\s+believes/)).toHaveCount(0);
+});
