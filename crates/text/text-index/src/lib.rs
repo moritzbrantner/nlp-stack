@@ -1577,8 +1577,11 @@ fn build_snippet(text: &str, normalized_query: &str) -> String {
         .split_whitespace()
         .map(str::to_lowercase)
         .collect::<Vec<_>>();
-    let text_lower = text.to_lowercase();
-    let match_start = terms.iter().filter_map(|term| text_lower.find(term)).min();
+    let match_start = terms
+        .iter()
+        .filter_map(|term| text_core::find_caseless(text, term))
+        .map(|range| range.start)
+        .min();
     let snippet = match match_start {
         Some(byte_index) => {
             let start = text[..byte_index]
@@ -1836,6 +1839,18 @@ fn fts5_query(query: &str) -> String {
 mod tests {
     use super::*;
     use text_core::TextProvenance;
+
+    #[test]
+    fn snippet_survives_length_changing_lowercase() {
+        assert_eq!(build_snippet("İ über alles", "über"), "İ über alles");
+        assert_eq!(
+            build_snippet("Die STRAẞE ist lang", "straße"),
+            "Die STRAẞE ist lang"
+        );
+        assert_eq!(build_snippet("Η ΟΔΟΣ είναι", "οδος"), "Η ΟΔΟΣ είναι");
+        let long = format!("{}İ über", "ẞ".repeat(80));
+        assert!(build_snippet(&long, "über").ends_with("İ über"));
+    }
 
     fn index() -> MemoryTextIndex<HashedTextEmbedder> {
         MemoryTextIndex::new_memory()

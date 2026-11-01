@@ -955,14 +955,10 @@ fn lexical_answer_span(question: &str, text: &str) -> Option<TextSpanRef> {
         })
         .filter(|term| term.len() > 2)
         .collect::<Vec<_>>();
-    let lower_text = text.to_lowercase();
-    for term in terms {
-        if let Some(byte_start) = lower_text.find(&term) {
-            let byte_end = (byte_start + term.len()).min(text.len());
-            return Some(byte_span_to_ref(text, byte_start, byte_end));
-        }
-    }
-    None
+    terms
+        .iter()
+        .find_map(|term| text_core::find_caseless(text, term))
+        .map(|range| byte_span_to_ref(text, range.start, range.end))
 }
 
 fn byte_span_to_ref(text: &str, byte_start: usize, byte_end: usize) -> TextSpanRef {
@@ -1033,6 +1029,44 @@ mod tests {
 
         fn runtime(&self) -> QuestionAnsweringRuntime {
             QuestionAnsweringRuntime::ImportedPredictions
+        }
+    }
+
+    #[test]
+    fn heuristic_span_survives_length_changing_lowercase() {
+        // İ, ẞ and final Σ all change byte length when lowercased.
+        for (context, answer) in [
+            ("İ über alles", "über"),
+            ("STRAẞE über alles", "über"),
+            ("ΟΔΟΣ über alles", "über"),
+            ("Die STRAẞE ist lang", "STRAẞE"),
+            ("Η ΟΔΟΣ είναι", "ΟΔΟΣ"),
+        ] {
+            let question = format!("Where is {}?", answer.to_lowercase());
+            let response = answer_question(QuestionAnsweringRequest {
+                question,
+                context: context.to_string(),
+                top_k: 1,
+                model: ModelSelection::default(),
+                imported_predictions: Vec::new(),
+                local_model: None,
+                fallback_policy: Some(QuestionAnsweringFallbackPolicy::HeuristicIfUnavailable),
+            })
+            .unwrap();
+            let prediction = &response.answers[0];
+            assert_eq!(prediction.answer, answer);
+            let span = prediction.span.as_ref().expect("span");
+            assert_eq!(
+                &context[span.byte_start..span.byte_end],
+                answer,
+                "{context}"
+            );
+            let chars = context
+                .chars()
+                .skip(span.char_start)
+                .take(span.char_end - span.char_start)
+                .collect::<String>();
+            assert_eq!(chars, answer, "{context}");
         }
     }
 

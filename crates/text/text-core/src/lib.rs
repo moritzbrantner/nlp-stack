@@ -612,6 +612,37 @@ pub fn normalize_text(text: &str, options: &TextProcessingOptions) -> String {
     }
 }
 
+/// Finds the first caseless occurrence of `needle` in `haystack`.
+///
+/// Returns the matching byte range of `haystack` itself, always on char boundaries. Both sides
+/// are folded per char (lowercase, final sigma as `σ`), so a fold that changes byte length
+/// (`İ`, `ẞ`, `Σ`) never shifts the offsets. A match that starts or ends inside the fold of one
+/// char widens to cover that whole char.
+pub fn find_caseless(haystack: &str, needle: &str) -> Option<std::ops::Range<usize>> {
+    let needle = needle.chars().flat_map(fold_char).collect::<String>();
+    if needle.is_empty() {
+        return None;
+    }
+    let mut folded = String::with_capacity(haystack.len());
+    // For every byte of `folded`, the byte range of the source char it came from.
+    let mut origin = Vec::with_capacity(haystack.len());
+    for (start, ch) in haystack.char_indices() {
+        let end = start + ch.len_utf8();
+        for lower in fold_char(ch) {
+            folded.push(lower);
+            origin.extend(std::iter::repeat_n(start..end, lower.len_utf8()));
+        }
+    }
+    let match_start = folded.find(&needle)?;
+    let match_end = match_start + needle.len();
+    Some(origin[match_start].start..origin[match_end - 1].end)
+}
+
+fn fold_char(ch: char) -> impl Iterator<Item = char> {
+    ch.to_lowercase()
+        .map(|lower| if lower == 'ς' { 'σ' } else { lower })
+}
+
 /// Returns tokenize words.
 pub fn tokenize_words(text: &str) -> Vec<String> {
     let options = TextProcessingOptions::default();
@@ -1340,6 +1371,26 @@ fn push_paragraph(text: &str, byte_start: usize, byte_end: usize, paragraphs: &m
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn find_caseless_returns_source_offsets_when_fold_changes_length() {
+        // İ folds to "i̇" (3 bytes from 2), ẞ to "ß" (2 from 3), Σ to "σ"/"ς".
+        let text = "İ über ẞ ΟΔΟΣ";
+        let range = find_caseless(text, "über").unwrap();
+        assert_eq!(&text[range], "über");
+        let range = find_caseless(text, "ß").unwrap();
+        assert_eq!(&text[range], "ẞ");
+        // Final sigma matches whether either side spells it σ, ς or Σ.
+        for needle in ["οδος", "οδοσ", "ΟΔΟΣ"] {
+            let range = find_caseless(text, needle).unwrap();
+            assert_eq!(&text[range], "ΟΔΟΣ");
+        }
+        // A match inside the fold of one char widens to the whole char.
+        let range = find_caseless(text, "i").unwrap();
+        assert_eq!(&text[range], "İ");
+        assert_eq!(find_caseless(text, "missing"), None);
+        assert_eq!(find_caseless(text, ""), None);
+    }
 
     #[test]
     fn segment_document_ids_include_stream_and_index() {
