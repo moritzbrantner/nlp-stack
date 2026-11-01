@@ -1374,10 +1374,25 @@ fn layer_report(
     }
 }
 
+/// Loaded NER sessions keyed by bundle directory and preset (default device); clones share
+/// the weights, so each model is read from disk once per process.
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn local_entity_labeler(options: &EntityRecognitionOptions) -> Result<CandleTokenClassifier> {
-    let bundle = ensure_local_entity_bundle(options)?;
-    CandleTokenClassifier::from_bundle(bundle)
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+
+    type Cache = Mutex<HashMap<(PathBuf, &'static str), CandleTokenClassifier>>;
+    static LABELERS: OnceLock<Cache> = OnceLock::new();
+    let key = (options.bundle_dir.clone(), options.preset.as_str());
+    let cache = LABELERS.get_or_init(Default::default);
+    if let Some(labeler) = cache.lock().ok().and_then(|cache| cache.get(&key).cloned()) {
+        return Ok(labeler);
+    }
+    let labeler = CandleTokenClassifier::from_bundle(ensure_local_entity_bundle(options)?)?;
+    if let Ok(mut cache) = cache.lock() {
+        cache.insert(key, labeler.clone());
+    }
+    Ok(labeler)
 }
 
 #[cfg(not(all(feature = "candle", feature = "model-bundles")))]

@@ -1,19 +1,21 @@
 //! Linguistics-owned execution glue for local token-classification models.
 
 use std::collections::BTreeMap;
-#[cfg(feature = "model-bundles")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 use std::path::Path;
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 use std::path::PathBuf;
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 use candle_core::{DType as CandleDType, Device as CandleDevice, Tensor as CandleTensor};
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 use candle_nn::{Linear as CandleLinear, Module as CandleModule, VarBuilder as CandleVarBuilder};
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 use candle_transformers::models::{bert as candle_bert, distilbert as candle_distilbert};
 #[cfg(feature = "model-bundles")]
 use model_runtime::ModelBundle;
 use serde::{Deserialize, Serialize};
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 use serde_json::Value;
 use text_core::{DetectError, Result};
 
@@ -42,28 +44,77 @@ pub trait SequenceLabeler {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 enum CandleTokenClassifierArchitecture {
     Bert,
     DistilBert,
 }
 
-#[derive(Debug, Clone)]
-/// Candle token-classification facade.
+/// Sequences per forward pass in [`CandleTokenClassifier::classify_batch`].
+pub const TOKEN_CLASSIFIER_BATCH_SIZE: usize = 16;
+
+#[derive(Clone)]
+/// Candle token-classification session.
+///
+/// The weights are loaded once in [`CandleTokenClassifier::from_bundle`] and reused by every
+/// call; clones share them. The session is `Send + Sync`.
 pub struct CandleTokenClassifier {
     tokenizer: TokenizerBundle,
     labels: Vec<String>,
-    config: Value,
-    model_paths: Vec<PathBuf>,
+    #[cfg(all(feature = "candle", feature = "model-bundles"))]
+    model: std::sync::Arc<CandleTokenClassifierModel>,
+}
+
+impl std::fmt::Debug for CandleTokenClassifier {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut debug = formatter.debug_struct("CandleTokenClassifier");
+        debug
+            .field("tokenizer", &self.tokenizer)
+            .field("labels", &self.labels);
+        #[cfg(all(feature = "candle", feature = "model-bundles"))]
+        debug
+            .field("architecture", &self.model.architecture)
+            .field("device", &self.model.device);
+        debug.finish()
+    }
+}
+
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+enum CandleEncoder {
+    Bert(candle_bert::BertModel),
+    DistilBert(candle_distilbert::DistilBertModel),
+}
+
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+struct CandleTokenClassifierModel {
     architecture: CandleTokenClassifierArchitecture,
-    #[cfg(feature = "candle")]
+    encoder: CandleEncoder,
+    classifier: CandleLinear,
     device: CandleDevice,
 }
 
 impl CandleTokenClassifier {
-    /// Builds from a model bundle.
+    /// Loads the model from a bundle onto the default device (CUDA when this build and
+    /// machine support it, otherwise the CPU).
     #[cfg(feature = "model-bundles")]
     pub fn from_bundle(bundle: ModelBundle) -> Result<Self> {
+        #[cfg(all(feature = "candle", feature = "model-bundles"))]
+        {
+            let device = CandleDevice::cuda_if_available(0).unwrap_or(CandleDevice::Cpu);
+            Self::from_bundle_on(bundle, device)
+        }
+        #[cfg(not(all(feature = "candle", feature = "model-bundles")))]
+        {
+            let _ = bundle;
+            Err(invalid_argument(
+                "native Candle token classification requires the `candle` feature",
+            ))
+        }
+    }
+
+    /// Loads the model from a bundle onto `device`.
+    #[cfg(all(feature = "candle", feature = "model-bundles"))]
+    pub fn from_bundle_on(bundle: ModelBundle, device: CandleDevice) -> Result<Self> {
         let config_path = required_bundle_file(&bundle, "config.json")?;
         let config = read_json(&config_path)?;
         let tokenizer = tokenizer_with_model_limit(TokenizerBundle::from_bundle(&bundle)?, &config);
@@ -74,23 +125,12 @@ impl CandleTokenClassifier {
             ));
         }
         let architecture = token_classifier_architecture_from_config(&config)?;
+        let model = load_candle_token_classifier(&config, &model_paths, architecture, device)?;
         Ok(Self {
             tokenizer,
             labels: labels_from_config(&config),
-            config,
-            model_paths,
-            architecture,
-            #[cfg(feature = "candle")]
-            // CUDA when this build and machine support it; otherwise the CPU.
-            device: CandleDevice::cuda_if_available(0).unwrap_or(CandleDevice::Cpu),
+            model: std::sync::Arc::new(model),
         })
-    }
-
-    /// Runs the model on `device` instead of the default (CUDA if available, else CPU).
-    #[cfg(feature = "candle")]
-    pub fn on_device(mut self, device: CandleDevice) -> Self {
-        self.device = device;
-        self
     }
 
     /// Returns labels.
@@ -104,7 +144,7 @@ impl CandleTokenClassifier {
     }
 
     /// Classifies text.
-    pub fn classify(&mut self, text: &str) -> Result<Vec<RawPrediction>> {
+    pub fn classify(&self, text: &str) -> Result<Vec<RawPrediction>> {
         let tokens = self.tokenizer.tokenize(text)?;
         self.classify_tokenized(text, &tokens)
     }
@@ -115,26 +155,58 @@ impl CandleTokenClassifier {
         text: &str,
         tokens: &TokenizedText,
     ) -> Result<Vec<RawPrediction>> {
-        #[cfg(feature = "candle")]
+        Ok(self
+            .classify_tokenized_batch(&[(text, tokens)])?
+            .pop()
+            .unwrap_or_default())
+    }
+
+    /// Classifies several texts, padding up to [`TOKEN_CLASSIFIER_BATCH_SIZE`] of them into
+    /// one forward pass. Returns one prediction list per text, in input order.
+    pub fn classify_batch(&self, texts: &[&str]) -> Result<Vec<Vec<RawPrediction>>> {
+        let tokens = texts
+            .iter()
+            .map(|text| self.tokenizer.tokenize(text))
+            .collect::<Result<Vec<_>>>()?;
+        let inputs = texts.iter().copied().zip(&tokens).collect::<Vec<_>>();
+        self.classify_tokenized_batch(&inputs)
+    }
+
+    /// Classifies tokenized texts in padded batches; see [`Self::classify_batch`].
+    pub fn classify_tokenized_batch(
+        &self,
+        inputs: &[(&str, &TokenizedText)],
+    ) -> Result<Vec<Vec<RawPrediction>>> {
+        #[cfg(all(feature = "candle", feature = "model-bundles"))]
         {
-            let (logits, shape) = run_candle_token_classifier(
-                &self.config,
-                &self.model_paths,
-                self.architecture,
-                tokens,
-                &self.device,
-            )?;
-            token_predictions_from_logits(text, tokens, &logits, &shape, &self.labels)
+            // Batch sequences of similar length together to keep padding small.
+            let mut order = (0..inputs.len()).collect::<Vec<_>>();
+            order.sort_by_key(|&index| inputs[index].1.input_ids.len());
+            let mut results = vec![Vec::new(); inputs.len()];
+            for chunk in order.chunks(TOKEN_CLASSIFIER_BATCH_SIZE) {
+                let batch = chunk
+                    .iter()
+                    .map(|&index| inputs[index].1)
+                    .collect::<Vec<_>>();
+                let (logits, sequence, label_count) = self.model.forward(&batch)?;
+                for (row, &index) in chunk.iter().enumerate() {
+                    let (text, tokens) = inputs[index];
+                    let length = tokens.input_ids.len();
+                    let start = row * sequence * label_count;
+                    results[index] = token_predictions_from_logits(
+                        text,
+                        tokens,
+                        &logits[start..start + length * label_count],
+                        &[length, label_count],
+                        &self.labels,
+                    )?;
+                }
+            }
+            Ok(results)
         }
-        #[cfg(not(feature = "candle"))]
+        #[cfg(not(all(feature = "candle", feature = "model-bundles")))]
         {
-            let _ = (
-                text,
-                tokens,
-                &self.config,
-                &self.model_paths,
-                self.architecture,
-            );
+            let _ = inputs;
             Err(invalid_argument(
                 "native Candle token classification requires the `candle` feature",
             ))
@@ -237,7 +309,7 @@ pub fn softmax(logits: &[f32]) -> Vec<f32> {
     values
 }
 
-#[cfg(feature = "model-bundles")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn tokenizer_with_model_limit(tokenizer: TokenizerBundle, config: &Value) -> TokenizerBundle {
     match model_max_tokens_from_config(config) {
         Some(max_tokens) => tokenizer.max_length(max_tokens),
@@ -245,7 +317,7 @@ fn tokenizer_with_model_limit(tokenizer: TokenizerBundle, config: &Value) -> Tok
     }
 }
 
-#[cfg(feature = "model-bundles")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn model_max_tokens_from_config(config: &Value) -> Option<usize> {
     config
         .get("max_position_embeddings")
@@ -254,7 +326,7 @@ fn model_max_tokens_from_config(config: &Value) -> Option<usize> {
         .and_then(|value| usize::try_from(value).ok())
 }
 
-#[cfg(feature = "model-bundles")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn token_classifier_architecture_from_config(
     config: &Value,
 ) -> Result<CandleTokenClassifierArchitecture> {
@@ -275,7 +347,7 @@ fn token_classifier_architecture_from_config(
     )))
 }
 
-#[cfg(feature = "model-bundles")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn architectures_from_config(config: &Value) -> Vec<&str> {
     config
         .get("architectures")
@@ -286,7 +358,7 @@ fn architectures_from_config(config: &Value) -> Vec<&str> {
         .collect::<Vec<_>>()
 }
 
-#[cfg(feature = "model-bundles")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn required_bundle_file(bundle: &ModelBundle, remote_path: &str) -> Result<PathBuf> {
     bundle.file_path(remote_path).ok_or_else(|| {
         invalid_argument(format!(
@@ -296,7 +368,7 @@ fn required_bundle_file(bundle: &ModelBundle, remote_path: &str) -> Result<PathB
     })
 }
 
-#[cfg(feature = "model-bundles")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn bundle_files_with_extension(bundle: &ModelBundle, extension: &str) -> Vec<PathBuf> {
     bundle
         .manifest
@@ -309,7 +381,7 @@ fn bundle_files_with_extension(bundle: &ModelBundle, extension: &str) -> Vec<Pat
         .collect::<Vec<_>>()
 }
 
-#[cfg(feature = "model-bundles")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn read_json(path: &Path) -> Result<Value> {
     let data = std::fs::read(path)?;
     serde_json::from_slice(&data).map_err(|err| {
@@ -317,7 +389,7 @@ fn read_json(path: &Path) -> Result<Value> {
     })
 }
 
-#[cfg(feature = "model-bundles")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn labels_from_config(config: &Value) -> Vec<String> {
     let Some(id2label) = config.get("id2label") else {
         return Vec::new();
@@ -356,33 +428,23 @@ fn labels_from_config(config: &Value) -> Vec<String> {
     Vec::new()
 }
 
-#[cfg(feature = "candle")]
-fn run_candle_token_classifier(
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+fn load_candle_token_classifier(
     config: &Value,
     model_paths: &[PathBuf],
     architecture: CandleTokenClassifierArchitecture,
-    tokens: &TokenizedText,
-    device: &CandleDevice,
-) -> Result<(Vec<f32>, Vec<usize>)> {
-    let vb = candle_var_builder(model_paths, device)?;
+    device: CandleDevice,
+) -> Result<CandleTokenClassifierModel> {
+    let vb = candle_var_builder(model_paths, &device)?;
     let prefixes = model_prefix_candidates(config);
-
-    let (sequence_output, used_prefix) = match architecture {
+    let (encoder, used_prefix) = match architecture {
         CandleTokenClassifierArchitecture::Bert => {
             let config: candle_bert::Config =
                 serde_json::from_value(config.clone()).map_err(|err| {
                     invalid_argument(format!("failed to parse BERT config for Candle: {err}"))
                 })?;
             let (model, used_prefix) = load_candle_bert_model(&vb, &config, &prefixes)?;
-            let input_ids = candle_input_ids(tokens, device)?;
-            let token_type_ids = candle_token_type_ids(tokens, device)?;
-            let attention_mask = candle_attention_mask_keep(tokens, device)?;
-            (
-                model
-                    .forward(&input_ids, &token_type_ids, Some(&attention_mask))
-                    .map_err(candle_error)?,
-                used_prefix,
-            )
+            (CandleEncoder::Bert(model), used_prefix)
         }
         CandleTokenClassifierArchitecture::DistilBert => {
             let config: candle_distilbert::Config = serde_json::from_value(config.clone())
@@ -392,30 +454,61 @@ fn run_candle_token_classifier(
                     ))
                 })?;
             let (model, used_prefix) = load_candle_distilbert_model(&vb, &config, &prefixes)?;
-            let input_ids = candle_input_ids(tokens, device)?;
-            let attention_mask = candle_attention_mask_distil(tokens, device)?;
-            (
-                model
-                    .forward(&input_ids, &attention_mask)
-                    .map_err(candle_error)?,
-                used_prefix,
-            )
+            (CandleEncoder::DistilBert(model), used_prefix)
         }
     };
-
     let classifier_candidates = prioritized_layer_candidates(&used_prefix, "classifier");
     let classifier = load_required_candle_linear(&vb, &classifier_candidates, "classifier")?;
-    let logits = classifier.forward(&sequence_output).map_err(candle_error)?;
-    let shape = logits.dims().to_vec();
-    let values = logits
-        .flatten_all()
-        .map_err(candle_error)?
-        .to_vec1::<f32>()
-        .map_err(candle_error)?;
-    Ok((values, shape))
+    Ok(CandleTokenClassifierModel {
+        architecture,
+        encoder,
+        classifier,
+        device,
+    })
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+impl CandleTokenClassifierModel {
+    /// Runs one padded batch; returns row-major logits `[batch, sequence, labels]` plus
+    /// the padded sequence length and label count.
+    fn forward(&self, batch: &[&TokenizedText]) -> Result<(Vec<f32>, usize, usize)> {
+        let sequence = batch
+            .iter()
+            .map(|tokens| tokens.input_ids.len())
+            .max()
+            .unwrap_or(0);
+        let device = &self.device;
+        let input_ids = candle_input_ids(batch, sequence, device)?;
+        let sequence_output = match &self.encoder {
+            CandleEncoder::Bert(model) => {
+                let token_type_ids = candle_token_type_ids(batch, sequence, device)?;
+                let attention_mask = candle_attention_mask_keep(batch, sequence, device)?;
+                model
+                    .forward(&input_ids, &token_type_ids, Some(&attention_mask))
+                    .map_err(candle_error)?
+            }
+            CandleEncoder::DistilBert(model) => {
+                let attention_mask = candle_attention_mask_distil(batch, sequence, device)?;
+                model
+                    .forward(&input_ids, &attention_mask)
+                    .map_err(candle_error)?
+            }
+        };
+        let logits = self
+            .classifier
+            .forward(&sequence_output)
+            .map_err(candle_error)?;
+        let label_count = logits.dims().last().copied().unwrap_or(0);
+        let values = logits
+            .flatten_all()
+            .map_err(candle_error)?
+            .to_vec1::<f32>()
+            .map_err(candle_error)?;
+        Ok((values, sequence, label_count))
+    }
+}
+
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn candle_var_builder<'a>(
     model_paths: &'a [PathBuf],
     device: &CandleDevice,
@@ -428,7 +521,7 @@ fn candle_var_builder<'a>(
         .map_err(candle_error)
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn load_candle_bert_model(
     vb: &CandleVarBuilder<'_>,
     config: &candle_bert::Config,
@@ -453,7 +546,7 @@ fn load_candle_bert_model(
     )))
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn load_candle_distilbert_model(
     vb: &CandleVarBuilder<'_>,
     config: &candle_distilbert::Config,
@@ -478,7 +571,7 @@ fn load_candle_distilbert_model(
     )))
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn load_first_candle_linear(
     vb: &CandleVarBuilder<'_>,
     layer_paths: &[String],
@@ -491,7 +584,7 @@ fn load_first_candle_linear(
     Ok(None)
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn load_required_candle_linear(
     vb: &CandleVarBuilder<'_>,
     layer_paths: &[String],
@@ -505,7 +598,7 @@ fn load_required_candle_linear(
     })
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn load_candle_linear(vb: &CandleVarBuilder<'_>, layer_path: &str) -> Result<Option<CandleLinear>> {
     let layer_vb = vb.pp(layer_path);
     if !layer_vb.contains_tensor("weight") {
@@ -520,7 +613,7 @@ fn load_candle_linear(vb: &CandleVarBuilder<'_>, layer_path: &str) -> Result<Opt
     Ok(Some(CandleLinear::new(weight, bias)))
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn prioritized_layer_candidates(primary_prefix: &str, suffix: &str) -> Vec<String> {
     let mut candidates = Vec::new();
     if !primary_prefix.is_empty() {
@@ -530,7 +623,7 @@ fn prioritized_layer_candidates(primary_prefix: &str, suffix: &str) -> Vec<Strin
     candidates
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn model_prefix_candidates(config: &Value) -> Vec<String> {
     let mut prefixes = Vec::new();
     push_unique_string(&mut prefixes, String::new());
@@ -545,74 +638,107 @@ fn model_prefix_candidates(config: &Value) -> Vec<String> {
     prefixes
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn push_unique_string(values: &mut Vec<String>, value: String) {
     if !values.iter().any(|existing| existing == &value) {
         values.push(value);
     }
 }
 
-#[cfg(feature = "candle")]
-fn candle_input_ids(tokens: &TokenizedText, device: &CandleDevice) -> Result<CandleTensor> {
-    let values = tokens
-        .input_ids
+/// Stacks one row per sequence into `[batch, sequence]`, padding each row with `pad`.
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+fn padded_rows<T: Copy + candle_core::WithDType>(
+    batch: &[&TokenizedText],
+    sequence: usize,
+    pad: T,
+    row: impl Fn(&TokenizedText) -> Result<Vec<T>>,
+) -> Result<Vec<T>> {
+    let mut values = Vec::with_capacity(batch.len() * sequence);
+    for tokens in batch {
+        let mut cells = row(tokens)?;
+        cells.resize(sequence, pad);
+        values.extend(cells);
+    }
+    Ok(values)
+}
+
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+fn u32_ids(values: &[i64], what: &str) -> Result<Vec<u32>> {
+    values
         .iter()
         .map(|value| {
             u32::try_from(*value).map_err(|_| {
                 invalid_argument(format!(
-                    "tokenizer produced an out-of-range input id for Candle: {value}"
+                    "tokenizer produced an out-of-range {what} for Candle: {value}"
                 ))
             })
         })
-        .collect::<Result<Vec<_>>>()?;
-    CandleTensor::from_vec(values, (1, tokens.input_ids.len()), device).map_err(candle_error)
+        .collect()
 }
 
-#[cfg(feature = "candle")]
-fn candle_token_type_ids(tokens: &TokenizedText, device: &CandleDevice) -> Result<CandleTensor> {
-    let values = match &tokens.token_type_ids {
-        Some(values) => values
-            .iter()
-            .map(|value| {
-                u32::try_from(*value).map_err(|_| {
-                    invalid_argument(format!(
-                        "tokenizer produced an out-of-range token type id for Candle: {value}"
-                    ))
-                })
-            })
-            .collect::<Result<Vec<_>>>()?,
-        None => vec![0_u32; tokens.input_ids.len()],
-    };
-    CandleTensor::from_vec(values, (1, tokens.input_ids.len()), device).map_err(candle_error)
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+fn candle_input_ids(
+    batch: &[&TokenizedText],
+    sequence: usize,
+    device: &CandleDevice,
+) -> Result<CandleTensor> {
+    let values = padded_rows(batch, sequence, 0_u32, |tokens| {
+        u32_ids(&tokens.input_ids, "input id")
+    })?;
+    CandleTensor::from_vec(values, (batch.len(), sequence), device).map_err(candle_error)
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+fn candle_token_type_ids(
+    batch: &[&TokenizedText],
+    sequence: usize,
+    device: &CandleDevice,
+) -> Result<CandleTensor> {
+    let values = padded_rows(batch, sequence, 0_u32, |tokens| {
+        match &tokens.token_type_ids {
+            Some(values) => u32_ids(values, "token type id"),
+            None => Ok(vec![0_u32; tokens.input_ids.len()]),
+        }
+    })?;
+    CandleTensor::from_vec(values, (batch.len(), sequence), device).map_err(candle_error)
+}
+
+/// BERT mask: 1 attends, 0 (padding included) is masked.
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn candle_attention_mask_keep(
-    tokens: &TokenizedText,
+    batch: &[&TokenizedText],
+    sequence: usize,
     device: &CandleDevice,
 ) -> Result<CandleTensor> {
-    let values = tokens
-        .attention_mask
-        .iter()
-        .map(|value| if *value == 0 { 0_u32 } else { 1_u32 })
-        .collect::<Vec<_>>();
-    CandleTensor::from_vec(values, (1, tokens.attention_mask.len()), device).map_err(candle_error)
+    let values = padded_rows(batch, sequence, 0_u32, |tokens| {
+        Ok(tokens
+            .attention_mask
+            .iter()
+            .map(|value| u32::from(*value != 0))
+            .collect())
+    })?;
+    CandleTensor::from_vec(values, (batch.len(), sequence), device).map_err(candle_error)
 }
 
-#[cfg(feature = "candle")]
+/// DistilBERT mask: 1 is masked (padding included), shaped `[batch, 1, 1, sequence]` so it
+/// broadcasts over heads and query positions.
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn candle_attention_mask_distil(
-    tokens: &TokenizedText,
+    batch: &[&TokenizedText],
+    sequence: usize,
     device: &CandleDevice,
 ) -> Result<CandleTensor> {
-    let values = tokens
-        .attention_mask
-        .iter()
-        .map(|value| if *value == 0 { 1_u8 } else { 0_u8 })
-        .collect::<Vec<_>>();
-    CandleTensor::from_vec(values, (1, tokens.attention_mask.len()), device).map_err(candle_error)
+    let values = padded_rows(batch, sequence, 1_u8, |tokens| {
+        Ok(tokens
+            .attention_mask
+            .iter()
+            .map(|value| u8::from(*value == 0))
+            .collect())
+    })?;
+    CandleTensor::from_vec(values, (batch.len(), 1, 1, sequence), device).map_err(candle_error)
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn candle_error(error: candle_core::Error) -> DetectError {
     DetectError::Source(format!("Candle runtime error: {error}"))
 }

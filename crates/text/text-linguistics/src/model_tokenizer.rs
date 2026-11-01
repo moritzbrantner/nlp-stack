@@ -223,15 +223,41 @@ impl Default for TokenizerDownloadOptions {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone)]
 /// Tokenizer file plus runtime truncation settings.
+///
+/// The tokenizer file is parsed on the first [`TokenizerBundle::tokenize`] call and
+/// reused afterwards; clones share the parsed tokenizer.
 pub struct TokenizerBundle {
     tokenizer_path: PathBuf,
     /// Optional maximum token count.
     pub max_length: Option<usize>,
     /// Truncation strategy.
     pub truncation: TruncationStrategy,
+    #[cfg(feature = "tokenizers")]
+    loaded: std::sync::Arc<std::sync::OnceLock<tokenizers::Tokenizer>>,
 }
+
+impl std::fmt::Debug for TokenizerBundle {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("TokenizerBundle")
+            .field("tokenizer_path", &self.tokenizer_path)
+            .field("max_length", &self.max_length)
+            .field("truncation", &self.truncation)
+            .finish_non_exhaustive()
+    }
+}
+
+impl PartialEq for TokenizerBundle {
+    fn eq(&self, other: &Self) -> bool {
+        self.tokenizer_path == other.tokenizer_path
+            && self.max_length == other.max_length
+            && self.truncation == other.truncation
+    }
+}
+
+impl Eq for TokenizerBundle {}
 
 impl TokenizerBundle {
     /// Creates a new tokenizer bundle.
@@ -240,6 +266,8 @@ impl TokenizerBundle {
             tokenizer_path: tokenizer_path.into(),
             max_length: None,
             truncation: TruncationStrategy::None,
+            #[cfg(feature = "tokenizers")]
+            loaded: Default::default(),
         }
     }
 
@@ -296,7 +324,13 @@ impl TokenizerBundle {
     #[cfg(feature = "tokenizers")]
     /// Tokenizes text with the configured tokenizer.
     pub fn tokenize(&self, text: &str) -> Result<TokenizedText> {
-        let tokenizer = load_tokenizer(&self.tokenizer_path)?;
+        let tokenizer = match self.loaded.get() {
+            Some(tokenizer) => tokenizer,
+            None => {
+                let tokenizer = load_tokenizer(&self.tokenizer_path)?;
+                self.loaded.get_or_init(|| tokenizer)
+            }
+        };
         let encoding = tokenizer
             .encode(text, true)
             .map_err(|err| DetectError::Source(format!("failed to tokenize text: {err}")))?;
