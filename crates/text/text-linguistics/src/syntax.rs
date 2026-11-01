@@ -153,41 +153,94 @@ pub fn chunk_phrases(
     chunks
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-/// Variants describing dependency relation.
-pub enum DependencyRelation {
-    /// The root variant.
-    Root,
-    /// The nsubj variant.
-    Nsubj,
-    /// The obj variant.
-    Obj,
-    /// The iobj variant.
-    Iobj,
-    /// The obl variant.
-    Obl,
-    /// The advmod variant.
-    Advmod,
-    /// The amod variant.
-    Amod,
-    /// The det variant.
-    Det,
-    /// The case variant.
-    Case,
-    /// The aux variant.
-    Aux,
-    /// The compound variant.
-    Compound,
-    /// The cc variant.
-    Cc,
-    /// The conj variant.
-    Conj,
-    /// The appos variant.
-    Appos,
-    /// The nmod variant.
-    Nmod,
-    /// The dep variant.
-    Dep,
+macro_rules! ud_relations {
+    ($($variant:ident => $label:literal,)*) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        /// A Universal Dependencies v2 relation, without its language-specific subtype.
+        pub enum DependencyRelation {
+            $(#[doc = concat!("UD `", $label, "`.")] $variant,)*
+        }
+
+        impl DependencyRelation {
+            /// Every UD v2 universal relation.
+            pub const ALL: &'static [Self] = &[$(Self::$variant,)*];
+
+            /// The UD label (`nsubj`).
+            pub fn as_ud(self) -> &'static str {
+                match self {
+                    $(Self::$variant => $label,)*
+                }
+            }
+        }
+    };
+}
+
+ud_relations! {
+    Acl => "acl",
+    Advcl => "advcl",
+    Advmod => "advmod",
+    Amod => "amod",
+    Appos => "appos",
+    Aux => "aux",
+    Case => "case",
+    Cc => "cc",
+    Ccomp => "ccomp",
+    Clf => "clf",
+    Compound => "compound",
+    Conj => "conj",
+    Cop => "cop",
+    Csubj => "csubj",
+    Dep => "dep",
+    Det => "det",
+    Discourse => "discourse",
+    Dislocated => "dislocated",
+    Expl => "expl",
+    Fixed => "fixed",
+    Flat => "flat",
+    Goeswith => "goeswith",
+    Iobj => "iobj",
+    List => "list",
+    Mark => "mark",
+    Nmod => "nmod",
+    Nsubj => "nsubj",
+    Nummod => "nummod",
+    Obj => "obj",
+    Obl => "obl",
+    Orphan => "orphan",
+    Parataxis => "parataxis",
+    Punct => "punct",
+    Reparandum => "reparandum",
+    Root => "root",
+    Vocative => "vocative",
+    Xcomp => "xcomp",
+}
+
+impl DependencyRelation {
+    /// Parses a UD universal relation label (`nsubj`, not `nsubj:pass`).
+    pub fn from_ud(label: &str) -> Option<Self> {
+        Self::ALL
+            .iter()
+            .copied()
+            .find(|relation| relation.as_ud() == label)
+    }
+
+    /// Splits a full UD DEPREL (`nsubj:pass`) into relation and subtype. Unknown
+    /// relations become [`DependencyRelation::Dep`].
+    pub fn parse_ud_deprel(label: &str) -> (Self, Option<String>) {
+        let (base, subtype) = match label.split_once(':') {
+            Some((base, subtype)) => (base, Some(subtype.to_string())),
+            None => (label, None),
+        };
+        (Self::from_ud(base).unwrap_or(Self::Dep), subtype)
+    }
+
+    /// Formats the relation with an optional subtype as a UD DEPREL (`nsubj:pass`).
+    pub fn to_ud_deprel(self, subtype: Option<&str>) -> String {
+        match subtype {
+            Some(subtype) => format!("{}:{subtype}", self.as_ud()),
+            None => self.as_ud().to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -199,6 +252,8 @@ pub struct DependencyNode {
     pub head_token_index: Option<usize>,
     /// The relation value.
     pub relation: DependencyRelation,
+    /// Language-specific UD subtype (`pass` in `nsubj:pass`).
+    pub subtype: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -210,6 +265,8 @@ pub struct DependencyEdge {
     pub dependent_token_index: usize,
     /// The relation value.
     pub relation: DependencyRelation,
+    /// Language-specific UD subtype (`pass` in `nsubj:pass`).
+    pub subtype: Option<String>,
     /// Confidence score for this value.
     pub confidence: f32,
 }
@@ -319,12 +376,14 @@ impl DependencyParser {
                 token_index,
                 head_token_index: head,
                 relation,
+                subtype: None,
             });
             if let Some(head) = head {
                 edges.push(DependencyEdge {
                     head_token_index: head,
                     dependent_token_index: token_index,
                     relation,
+                    subtype: None,
                     confidence,
                 });
             }

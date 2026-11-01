@@ -13,7 +13,7 @@ pub mod surface;
 mod syntax;
 mod temporal;
 mod tokenization;
-mod ud_morphology;
+mod ud_model;
 
 pub use discourse::*;
 pub use entities::*;
@@ -27,7 +27,7 @@ pub use syntax::*;
 pub use temporal::*;
 pub use text_lexical::{rule_entities, EntityMention, EntityRuleSet};
 pub use tokenization::*;
-pub use ud_morphology::*;
+pub use ud_model::*;
 
 #[cfg(test)]
 mod tests;

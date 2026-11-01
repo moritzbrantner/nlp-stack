@@ -786,17 +786,75 @@ fn morph_tag_set_writes_ud_feats_order() {
 #[test]
 fn ud_presets_route_by_primary_language_and_split_contractions() {
     assert_eq!(
-        UdMorphologyPreset::for_language("de-AT"),
-        Some(UdMorphologyPreset::ComboGermanGsd)
+        UdModelPreset::for_language("de-AT"),
+        Some(UdModelPreset::ComboGermanGsd)
     );
     assert_eq!(
-        UdMorphologyPreset::for_language("es"),
-        Some(UdMorphologyPreset::ComboSpanishAncora)
+        UdModelPreset::for_language("es"),
+        Some(UdModelPreset::ComboSpanishAncora)
     );
-    assert_eq!(UdMorphologyPreset::for_language("en"), None);
+    assert_eq!(UdModelPreset::for_language("en"), None);
     assert_eq!(split_contraction("de", "Zum"), Some(["zu", "dem"]));
     assert_eq!(split_contraction("es", "del"), Some(["de", "el"]));
     assert_eq!(split_contraction("es", "im"), None);
+}
+
+#[test]
+fn dependency_decoding_breaks_cycles_and_keeps_one_root() {
+    // Greedy heads form the cycle 1 <-> 2; the root arc into word 1 resolves it.
+    let scores = vec![
+        vec![5.0, 0.0, 9.0, 0.0],
+        vec![1.0, 9.0, 0.0, 0.0],
+        vec![0.0, 0.0, 8.0, 0.0],
+    ];
+    assert_eq!(decode_dependency_tree(&scores), vec![0, 1, 2]);
+
+    // Two words prefer the root; the stronger root arc wins and the other attaches to it.
+    let scores = vec![vec![9.0, 0.0, 1.0], vec![6.0, 1.0, 0.0]];
+    assert_eq!(decode_dependency_tree(&scores), vec![0, 1]);
+    assert!(decode_dependency_tree(&[]).is_empty());
+
+    // Nested cycles: every word reaches the root exactly once.
+    let scores = vec![
+        vec![1.0, 0.0, 9.0, 2.0, 0.0],
+        vec![0.0, 2.0, 0.0, 9.0, 1.0],
+        vec![0.0, 9.0, 1.0, 0.0, 3.0],
+        vec![4.0, 0.0, 2.0, 7.0, 0.0],
+    ];
+    let heads = decode_dependency_tree(&scores);
+    assert_eq!(heads.iter().filter(|&&head| head == 0).count(), 1);
+    for start in 1..=heads.len() {
+        let mut node = start;
+        for _ in 0..=heads.len() {
+            if node != 0 {
+                node = heads[node - 1];
+            }
+        }
+        assert_eq!(node, 0, "{heads:?}");
+    }
+}
+
+#[test]
+fn ud_deprels_parse_into_relation_and_subtype() {
+    assert_eq!(
+        DependencyRelation::parse_ud_deprel("nsubj:pass"),
+        (DependencyRelation::Nsubj, Some("pass".to_string()))
+    );
+    assert_eq!(
+        DependencyRelation::parse_ud_deprel("punct"),
+        (DependencyRelation::Punct, None)
+    );
+    assert_eq!(
+        DependencyRelation::parse_ud_deprel("bogus"),
+        (DependencyRelation::Dep, None)
+    );
+    assert_eq!(DependencyRelation::Obl.to_ud_deprel(Some("arg")), "obl:arg");
+    for &relation in DependencyRelation::ALL {
+        assert_eq!(
+            DependencyRelation::from_ud(relation.as_ud()),
+            Some(relation)
+        );
+    }
 }
 
 #[cfg(feature = "candle")]

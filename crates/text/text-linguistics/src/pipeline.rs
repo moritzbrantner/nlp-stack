@@ -22,8 +22,8 @@ use crate::tokenization::{
     TokenAlignmentMap, TokenizationMode, TokenizerPolicy, TokenizerRegistry, TokenizerSelection,
 };
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
-use crate::ud_morphology::UdMorphoTagger;
-use crate::ud_morphology::UdMorphologyPreset;
+use crate::ud_model::UdModel;
+use crate::ud_model::UdModelPreset;
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
 use model_runtime::{HuggingFaceDownloader, ModelBundle, ModelBundleStore};
 use text_core::{
@@ -200,7 +200,7 @@ impl EntityRecognitionOptions {
 pub enum MorphologyMode {
     /// English heuristics for every language.
     Heuristic,
-    /// UD-treebank-trained taggers ([`UdMorphologyPreset`]) plus UD-derived lemma tables
+    /// UD-treebank-trained taggers ([`UdModelPreset`]) plus UD-derived lemma tables
     /// for languages that have a preset (de, es); English heuristics otherwise.
     LocalModel,
 }
@@ -257,6 +257,113 @@ impl MorphologyOptions {
             ..Self::local_model()
         }
     }
+
+    fn ud_model_source(&self, detected: Option<&str>) -> Option<UdModelSource> {
+        if self.mode != MorphologyMode::LocalModel {
+            return None;
+        }
+        Some(UdModelSource {
+            preset: UdModelPreset::for_language(self.language.as_deref().or(detected)?)?,
+            bundle_dir: self.bundle_dir.clone(),
+            auto_download: self.auto_download,
+            download_progress: self.download_progress,
+            max_retries: self.max_retries,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// How dependency trees are produced.
+pub enum DependencyParsingMode {
+    /// English POS-pattern heuristics for every language.
+    Heuristic,
+    /// The biaffine dependency head of the UD-treebank-trained models
+    /// ([`UdModelPreset`]) for languages that have a preset (de, es); heuristics otherwise.
+    LocalModel,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+/// Dependency parser runtime selection. Defaults are heuristic and no-download.
+///
+/// When this and [`MorphologyOptions`] select the same UD model from the same
+/// bundle directory, each sentence is encoded once for both layers.
+pub struct DependencyParsingOptions {
+    /// Whether to use heuristics or the UD-trained local models.
+    pub mode: DependencyParsingMode,
+    /// Language whose UD model to use; `None` uses the detected primary language.
+    pub language: Option<String>,
+    /// Directory containing local model bundles when `mode` is `LocalModel`.
+    pub bundle_dir: PathBuf,
+    /// Whether missing model bundles may be downloaded.
+    pub auto_download: bool,
+    /// Whether model download progress should be printed by the downloader.
+    pub download_progress: bool,
+    /// Maximum retry count for explicit model downloads.
+    pub max_retries: usize,
+}
+
+impl Default for DependencyParsingOptions {
+    fn default() -> Self {
+        Self::heuristic()
+    }
+}
+
+impl DependencyParsingOptions {
+    /// Local UD models without downloading missing bundles.
+    pub fn local_model() -> Self {
+        Self {
+            mode: DependencyParsingMode::LocalModel,
+            language: None,
+            bundle_dir: PathBuf::from(".model-runtime"),
+            auto_download: false,
+            download_progress: false,
+            max_retries: 1,
+        }
+    }
+
+    /// Local UD models that may download missing bundles.
+    pub fn local_model_with_downloads() -> Self {
+        Self {
+            auto_download: true,
+            download_progress: true,
+            ..Self::local_model()
+        }
+    }
+
+    /// English heuristics only.
+    pub fn heuristic() -> Self {
+        Self {
+            mode: DependencyParsingMode::Heuristic,
+            ..Self::local_model()
+        }
+    }
+
+    fn ud_model_source(&self, detected: Option<&str>) -> Option<UdModelSource> {
+        if self.mode != DependencyParsingMode::LocalModel {
+            return None;
+        }
+        Some(UdModelSource {
+            preset: UdModelPreset::for_language(self.language.as_deref().or(detected)?)?,
+            bundle_dir: self.bundle_dir.clone(),
+            auto_download: self.auto_download,
+            download_progress: self.download_progress,
+            max_retries: self.max_retries,
+        })
+    }
+}
+
+/// Which UD model to run and how its bundles are loaded.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(
+    not(all(feature = "candle", feature = "model-bundles")),
+    allow(dead_code)
+)]
+struct UdModelSource {
+    preset: UdModelPreset,
+    bundle_dir: PathBuf,
+    auto_download: bool,
+    download_progress: bool,
+    max_retries: usize,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -274,6 +381,8 @@ pub struct LinguisticAnalysisOptions {
     pub pos: PosTaggingOptions,
     /// Lemma/POS/morphology backend selection.
     pub morphology: MorphologyOptions,
+    /// Dependency parser backend selection.
+    pub dependency_parsing: DependencyParsingOptions,
     /// The entity linking value.
     pub entity_linking: EntityLinkingOptions,
     /// The entity recognition value.
@@ -304,6 +413,7 @@ impl Default for LinguisticAnalysisOptions {
             lemma: LemmaOptions::default(),
             pos: PosTaggingOptions::default(),
             morphology: MorphologyOptions::default(),
+            dependency_parsing: DependencyParsingOptions::default(),
             entity_linking: EntityLinkingOptions::default(),
             entity_recognition: EntityRecognitionOptions::default(),
             enable_alignment: false,
@@ -718,18 +828,13 @@ fn analyze_text_with_config_and_labeler(
         .primary
         .as_ref()
         .map(|prediction| prediction.language.as_str());
-    let ud_preset = match options.morphology.mode {
-        MorphologyMode::LocalModel => options
-            .morphology
-            .language
-            .as_deref()
-            .or(primary_language)
-            .and_then(UdMorphologyPreset::for_language),
-        MorphologyMode::Heuristic => None,
-    };
-    let (lemmas, pos, morphology) = if let Some(preset) = ud_preset {
-        ud_model_morphology(preset, &sentences, &tokens, &options.morphology)?
-    } else {
+    let (ud_morphology, ud_dependencies) = ud_model_layers(
+        options.morphology.ud_model_source(primary_language),
+        options.dependency_parsing.ud_model_source(primary_language),
+        &sentences,
+        &tokens,
+    )?;
+    let (lemmas, pos, morphology) = ud_morphology.unwrap_or_else(|| {
         let lemmas = lemmatize_tokens(&tokens, primary_language, &options.lemma);
         let pos_tagger = PosTagger {
             options: options.pos.clone(),
@@ -737,10 +842,10 @@ fn analyze_text_with_config_and_labeler(
         let pos = pos_tagger.tag_tokens(&tokens, &lemmas);
         let morphology = annotate_morphology(&tokens, &lemmas, &pos);
         (lemmas, pos, morphology)
-    };
+    });
     let chunks = chunk_phrases(text, &sentences, &tokens, &pos);
-    let dependency_parser = DependencyParser;
-    let dependencies = dependency_parser.parse_document(&sentences, &tokens, &pos);
+    let dependencies = ud_dependencies
+        .unwrap_or_else(|| DependencyParser.parse_document(&sentences, &tokens, &pos));
     let heuristic_entities = extract_named_entities(text, &sentences, &tokens, &pos);
     let used_entity_model = entity_labeler.is_some()
         || options.entity_recognition.mode == EntityRecognitionMode::LocalModel;
@@ -881,75 +986,253 @@ type MorphologyLayers = (
     Vec<MorphAnnotation>,
 );
 
+/// The UD-model morphology and dependency layers, for whichever of the two selects
+/// a UD model.
+type UdLayers = (Option<MorphologyLayers>, Option<Vec<DependencyTree>>);
+
 #[cfg(not(all(feature = "candle", feature = "model-bundles")))]
-fn ud_model_morphology(
-    preset: UdMorphologyPreset,
+fn ud_model_layers(
+    morphology: Option<UdModelSource>,
+    dependencies: Option<UdModelSource>,
     _sentences: &[Sentence],
     _tokens: &[Token],
-    _options: &MorphologyOptions,
-) -> Result<MorphologyLayers> {
-    Err(DetectError::InvalidArgument(format!(
-        "UD morphology `{}` requires the `candle` and `model-bundles` features",
-        preset.as_str()
-    )))
+) -> Result<UdLayers> {
+    match morphology.or(dependencies) {
+        Some(source) => Err(DetectError::InvalidArgument(format!(
+            "UD model `{}` requires the `candle` and `model-bundles` features",
+            source.preset.as_str()
+        ))),
+        None => Ok((None, None)),
+    }
 }
 
-/// Tags every sentence with the UD tagger for `preset` and lemmatizes with the
-/// UD-derived table. Contractions (`zum`, `del`) are tagged as their two syntactic
-/// words; the token keeps the adposition's UPOS and lemma and the article's features.
+/// One sentence's tokens as the syntactic words the UD model analyzed.
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
-fn ud_model_morphology(
-    preset: UdMorphologyPreset,
+struct UdSentence {
+    /// Index into the document's sentences; `None` for tokens outside every sentence.
+    sentence_index: Option<usize>,
+    tokens: Vec<usize>,
+    /// Index of each token's first syntactic word.
+    first_word: Vec<usize>,
+    contractions: Vec<Option<[&'static str; 2]>>,
+    words: Vec<crate::ud_model::UdWordAnalysis>,
+}
+
+/// Runs the UD model once per sentence for the layers that select it, sharing the
+/// run when both select the same model.
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+fn ud_model_layers(
+    morphology: Option<UdModelSource>,
+    dependencies: Option<UdModelSource>,
     sentences: &[Sentence],
     tokens: &[Token],
-    options: &MorphologyOptions,
+) -> Result<UdLayers> {
+    let morphology_run = morphology
+        .as_ref()
+        .map(|source| run_ud_model(source, sentences, tokens))
+        .transpose()?;
+    let dependency_run = match &dependencies {
+        Some(source) if morphology.as_ref() != Some(source) => {
+            Some(run_ud_model(source, sentences, tokens)?)
+        }
+        _ => None,
+    };
+    let trees = dependencies.map(|_| {
+        ud_dependency_trees(
+            dependency_run
+                .as_deref()
+                .or(morphology_run.as_deref())
+                .unwrap_or_default(),
+        )
+    });
+    let layers = morphology
+        .map(|source| {
+            ud_morphology_layers(
+                source.preset,
+                morphology_run.as_deref().unwrap_or_default(),
+                tokens,
+            )
+        })
+        .transpose()?;
+    Ok((layers, trees))
+}
+
+/// Analyzes every sentence with the UD model. Contractions (`zum`, `del`) become
+/// their two syntactic words.
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+fn run_ud_model(
+    source: &UdModelSource,
+    sentences: &[Sentence],
+    tokens: &[Token],
+) -> Result<Vec<UdSentence>> {
+    use crate::ud_model::split_contraction;
+
+    let model = cached_ud_model(source)?;
+    let language = source.preset.language();
+    let mut groups = sentences
+        .iter()
+        .enumerate()
+        .map(|(sentence_index, sentence)| {
+            let members = (0..tokens.len())
+                .filter(|&index| {
+                    let start = tokens[index].span.byte_start;
+                    start >= sentence.span.byte_start && start < sentence.span.byte_end
+                })
+                .collect::<Vec<_>>();
+            (Some(sentence_index), members)
+        })
+        .collect::<Vec<_>>();
+    let grouped = groups
+        .iter()
+        .flat_map(|(_, members)| members)
+        .copied()
+        .collect::<BTreeSet<_>>();
+    let rest = (0..tokens.len())
+        .filter(|index| !grouped.contains(index))
+        .collect::<Vec<_>>();
+    groups.push((None, rest));
+
+    groups
+        .into_iter()
+        .map(|(sentence_index, group)| {
+            let mut words = Vec::new();
+            let mut first_word = Vec::new();
+            let mut contractions = Vec::new();
+            for &index in &group {
+                first_word.push(words.len());
+                let text = tokens[index].text.as_str();
+                if let Some(parts) = split_contraction(language, text) {
+                    words.extend(parts);
+                    contractions.push(Some(parts));
+                } else {
+                    words.push(text);
+                    contractions.push(None);
+                }
+            }
+            Ok(UdSentence {
+                sentence_index,
+                words: model.analyze_words(&words)?,
+                tokens: group,
+                first_word,
+                contractions,
+            })
+        })
+        .collect()
+}
+
+/// Dependency trees over tokens from the UD model's word-level trees. A
+/// contraction token takes the attachment of whichever of its words is closest to
+/// the root (the adposition for `zum`, `del`), so the result stays a tree.
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+fn ud_dependency_trees(run: &[UdSentence]) -> Vec<DependencyTree> {
+    use crate::syntax::{DependencyEdge, DependencyNode, DependencyRelation};
+
+    let mut trees = Vec::new();
+    for sentence in run {
+        let Some(sentence_index) = sentence.sentence_index else {
+            continue;
+        };
+        let words = &sentence.words;
+        let mut word_token = vec![0; words.len()];
+        let spans = (0..sentence.tokens.len())
+            .map(|k| {
+                let end = sentence
+                    .first_word
+                    .get(k + 1)
+                    .copied()
+                    .unwrap_or(words.len());
+                sentence.first_word[k]..end
+            })
+            .collect::<Vec<_>>();
+        for (k, span) in spans.iter().enumerate() {
+            for word in span.clone() {
+                word_token[word] = k;
+            }
+        }
+        // Whether word `ancestor` dominates word `word` (both 0-based).
+        let dominates = |ancestor: usize, word: usize| {
+            let mut node = words[word].head;
+            for _ in 0..words.len() {
+                if node == 0 {
+                    return false;
+                }
+                if node - 1 == ancestor {
+                    return true;
+                }
+                node = words[node - 1].head;
+            }
+            false
+        };
+
+        let mut tree = DependencyTree {
+            sentence_index,
+            root_token_index: None,
+            nodes: Vec::new(),
+            edges: Vec::new(),
+        };
+        for (k, span) in spans.iter().enumerate() {
+            let token_index = sentence.tokens[k];
+            let Some(top) = span.clone().find(|&word| {
+                !span
+                    .clone()
+                    .any(|other| other != word && dominates(other, word))
+            }) else {
+                continue;
+            };
+            let analysis = &words[top];
+            let head = (analysis.head != 0).then(|| sentence.tokens[word_token[analysis.head - 1]]);
+            let (relation, subtype) = DependencyRelation::parse_ud_deprel(&analysis.deprel);
+            if head.is_none() {
+                tree.root_token_index = Some(token_index);
+            }
+            tree.nodes.push(DependencyNode {
+                token_index,
+                head_token_index: head,
+                relation,
+                subtype: subtype.clone(),
+            });
+            if let Some(head) = head {
+                tree.edges.push(DependencyEdge {
+                    head_token_index: head,
+                    dependent_token_index: token_index,
+                    relation,
+                    subtype,
+                    confidence: analysis.head_confidence,
+                });
+            }
+        }
+        trees.push(tree);
+    }
+    trees
+}
+
+/// Lemma, POS and morphology layers from a UD model run, lemmatized with the
+/// UD-derived table. A contraction token keeps the adposition's UPOS and lemma and
+/// the article's features.
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+fn ud_morphology_layers(
+    preset: UdModelPreset,
+    run: &[UdSentence],
+    tokens: &[Token],
 ) -> Result<MorphologyLayers> {
     use crate::lemmas::UdLemmatizer;
-    use crate::ud_morphology::split_contraction;
 
-    let tagger = cached_ud_tagger(preset, options)?;
     let language = preset.language();
     let lemmatizer = UdLemmatizer::for_language(language).ok_or_else(|| {
         DetectError::InvalidArgument(format!("no UD lemma table for `{language}`"))
     })?;
 
-    let mut groups = sentences
-        .iter()
-        .map(|sentence| {
-            (0..tokens.len())
-                .filter(|&index| {
-                    let start = tokens[index].span.byte_start;
-                    start >= sentence.span.byte_start && start < sentence.span.byte_end
-                })
-                .collect::<Vec<_>>()
-        })
-        .collect::<Vec<_>>();
-    let grouped = groups.iter().flatten().copied().collect::<BTreeSet<_>>();
-    let rest = (0..tokens.len())
-        .filter(|index| !grouped.contains(index))
-        .collect::<Vec<_>>();
-    groups.push(rest);
-
     let mut lemmas = vec![None; tokens.len()];
     let mut pos = vec![None; tokens.len()];
     let mut morphology = vec![None; tokens.len()];
-    for group in groups.iter().filter(|group| !group.is_empty()) {
-        let mut words = Vec::new();
-        let mut first_word = Vec::new();
-        let mut contractions = Vec::new();
-        for &index in group {
-            first_word.push(words.len());
-            let text = tokens[index].text.as_str();
-            if let Some(parts) = split_contraction(language, text) {
-                words.extend(parts);
-                contractions.push(Some(parts));
-            } else {
-                words.push(text);
-                contractions.push(None);
-            }
-        }
-        let tagged = tagger.tag_words(&words)?;
-        for ((&index, &word), contraction) in group.iter().zip(&first_word).zip(&contractions) {
+    for sentence in run {
+        let tagged = &sentence.words;
+        for ((&index, &word), contraction) in sentence
+            .tokens
+            .iter()
+            .zip(&sentence.first_word)
+            .zip(&sentence.contractions)
+        {
             let analysis = &tagged[word];
             let (lemma, feats, reason) = match contraction {
                 Some(parts) => (
@@ -998,42 +1281,40 @@ fn ud_model_morphology(
     ))
 }
 
-/// Loaded UD taggers keyed by bundle directory and preset; each checkpoint is ~1.1 GB.
+/// Loaded UD models keyed by bundle directory and preset; each checkpoint is ~1.1 GB.
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
-fn cached_ud_tagger(
-    preset: UdMorphologyPreset,
-    options: &MorphologyOptions,
-) -> Result<std::sync::Arc<UdMorphoTagger>> {
+fn cached_ud_model(source: &UdModelSource) -> Result<std::sync::Arc<UdModel>> {
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex, OnceLock};
 
-    type Cache = Mutex<HashMap<(PathBuf, &'static str), Arc<UdMorphoTagger>>>;
-    static TAGGERS: OnceLock<Cache> = OnceLock::new();
-    let key = (options.bundle_dir.clone(), preset.as_str());
-    let cache = TAGGERS.get_or_init(Default::default);
-    if let Some(tagger) = cache.lock().ok().and_then(|cache| cache.get(&key).cloned()) {
-        return Ok(tagger);
+    type Cache = Mutex<HashMap<(PathBuf, &'static str), Arc<UdModel>>>;
+    static MODELS: OnceLock<Cache> = OnceLock::new();
+    let preset = source.preset;
+    let key = (source.bundle_dir.clone(), preset.as_str());
+    let cache = MODELS.get_or_init(Default::default);
+    if let Some(model) = cache.lock().ok().and_then(|cache| cache.get(&key).cloned()) {
+        return Ok(model);
     }
-    let store = ModelBundleStore::new(&options.bundle_dir).downloader(
+    let store = ModelBundleStore::new(&source.bundle_dir).downloader(
         HuggingFaceDownloader::new()
-            .progress(options.download_progress)
-            .max_retries(options.max_retries),
+            .progress(source.download_progress)
+            .max_retries(source.max_retries),
     );
     let ensure = |spec: model_runtime::HuggingFaceModelSpec| -> Result<ModelBundle> {
         let revision = spec.revision_value().unwrap_or("main").to_string();
         match store.load(&spec.name, &revision) {
             Ok(bundle) => Ok(bundle),
-            Err(_) if options.auto_download => store.download(&spec).map_err(model_runtime_error),
+            Err(_) if source.auto_download => store.download(&spec).map_err(model_runtime_error),
             Err(error) => Err(model_runtime_error(error)),
         }
     };
-    let model = ensure(preset.spec())?;
-    let tokenizer = ensure(UdMorphologyPreset::tokenizer_spec())?;
-    let tagger = Arc::new(UdMorphoTagger::from_bundles(preset, &model, &tokenizer)?);
+    let bundle = ensure(preset.spec())?;
+    let tokenizer = ensure(UdModelPreset::tokenizer_spec())?;
+    let model = Arc::new(UdModel::from_bundles(preset, &bundle, &tokenizer)?);
     if let Ok(mut cache) = cache.lock() {
-        cache.insert(key, Arc::clone(&tagger));
+        cache.insert(key, Arc::clone(&model));
     }
-    Ok(tagger)
+    Ok(model)
 }
 
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
