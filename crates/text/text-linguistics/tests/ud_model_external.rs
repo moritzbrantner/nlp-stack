@@ -1,6 +1,6 @@
 #![cfg(feature = "external-tests")]
 
-//! Opt-in scores for the de/es UD model presets: UPOS, UFeats, lemma, UAS and LAS.
+//! Opt-in scores for the en/de/es UD model presets: UPOS, UFeats, lemma, UAS and LAS.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -117,6 +117,7 @@ fn ud_test_file(preset: UdModelPreset) -> PathBuf {
         .map(PathBuf::from)
         .expect("set UD_TREEBANK_DIR to a directory holding the UD 2.17 test splits");
     dir.join(match preset {
+        UdModelPreset::ComboEnglishEwt => "en_ewt-ud-test.conllu",
         UdModelPreset::ComboGermanGsd => "de_gsd-ud-test.conllu",
         UdModelPreset::ComboSpanishAncora => "es_ancora-ud-test.conllu",
     })
@@ -174,14 +175,14 @@ fn ud_presets_reach_ud_test_accuracy() {
     }
 }
 
-/// Minimum token accuracies on the hand-annotated de/es fixtures, through the full
+/// Minimum token accuracies on the hand-annotated en/de/es fixtures, through the full
 /// pipeline (language detection, tokenization, contraction handling).
 const MIN_GOLD_UPOS: f64 = 0.9;
 const MIN_GOLD_UFEATS: f64 = 0.75;
 const MIN_GOLD_LEMMA: f64 = 0.9;
 
 #[test]
-#[ignore = "downloads the pinned COMBO checkpoints and scores them on the de/es gold fixtures"]
+#[ignore = "downloads the pinned COMBO checkpoints and scores them on the en/de/es gold fixtures"]
 fn ud_presets_reach_gold_fixture_accuracy() {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../evaluation/corpora/morphology-multilingual-v1.jsonl");
@@ -256,13 +257,13 @@ fn ud_presets_reach_gold_fixture_accuracy() {
     }
 }
 
-/// Minimum attachment scores on the hand-annotated de/es dependency fixtures,
+/// Minimum attachment scores on the hand-annotated en/de/es dependency fixtures,
 /// through the full pipeline (tokenization, contraction handling, token trees).
 const MIN_GOLD_UAS: f64 = 0.9;
 const MIN_GOLD_LAS: f64 = 0.85;
 
 #[test]
-#[ignore = "downloads the pinned COMBO checkpoints and scores them on the de/es dependency fixtures"]
+#[ignore = "downloads the pinned COMBO checkpoints and scores them on the en/de/es dependency fixtures"]
 fn ud_presets_reach_gold_dependency_accuracy() {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../evaluation/corpora/dependencies-multilingual-v1.jsonl");
@@ -352,21 +353,22 @@ fn mixed_document_routes_each_sentence_to_its_model() {
         .lines()
         .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
         .collect::<Vec<_>>();
-    let (german, spanish): (Vec<_>, Vec<_>) = cases
+    let in_language = |language: &str| {
+        cases
+            .iter()
+            .filter(|case| case["language"].as_str() == Some(language))
+            .collect::<Vec<_>>()
+    };
+    let (german, spanish, english) = (in_language("de"), in_language("es"), in_language("en"));
+    let order = german
         .iter()
-        .partition(|case| case["language"].as_str() == Some("de"));
-    let english = "The committee approved the new budget on Monday.";
-    let mut order = Vec::new();
-    for (index, (de, es)) in german.iter().zip(&spanish).enumerate() {
-        order.push(Some(*de));
-        order.push(Some(*es));
-        if index % 3 == 0 {
-            order.push(None);
-        }
-    }
+        .zip(&spanish)
+        .zip(&english)
+        .flat_map(|((de, es), en)| [*de, *es, *en])
+        .collect::<Vec<_>>();
     let text = order
         .iter()
-        .map(|case| case.map_or(english, |case| case["text"].as_str().unwrap()))
+        .map(|case| case["text"].as_str().unwrap())
         .collect::<Vec<_>>()
         .join(" ");
 
@@ -393,12 +395,6 @@ fn mixed_document_routes_each_sentence_to_its_model() {
         let dependencies = record
             .operation(LinguisticOperation::DependencySyntax)
             .unwrap();
-        let Some(case) = case else {
-            assert_eq!(record.language.as_deref(), Some("en"));
-            assert_eq!(morphology.support, OperationSupport::Partial);
-            assert_eq!(dependencies.support, OperationSupport::Partial);
-            continue;
-        };
         let language = case["language"].as_str().unwrap();
         assert_eq!(record.language.as_deref(), Some(language), "{}", case["id"]);
         let producer = format!(
@@ -406,6 +402,7 @@ fn mixed_document_routes_each_sentence_to_its_model() {
             UdModelPreset::for_language(language).unwrap().as_str()
         );
         assert_eq!(morphology.support, OperationSupport::Supported);
+        assert_eq!(dependencies.support, OperationSupport::Supported);
         assert_eq!(morphology.producer.as_deref(), Some(producer.as_str()));
         assert_eq!(dependencies.producer.as_deref(), Some(producer.as_str()));
 

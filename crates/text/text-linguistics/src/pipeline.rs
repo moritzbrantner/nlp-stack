@@ -196,8 +196,8 @@ pub enum MorphologyMode {
     /// unsupported and get no lemma, POS or morphology annotations.
     Heuristic,
     /// UD-treebank-trained taggers ([`UdModelPreset`]) plus UD-derived lemma tables
-    /// for sentences in a language that has a preset (de, es); English heuristics
-    /// for English sentences; unsupported otherwise.
+    /// for sentences in a language that has a preset (en, de, es); unsupported
+    /// otherwise.
     LocalModel,
 }
 
@@ -273,8 +273,8 @@ pub enum DependencyParsingMode {
     /// layer as unsupported and get no tree.
     Heuristic,
     /// The biaffine dependency head of the UD-treebank-trained models
-    /// ([`UdModelPreset`]) for sentences in a language that has a preset (de, es);
-    /// English heuristics for English sentences; unsupported otherwise.
+    /// ([`UdModelPreset`]) for sentences in a language that has a preset (en, de,
+    /// es); unsupported otherwise.
     LocalModel,
 }
 
@@ -1440,13 +1440,13 @@ fn ud_model_layers(
 
 /// One sentence's tokens as the syntactic words the UD model analyzed.
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
-struct UdSentence {
+struct UdSentence<'a> {
     /// Index into the document's sentences.
     sentence_index: usize,
     tokens: Vec<usize>,
     /// Index of each token's first syntactic word.
     first_word: Vec<usize>,
-    contractions: Vec<Option<[&'static str; 2]>>,
+    contractions: Vec<Option<[&'a str; 2]>>,
     words: Vec<crate::ud_model::UdWordAnalysis>,
 }
 
@@ -1502,15 +1502,15 @@ fn ud_model_layers(
     Ok(layers)
 }
 
-/// Analyzes the `routed` sentences with the UD model. Contractions (`zum`, `del`)
-/// become their two syntactic words.
+/// Analyzes the `routed` sentences with the UD model. Contractions (`zum`, `del`,
+/// `don't`) become their two syntactic words.
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
-fn run_ud_model(
+fn run_ud_model<'a>(
     source: &UdModelSource,
     routed: &[usize],
     sentences: &[Sentence],
-    tokens: &[Token],
-) -> Result<Vec<UdSentence>> {
+    tokens: &'a [Token],
+) -> Result<Vec<UdSentence<'a>>> {
     use crate::ud_model::split_contraction;
 
     let model = cached_ud_model(source)?;
@@ -1638,8 +1638,9 @@ fn ud_dependency_trees(run: &[UdSentence]) -> Vec<DependencyTree> {
 }
 
 /// Lemma, POS and morphology layers from a UD model run, lemmatized with the
-/// UD-derived table. A contraction token keeps the adposition's UPOS and lemma and
-/// the article's features.
+/// UD-derived table. A contraction token keeps its first word's UPOS and lemma. A
+/// German/Spanish preposition-article contraction takes the article's features; an
+/// English clitic contraction (`don't`, `John's`) the host's.
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn ud_morphology_layers(
     preset: UdModelPreset,
@@ -1652,6 +1653,7 @@ fn ud_morphology_layers(
     let lemmatizer = UdLemmatizer::for_language(language).ok_or_else(|| {
         DetectError::InvalidArgument(format!("no UD lemma table for `{language}`"))
     })?;
+    let feats_word = usize::from(language != "en");
 
     let mut lemmas = vec![None; tokens.len()];
     let mut pos = vec![None; tokens.len()];
@@ -1668,7 +1670,7 @@ fn ud_morphology_layers(
             let (lemma, feats, reason) = match contraction {
                 Some(parts) => (
                     lemmatizer.lemmatize(parts[0], analysis.upos),
-                    tagged[word + 1].feats.clone(),
+                    tagged[word + feats_word].feats.clone(),
                     format!(
                         "ud-model:{} contraction {}+{}",
                         preset.as_str(),
