@@ -2284,6 +2284,7 @@ dependencies = [
  "moenarch-model-runtime",
  "moenarch-runtime-core",
  "moenarch-runtime-onnx",
+ "moenarch-text-core",
  "moenarch-text-embeddings",
  "moenarch-text-index",
  "moenarch-text-lexical",

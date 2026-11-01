@@ -527,8 +527,11 @@ fn build_snippet(text: &str, normalized_query: &str) -> String {
         .into_iter()
         .map(|token| token.normalized)
         .collect::<Vec<_>>();
-    let text_lower = text.to_lowercase();
-    let match_start = terms.iter().filter_map(|term| text_lower.find(term)).min();
+    let match_start = terms
+        .iter()
+        .filter_map(|term| text_core::find_caseless(text, term))
+        .map(|range| range.start)
+        .min();
 
     let snippet = match match_start {
         Some(byte_index) => {
@@ -553,4 +556,21 @@ fn build_snippet(text: &str, normalized_query: &str) -> String {
             .trim(),
     };
     snippet.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_snippet;
+
+    #[test]
+    fn snippet_survives_length_changing_lowercase() {
+        assert_eq!(build_snippet("İ über alles", "über"), "İ über alles");
+        assert_eq!(
+            build_snippet("Die STRAẞE ist lang", "straße"),
+            "Die STRAẞE ist lang"
+        );
+        assert_eq!(build_snippet("Η ΟΔΟΣ είναι", "οδος"), "Η ΟΔΟΣ είναι");
+        let long = format!("{}İ über", "ẞ".repeat(80));
+        assert!(build_snippet(&long, "über").ends_with("İ über"));
+    }
 }
