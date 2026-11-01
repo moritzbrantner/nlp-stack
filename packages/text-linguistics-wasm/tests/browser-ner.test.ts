@@ -176,6 +176,49 @@ test("model load failures surface as errors and a retry succeeds", async () => {
   await expect(ner.prepare()).resolves.toMatchObject({ model: { id: "Xenova/distilbert-base-multilingual-cased-ner-hrl" } });
 });
 
+const fakeTransformersUrl = new URL("./fixtures/fake-transformers.js", import.meta.url).href;
+let workerInstances = 0;
+
+/** Loads a fresh copy of the real worker module against the fake Transformers.js module. */
+async function startWorker() {
+  let listener: ((event: any) => void) | undefined;
+  const waiting = new Map<number, (data: any) => void>();
+  (globalThis as any).self = {
+    addEventListener: (_type: string, fn: (event: any) => void) => (listener = fn),
+    postMessage: (data: any) => data.type !== "progress" && waiting.get(data.id)?.(data),
+  };
+  await import(`../browser-ner-worker.js?instance=${++workerInstances}`);
+  let id = 0;
+  return (type: string, segments?: unknown[]) =>
+    new Promise<any>((resolve) => {
+      waiting.set(++id, resolve);
+      listener!({ data: { type, id, segments, transformersModuleUrl: fakeTransformersUrl } });
+    });
+}
+
+test("a cached model loads offline at the pinned revision without any startup request", async () => {
+  const { BROWSER_NER_MODEL } = await import("../browser-ner.js");
+  const transformers = await import(fakeTransformersUrl);
+  transformers.state.cache.clear();
+  transformers.restart({ online: true });
+  expect(await (await startWorker())("prepare")).toMatchObject({ type: "ready" });
+  expect(transformers.state.requests.length).toBeGreaterThan(0);
+  for (const url of transformers.state.requests) {
+    expect(url).toContain(`/resolve/${BROWSER_NER_MODEL.revision}/`);
+  }
+
+  transformers.restart({ online: false });
+  const result = await (await startWorker())("analyze", [{ id: "s", text: "Talk with Alan Turing.", byteStart: 0 }]);
+  expect(result).toMatchObject({ type: "result", segments: [{ id: "s", entityCount: 0 }] });
+  expect(transformers.state.requests).toEqual([]);
+
+  transformers.state.cache.clear();
+  transformers.restart({ online: false });
+  const cold = await (await startWorker())("prepare");
+  expect(cold).toMatchObject({ type: "error", stage: "model" });
+  expect(cold.message).toContain("download failed (offline?)");
+});
+
 test("a canceled request rejects and never completes; the next request uses a fresh worker", async () => {
   FakeWorker.created = 0;
   const ner = await adapter();
