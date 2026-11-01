@@ -126,3 +126,25 @@ test("reports nested reporting evidence as unsupported without a UD dependency p
   await expect(reporting.getByRole("listitem")).toHaveCount(0);
   await expect(page.getByText(/Sarah\s+—\s+believes/)).toHaveCount(0);
 });
+
+// Negation/uncertainty/conditional scope (#115) also needs a UD dependency parse. Both
+// contrasting negation sentences and a conditional get an explicit unsupported state
+// on Pages instead of a cue-word guess.
+test("reports negation, uncertainty and conditional scope as unsupported without a UD dependency parse", async ({ page }) => {
+  await page.goto("/");
+  await page
+    .getByLabel("Text to analyze")
+    .fill("Sarah says John does not believe it. Sarah does not say John believes it. If John leaves, Sarah will call.");
+  await page.getByRole("button", { name: "Analyze text", exact: true }).click();
+  await page.getByRole("tab", { name: "Sentences" }).click();
+
+  for (const index of [1, 2, 3]) {
+    const card = page.getByRole("article", { name: `Sentence ${index}: English (en)`, exact: true });
+    await expect(card).toBeVisible({ timeout: 30_000 });
+    const scope = card.getByLabel("Negation, uncertainty and conditionals");
+    await expect(scope).toContainText("Unsupported");
+    await expect(scope).toContainText(/heuristic:english-rules, which does not attach negation, modal and conditional cues/);
+    await expect(scope.getByRole("listitem")).toHaveCount(0);
+  }
+  await expect(page.getByText(/negation operator/)).toHaveCount(0);
+});

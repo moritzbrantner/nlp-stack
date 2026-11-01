@@ -5,6 +5,8 @@ import {
   type PassageView,
   type ReportingNode,
   type ReportingView,
+  type ScopeNode,
+  type ScopeView,
 } from "./sentence-operations";
 
 type JsonRecord = Record<string, unknown>;
@@ -90,6 +92,88 @@ function ReportingSection({ reporting }: { reporting: ReportingView }) {
   );
 }
 
+const scopeKindLabels: Record<ScopeNode["kind"], string> = {
+  negation: "negation",
+  uncertainty: "uncertainty in the text",
+  hypothetical: "conditional",
+};
+
+function ScopeTree({ node }: { node: ScopeNode }) {
+  const kind = scopeKindLabels[node.kind];
+  return (
+    <li className="mt-2" aria-label={`${kind} operator: ${node.cue.text}`}>
+      <p className="text-sm text-ink">
+        <span className="font-semibold">{kind}</span>
+        {" "}
+        <em><Passage passage={node.cue} label="cue" /></em>
+        <span className="ml-2 text-xs text-muted">
+          {node.cueRelation ? `${node.cueRelation} · ` : null}cue bytes {node.cue.byteStart}–{node.cue.byteEnd}
+          {node.confidence !== null ? ` · parse confidence ${node.confidence.toFixed(2)}` : null}
+        </span>
+      </p>
+      <div className="ml-4 border-l-2 border-line pl-3 text-sm text-muted">
+        {node.resolved && node.scope ? (
+          <>
+            <p>
+              {node.kind === "hypothetical" ? "antecedent" : "modifies"}{" "}
+              {node.head && node.kind !== "hypothetical" ? (
+                <>
+                  <em><Passage passage={node.head} label="head" /></em>{" in "}
+                </>
+              ) : null}
+              “<Passage passage={node.scope} label="scope" />” · bytes {node.scope.byteStart}–{node.scope.byteEnd}
+            </p>
+            {node.consequent ? (
+              <p>
+                consequent “<Passage passage={node.consequent} label="consequent" />” · bytes {node.consequent.byteStart}–
+                {node.consequent.byteEnd}
+              </p>
+            ) : null}
+            {node.reportingTarget ? <p>applies to the construction {node.reportingTarget.label}</p> : null}
+          </>
+        ) : (
+          <p>unresolved scope: {node.unresolvedReason ?? "the parse does not determine it"}</p>
+        )}
+        {node.reportedWithin ? <p>inside the content of {node.reportedWithin.label}</p> : null}
+        {node.children.length > 0 ? (
+          <ul>
+            {node.children.map((child) => <ScopeTree key={child.id} node={child} />)}
+          </ul>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
+function ScopeSection({ scope }: { scope: ScopeView }) {
+  return (
+    <div className="mt-3" aria-label="Negation, uncertainty and conditionals">
+      <p className="text-sm font-semibold text-ink">
+        Negation, uncertainty and conditionals{" "}
+        <span className={`ml-1 inline-block rounded-full border px-2 py-0.5 text-xs font-semibold ${statusStyles[scope.status]}`}>
+          {statusLabels[scope.status]}
+        </span>
+      </p>
+      <p className="mt-1 text-xs text-muted">
+        {scope.producer ? <span className="font-mono text-ink">{scope.producer}</span> : null}
+        {scope.producer && scope.detail ? " · " : null}
+        {scope.detail}
+      </p>
+      {scope.roots.length > 0 ? (
+        <>
+          <ul>{scope.roots.map((node) => <ScopeTree key={node.id} node={node} />)}</ul>
+          <p className="mt-2 text-xs text-muted">
+            These mark how the text frames its content. A negated belief is not a false statement, an uncertain or
+            conditional event is not one that happened, and parse confidence is about the parser, not the text.
+          </p>
+        </>
+      ) : scope.status === "supported" ? (
+        <p className="mt-1 text-xs text-muted">No negation, uncertainty or conditional in this sentence.</p>
+      ) : null}
+    </div>
+  );
+}
+
 export function SentencesPanel({ documentReport }: { documentReport: JsonRecord | null }) {
   const sentences = sentenceViews(documentReport);
   return (
@@ -146,6 +230,7 @@ export function SentencesPanel({ documentReport }: { documentReport: JsonRecord 
               </table>
             </div>
             <ReportingSection reporting={sentence.reporting} />
+            <ScopeSection scope={sentence.scope} />
           </article>
         ))}
       </div>

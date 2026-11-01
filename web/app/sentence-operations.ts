@@ -22,6 +22,38 @@ export interface SentenceView {
   detection: string;
   rows: OperationRow[];
   reporting: ReportingView;
+  scope: ScopeView;
+}
+
+/** A reporting construction an operator refers to, by its source and cue. */
+export interface ReportingRef {
+  id: number;
+  label: string;
+}
+
+/** One negation/uncertainty/hypothetical operator (`text_linguistics::ScopeOperator`) with its nested children. */
+export interface ScopeNode {
+  id: number;
+  kind: "negation" | "uncertainty" | "hypothetical";
+  resolved: boolean;
+  unresolvedReason: string | null;
+  cue: PassageView;
+  cueRelation: string;
+  head: PassageView | null;
+  scope: PassageView | null;
+  consequent: PassageView | null;
+  reportingTarget: ReportingRef | null;
+  reportedWithin: ReportingRef | null;
+  confidence: number | null;
+  children: ScopeNode[];
+}
+
+/** The sentence's scope evidence: support status plus its outermost operators. */
+export interface ScopeView {
+  status: OperationStatus;
+  producer: string | null;
+  detail: string;
+  roots: ScopeNode[];
 }
 
 /** A passage of the source text with its UTF-8 half-open byte span. */
@@ -189,9 +221,59 @@ function reportingView(reporting: JsonRecord | null, sentenceIndex: number | nul
   const roots = constructions
     .filter((item) => item.parent === null || item.parent === undefined)
     .map((item) => reportingNode(item, byId));
-  const support = text(report.support) ?? "unknown";
-  const status = (["supported", "partial", "unsupported", "unknown"] as const).find((value) => value === support) ?? "unknown";
-  return { status, producer: text(report.producer), detail: text(report.reason) ?? "", roots };
+  return { status: supportStatus(report.support), producer: text(report.producer), detail: text(report.reason) ?? "", roots };
+}
+
+function supportStatus(value: unknown): OperationStatus {
+  const support = text(value) ?? "unknown";
+  return (["supported", "partial", "unsupported", "unknown"] as const).find((item) => item === support) ?? "unknown";
+}
+
+function reportingRef(id: unknown, reporting: JsonRecord | null): ReportingRef | null {
+  if (id === null || id === undefined) return null;
+  const construction = records(reporting?.constructions).find((item) => Number(item.id) === Number(id));
+  if (!construction) return null;
+  const source = passage(construction.source)?.text ?? "no stated source";
+  return { id: Number(id), label: `${source} — ${passage(construction.cue)?.text ?? ""}` };
+}
+
+function scopeNode(item: JsonRecord, byId: Map<number, JsonRecord>, reporting: JsonRecord | null, depth = 0): ScopeNode {
+  const children = depth > 16
+    ? []
+    : (Array.isArray(item.children) ? item.children : [])
+      .map((id) => byId.get(Number(id)))
+      .filter((child): child is JsonRecord => child !== undefined)
+      .map((child) => scopeNode(child, byId, reporting, depth + 1));
+  const kind = item.kind === "uncertainty" || item.kind === "hypothetical" ? item.kind : "negation";
+  return {
+    id: Number(item.id),
+    kind,
+    resolved: item.resolution === "resolved",
+    unresolvedReason: text(item.unresolvedReason),
+    cue: passage(item.cue) ?? { text: "", byteStart: 0, byteEnd: 0 },
+    cueRelation: text(item.cueRelation) ?? "",
+    head: passage(item.head),
+    scope: passage(item.scope),
+    consequent: passage(item.consequent),
+    reportingTarget: reportingRef(item.reportingTarget, reporting),
+    reportedWithin: reportingRef(item.reportedWithin, reporting),
+    confidence: typeof item.confidence === "number" ? item.confidence : null,
+    children,
+  };
+}
+
+/** The Rust scope evidence (`linguistic.scope`) for one linguistic sentence. */
+function scopeView(scope: JsonRecord | null, reporting: JsonRecord | null, sentenceIndex: number | null): ScopeView {
+  const report = records(scope?.sentences).find((item) => Number(item.sentenceIndex) === sentenceIndex) ?? null;
+  if (!report) {
+    return { status: "unknown", producer: null, detail: "no scope evidence for this sentence", roots: [] };
+  }
+  const operators = records(scope?.operators).filter((item) => Number(item.sentenceIndex) === sentenceIndex);
+  const byId = new Map(operators.map((item) => [Number(item.id), item]));
+  const roots = operators
+    .filter((item) => item.parent === null || item.parent === undefined)
+    .map((item) => scopeNode(item, byId, reporting));
+  return { status: supportStatus(report.support), producer: text(report.producer), detail: text(report.reason) ?? "", roots };
 }
 
 /** One view per core sentence, in source order. */
@@ -199,6 +281,7 @@ export function sentenceViews(documentReport: JsonRecord | null): SentenceView[]
   const core = record(documentReport?.core);
   const routing = records(record(documentReport?.linguistic)?.sentences);
   const reporting = record(record(documentReport?.linguistic)?.reporting);
+  const scope = record(record(documentReport?.linguistic)?.scope);
   const model = record(documentReport?.namedEntityModel);
   const nerReports = records(model?.sentences);
   return records(core?.sentences).map((sentence, index) => {
@@ -223,6 +306,7 @@ export function sentenceViews(documentReport: JsonRecord | null): SentenceView[]
       detection: detectionSummary(record(routed?.detection), routed?.languagePinned === true),
       rows,
       reporting: reportingView(reporting, routed ? Number(routed.sentenceIndex) : null),
+      scope: scopeView(scope, reporting, routed ? Number(routed.sentenceIndex) : null),
     };
   });
 }
