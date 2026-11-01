@@ -1,0 +1,3294 @@
+# UD lemma table for `es`, built by scripts/build_ud_lemma_tables.py
+# Derived from the training split of UD_Spanish-AnCora r2.17 (CC BY 4.0).
+C	PROPN
+K	NUM
+K	PROPN
+K	PUNCT
+K	SYM
+K	X
+R	ADJ		0	
+R	ADJ	a	1	o
+R	ADJ	ala	1	o
+R	ADJ	alas	2	o
+R	ADJ	arata	1	o
+R	ADJ	as	2	o
+R	ADJ	ata	0	
+R	ADJ	atas	1	
+R	ADJ	bes	1	
+R	ADJ	bles	1	
+R	ADJ	bres	1	
+R	ADJ	celta	0	
+R	ADJ	ces	3	z
+R	ADJ	cola	0	
+R	ADJ	colas	1	
+R	ADJ	cíficas	6	ifico
+R	ADJ	des	1	
+R	ADJ	ela	1	o
+R	ADJ	elas	2	o
+R	ADJ	emana	3	án
+R	ADJ	ena	1	
+R	ADJ	enas	2	
+R	ADJ	enes	6	oven
+R	ADJ	enos	2	
+R	ADJ	eprimer	0	
+R	ADJ	er	0	o
+R	ADJ	erana	1	o
+R	ADJ	eriado	2	r
+R	ADJ	es	2	
+R	ADJ	esa	3	és
+R	ADJ	esas	4	és
+R	ADJ	eses	4	és
+R	ADJ	esta	1	o
+R	ADJ	estas	2	o
+R	ADJ	frecida	3	ecido
+R	ADJ	gara	0	
+R	ADJ	genas	1	
+R	ADJ	genes	6	igen
+R	ADJ	genos	1	
+R	ADJ	hena	1	o
+R	ADJ	iata	1	o
+R	ADJ	iatas	2	o
+R	ADJ	icida	0	
+R	ADJ	ila	1	o
+R	ADJ	ioca	0	
+R	ADJ	is	0	
+R	ADJ	ises	2	
+R	ADJ	itora	0	
+R	ADJ	ivista	0	
+R	ADJ	jenas	2	o
+R	ADJ	jenos	1	
+R	ADJ	jes	1	
+R	ADJ	la	1	
+R	ADJ	lana	3	án
+R	ADJ	lanas	4	án
+R	ADJ	las	2	
+R	ADJ	lces	1	
+R	ADJ	lena	1	o
+R	ADJ	lenas	2	o
+R	ADJ	lenos	1	
+R	ADJ	lga	0	
+R	ADJ	lgara	1	o
+R	ADJ	lherido	3	do
+R	ADJ	lla	1	o
+R	ADJ	llana	1	o
+R	ADJ	llas	2	o
+R	ADJ	lmana	3	án
+R	ADJ	lorado	2	r
+R	ADJ	mes	1	
+R	ADJ	mita	0	
+R	ADJ	mítica	1	o
+R	ADJ	nes	4	án
+R	ADJ	nora	1	o
+R	ADJ	ogas	1	
+R	ADJ	olado	2	r
+R	ADJ	olana	1	o
+R	ADJ	oleta	0	
+R	ADJ	olita	0	
+R	ADJ	ona	3	ón
+R	ADJ	onas	1	
+R	ADJ	ones	4	ón
+R	ADJ	ora	1	
+R	ADJ	oras	2	
+R	ADJ	osca	0	
+R	ADJ	pinado	2	r
+R	ADJ	pita	0	
+R	ADJ	plana	1	o
+R	ADJ	planas	2	o
+R	ADJ	ples	1	
+R	ADJ	prana	1	o
+R	ADJ	rana	0	
+R	ADJ	ranas	1	
+R	ADJ	resas	2	o
+R	ADJ	rra	0	
+R	ADJ	rras	1	
+R	ADJ	rítica	1	o
+R	ADJ	s	1	
+R	ADJ	sata	1	o
+R	ADJ	ses	1	
+R	ADJ	sola	1	o
+R	ADJ	sta	0	
+R	ADJ	staria	0	
+R	ADJ	stas	1	
+R	ADJ	tema	0	
+R	ADJ	ter	0	
+R	ADJ	tes	1	
+R	ADJ	tra	0	
+R	ADJ	tres	1	
+R	ADJ	ueno	1	
+R	ADJ	ula	1	o
+R	ADJ	ulas	2	o
+R	ADJ	unes	4	ún
+R	ADJ	urbios	0	
+R	ADJ	usta	1	o
+R	ADJ	ustas	2	o
+R	ADJ	utra	1	o
+R	ADJ	uza	1	
+R	ADJ	vena	1	o
+R	ADJ	ves	1	
+R	ADJ	vista	1	o
+R	ADJ	vistas	2	o
+R	ADJ	zis	1	
+R	ADJ	ás	0	
+R	ADJ	és	0	
+R	ADJ	ítica	0	
+R	ADJ	ócrita	0	
+R	ADJ	üística	0	
+R	ADP		0	
+R	ADV		0	
+R	ADV	an	0	to
+R	ADV	ica	0	mente
+R	ADV	uy	1	cho
+R	AUX		2	ser
+R	AUX	a	0	ber
+R	AUX	ado	2	r
+R	AUX	ando	3	r
+R	AUX	arían	3	
+R	AUX	as	1	ber
+R	AUX	ba	2	r
+R	AUX	bamos	6	ar
+R	AUX	ban	3	r
+R	AUX	be	0	r
+R	AUX	bemos	3	r
+R	AUX	ben	1	r
+R	AUX	bes	1	r
+R	AUX	bieran	7	aber
+R	AUX	bieron	7	aber
+R	AUX	brá	2	er
+R	AUX	brán	3	er
+R	AUX	bría	3	er
+R	AUX	da	4	oder
+R	AUX	damos	4	er
+R	AUX	dan	5	oder
+R	AUX	de	4	oder
+R	AUX	demos	3	r
+R	AUX	des	5	oder
+R	AUX	diendo	7	oder
+R	AUX	diera	6	oder
+R	AUX	diesen	7	oder
+R	AUX	drá	2	er
+R	AUX	drán	3	er
+R	AUX	dría	3	er
+R	AUX	e	3	ser
+R	AUX	ea	1	r
+R	AUX	eamos	4	r
+R	AUX	ean	2	r
+R	AUX	eba	1	er
+R	AUX	ebiera	4	er
+R	AUX	edo	4	oder
+R	AUX	emos	4	aber
+R	AUX	en	5	oder
+R	AUX	eré	1	
+R	AUX	eríamos	5	
+R	AUX	erían	3	
+R	AUX	he	1	aber
+R	AUX	i	3	ser
+R	AUX	iera	6	aber
+R	AUX	ieran	7	oder
+R	AUX	ieron	7	oder
+R	AUX	imos	6	oder
+R	AUX	is	3	er
+R	AUX	iéramos	9	aber
+R	AUX	n	1	ber
+R	AUX	ndo	5	er
+R	AUX	o	3	er
+R	AUX	omos	4	er
+R	AUX	on	2	er
+R	AUX	os	3	r
+R	AUX	r	0	
+R	AUX	ra	3	ser
+R	AUX	ramos	6	ser
+R	AUX	ran	4	ser
+R	AUX	re	4	erer
+R	AUX	remos	5	er
+R	AUX	res	4	ser
+R	AUX	ron	6	ser
+R	AUX	rá	1	
+R	AUX	rán	2	
+R	AUX	ré	2	er
+R	AUX	ría	2	
+R	AUX	ríamos	6	er
+R	AUX	rían	4	er
+R	AUX	se	6	aber
+R	AUX	sen	7	aber
+R	AUX	soy	2	er
+R	AUX	temos	4	ar
+R	AUX	ude	3	oder
+R	AUX	udo	3	oder
+R	AUX	uera	5	ser
+R	AUX	ueran	6	ser
+R	AUX	uese	5	ser
+R	AUX	uesen	6	ser
+R	AUX	ve	3	ar
+R	AUX	viera	6	ar
+R	AUX	vieran	7	ar
+R	AUX	vieron	7	ar
+R	AUX	vo	3	ar
+R	AUX	y	2	ar
+R	AUX	ya	2	ber
+R	AUX	yan	3	ber
+R	AUX	á	1	ar
+R	AUX	án	2	ar
+R	AUX	ás	2	ar
+R	AUX	é	1	ar
+R	AUX	én	2	ar
+R	AUX	ía	2	er
+R	AUX	íamos	5	er
+R	AUX	ían	3	er
+R	AUX	ó	2	er
+R	CCONJ		0	
+R	DET		0	
+R	DET	a	2	el
+R	DET	asos	1	
+R	DET	ca	1	o
+R	DET	cas	2	o
+R	DET	cos	1	
+R	DET	da	0	
+R	DET	das	2	o
+R	DET	dos	1	
+R	DET	es	1	
+R	DET	ha	1	o
+R	DET	has	2	o
+R	DET	hos	1	
+R	DET	ia	1	o
+R	DET	iada	1	o
+R	DET	ias	2	os
+R	DET	ios	0	
+R	DET	is	1	
+R	DET	les	2	
+R	DET	lla	2	
+R	DET	llas	3	
+R	DET	llos	3	
+R	DET	ls	1	
+R	DET	ma	1	o
+R	DET	mas	2	o
+R	DET	mos	1	
+R	DET	n	0	o
+R	DET	na	1	o
+R	DET	nas	2	o
+R	DET	ndas	2	os
+R	DET	ndos	0	
+R	DET	nos	1	
+R	DET	nta	1	o
+R	DET	ntas	2	o
+R	DET	ntos	1	
+R	DET	oda	1	o
+R	DET	pios	1	
+R	DET	r	0	a
+R	DET	ra	1	o
+R	DET	ras	2	o
+R	DET	ros	1	
+R	DET	rsas	2	o
+R	DET	rsos	1	
+R	DET	rta	1	o
+R	DET	rtas	2	o
+R	DET	rtos	1	
+R	DET	s	3	el
+R	DET	sa	1	e
+R	DET	sas	2	e
+R	DET	sos	2	e
+R	DET	ta	1	e
+R	DET	tas	2	e
+R	DET	tos	2	e
+R	DET	us	1	
+R	DET	ya	1	o
+R	DET	yas	2	o
+R	DET	yos	1	
+R	DET	ás	0	
+R	DET	ía	0	
+R	DET	ún	2	uno
+R	INTJ		0	
+R	NOUN		0	
+R	NOUN	-a	2	
+R	NOUN	acias	0	
+R	NOUN	afas	0	
+R	NOUN	ages	0	
+R	NOUN	agotas	0	
+R	NOUN	alanes	4	án
+R	NOUN	alias	0	
+R	NOUN	anes	4	án
+R	NOUN	ans	1	
+R	NOUN	aos	0	
+R	NOUN	apadas	0	
+R	NOUN	apenas	0	
+R	NOUN	arbitro	7	árbitro
+R	NOUN	aris	1	
+R	NOUN	artes	0	
+R	NOUN	ases	1	
+R	NOUN	audes	1	
+R	NOUN	aves	1	
+R	NOUN	bes	1	
+R	NOUN	betes	0	
+R	NOUN	biendas	0	
+R	NOUN	bis	1	
+R	NOUN	bles	1	
+R	NOUN	blicas	0	
+R	NOUN	bodas	1	
+R	NOUN	bres	1	
+R	NOUN	bés	1	
+R	NOUN	cenes	4	én
+R	NOUN	ces	3	z
+R	NOUN	ceses	4	és
+R	NOUN	cines	1	
+R	NOUN	coles	0	
+R	NOUN	cres	1	
+R	NOUN	cteres	7	ácter
+R	NOUN	denes	7	orden
+R	NOUN	deses	4	és
+R	NOUN	diados	0	
+R	NOUN	dines	4	ín
+R	NOUN	dres	1	
+R	NOUN	ds	0	
+R	NOUN	eaños	0	
+R	NOUN	enes	6	oven
+R	NOUN	es	2	
+R	NOUN	fes	1	
+R	NOUN	gallos	0	
+R	NOUN	gases	2	
+R	NOUN	genes	6	agen
+R	NOUN	ges	1	
+R	NOUN	gímenes	8	égimen
+R	NOUN	henes	4	én
+R	NOUN	hes	1	
+R	NOUN	hoques	0	
+R	NOUN	iegas	0	
+R	NOUN	ienes	2	
+R	NOUN	ies	1	
+R	NOUN	ieves	1	
+R	NOUN	imeros	0	
+R	NOUN	ines	2	
+R	NOUN	ires	1	
+R	NOUN	is	0	
+R	NOUN	ives	1	
+R	NOUN	iviles	0	
+R	NOUN	iés	1	
+R	NOUN	jes	1	
+R	NOUN	laces	1	
+R	NOUN	lanes	2	
+R	NOUN	ldes	1	
+R	NOUN	leses	4	és
+R	NOUN	lices	1	
+R	NOUN	lles	1	
+R	NOUN	lmes	1	
+R	NOUN	ls	0	
+R	NOUN	luces	3	z
+R	NOUN	lues	0	
+R	NOUN	medias	0	
+R	NOUN	menes	6	imen
+R	NOUN	mes	0	
+R	NOUN	miras	0	
+R	NOUN	modos	0	
+R	NOUN	mpases	4	ás
+R	NOUN	nanzas	0	
+R	NOUN	narias	2	o
+R	NOUN	nces	1	
+R	NOUN	ndes	1	
+R	NOUN	nes	4	ón
+R	NOUN	neses	4	és
+R	NOUN	nones	6	anon
+R	NOUN	ns	0	
+R	NOUN	nseres	0	
+R	NOUN	nses	1	
+R	NOUN	nubes	1	
+R	NOUN	nzos	0	
+R	NOUN	odas	0	
+R	NOUN	oes	1	
+R	NOUN	ojes	2	
+R	NOUN	olera	1	o
+R	NOUN	oleras	2	o
+R	NOUN	ordenes	7	órden
+R	NOUN	partes	1	
+R	NOUN	peras	0	
+R	NOUN	pes	1	
+R	NOUN	picos	0	
+R	NOUN	ples	1	
+R	NOUN	pues	0	
+R	NOUN	rciales	0	
+R	NOUN	rdes	1	
+R	NOUN	reces	0	
+R	NOUN	renes	2	
+R	NOUN	reses	4	és
+R	NOUN	rgenes	7	argen
+R	NOUN	rines	4	ín
+R	NOUN	rmes	1	
+R	NOUN	rnes	0	
+R	NOUN	rres	1	
+R	NOUN	rumanos	1	
+R	NOUN	s	1	
+R	NOUN	sasas	0	
+R	NOUN	sedes	1	
+R	NOUN	solas	0	
+R	NOUN	ss	0	
+R	NOUN	telos	0	
+R	NOUN	tenes	4	én
+R	NOUN	tes	1	
+R	NOUN	tines	4	ín
+R	NOUN	tricas	2	o
+R	NOUN	ubes	2	
+R	NOUN	uces	1	
+R	NOUN	ueras	0	
+R	NOUN	ues	1	
+R	NOUN	ueses	4	és
+R	NOUN	umanos	0	
+R	NOUN	unes	0	
+R	NOUN	us	0	
+R	NOUN	uses	4	ús
+R	NOUN	uís	1	
+R	NOUN	ves	0	
+R	NOUN	veses	4	és
+R	NOUN	xis	1	
+R	NOUN	yenes	2	
+R	NOUN	yeses	4	és
+R	NOUN	ymes	1	
+R	NOUN	zis	1	
+R	NOUN	ámenes	6	amen
+R	NOUN	ás	0	
+R	NOUN	és	0	
+R	NOUN	ígenes	6	igen
+R	NOUN	ís	0	
+R	NOUN	íteres	1	
+R	NOUN	ítines	6	itin
+R	NOUN	ópicos	1	
+R	NOUN	úmenes	6	umen
+R	NOUN	ús	0	
+R	NUM		0	
+R	NUM	,02	3	.02
+R	NUM	,05	3	.05
+R	NUM	,06	3	.06
+R	NUM	,16	3	.16
+R	NUM	,20	3	.20
+R	NUM	,23	3	.23
+R	NUM	,25	3	.25
+R	NUM	,26	3	.26
+R	NUM	,27	3	.27
+R	NUM	,28	3	.28
+R	NUM	,30	3	.30
+R	NUM	,37	3	.37
+R	NUM	,40	3	.40
+R	NUM	,5	2	.5
+R	NUM	,50	3	.50
+R	NUM	,57	3	.57
+R	NUM	,58	3	.58
+R	NUM	,61	3	.61
+R	NUM	,63	3	.63
+R	NUM	,65	3	.65
+R	NUM	,66	3	.66
+R	NUM	,67	3	.67
+R	NUM	,70	3	.70
+R	NUM	,75	3	.75
+R	NUM	,90	3	.90
+R	NUM	,91	3	.91
+R	NUM	,95	3	.95
+R	NUM	-112	0	
+R	NUM	-3-1	7	-1
+R	NUM	.	1	
+R	NUM	.00	0	
+R	NUM	.100	4	100
+R	NUM	.105	4	105
+R	NUM	.120	4	120
+R	NUM	.200	4	200
+R	NUM	.250	4	250
+R	NUM	.300	4	300
+R	NUM	.350	4	350
+R	NUM	.450	4	450
+R	NUM	.600	4	600
+R	NUM	.900	4	900
+R	NUM	0,5	0	
+R	NUM	0,58	0	
+R	NUM	0,7	2	.7
+R	NUM	00	4	000
+R	NUM	0000	0	
+R	NUM	020	4	020
+R	NUM	049	4	049
+R	NUM	050	4	050
+R	NUM	064	4	064
+R	NUM	079	4	079
+R	NUM	1,15	3	.15
+R	NUM	1,3	2	.3
+R	NUM	1,6	2	.6
+R	NUM	1,8	2	.8
+R	NUM	1,9	2	.9
+R	NUM	10,5	2	.5
+R	NUM	100	0	
+R	NUM	112	8	223112
+R	NUM	124	4	124
+R	NUM	169	8	531169
+R	NUM	181	4	181
+R	NUM	2,1	2	.1
+R	NUM	2,3	2	.3
+R	NUM	2,4	2	.4
+R	NUM	2,5	0	
+R	NUM	200	0	
+R	NUM	2000	0	
+R	NUM	201	4	201
+R	NUM	206	4	206
+R	NUM	226	4	226
+R	NUM	245	4	245
+R	NUM	256	4	256
+R	NUM	280	4	280
+R	NUM	290	4	290
+R	NUM	291	4	291
+R	NUM	298	4	298
+R	NUM	3,02	0	
+R	NUM	3,17	3	.17
+R	NUM	3,6	2	.6
+R	NUM	3,7	2	.7
+R	NUM	3,8	2	.8
+R	NUM	300	0	
+R	NUM	309	4	309
+R	NUM	319	4	319
+R	NUM	359	4	359
+R	NUM	365	4	365
+R	NUM	398	4	398
+R	NUM	4,1	2	.1
+R	NUM	4,5	0	
+R	NUM	400	4	400
+R	NUM	412	4	412
+R	NUM	463	4	463
+R	NUM	487	4	487
+R	NUM	500	4	500
+R	NUM	542	4	542
+R	NUM	586	4	586
+R	NUM	587	4	587
+R	NUM	6,1	2	.1
+R	NUM	6,2	2	.2
+R	NUM	6,7	2	.7
+R	NUM	6,9	2	.9
+R	NUM	600	0	
+R	NUM	653	4	653
+R	NUM	677	4	677
+R	NUM	686	4	686
+R	NUM	689	4	689
+R	NUM	7,6	2	.6
+R	NUM	700	4	700
+R	NUM	729	4	729
+R	NUM	750	4	750
+R	NUM	8,3	2	.3
+R	NUM	8,4	2	.4
+R	NUM	8,56	3	.56
+R	NUM	800	4	800
+R	NUM	810	4	810
+R	NUM	819	4	819
+R	NUM	829	4	829
+R	NUM	856	8	115856
+R	NUM	873	4	873
+R	NUM	879	8	430879
+R	NUM	88	3	.88
+R	NUM	887	4	887
+R	NUM	9,7	2	.7
+R	NUM	900	0	
+R	NUM	926	4	926
+R	NUM	980	4	980
+R	NUM	:00	0	
+R	NUM	as	2	os
+R	NUM	c	2	
+R	NUM	ia	1	o
+R	NUM	les	2	
+R	NUM	m	2	
+R	NUM	na	1	o
+R	NUM	nientos	0	
+R	NUM	tas	0	
+R	NUM	tos	1	
+R	NUM	º	1	
+R	PART		0	
+R	PRON		0	
+R	PRON	a	2	él
+R	PRON	ales	2	
+R	PRON	as	2	o
+R	PRON	co	0	
+R	PRON	d	5	tú
+R	PRON	da	0	
+R	PRON	des	7	tú
+R	PRON	do	0	
+R	PRON	era	0	
+R	PRON	es	3	él
+R	PRON	ese	0	
+R	PRON	esta	1	e
+R	PRON	estas	2	e
+R	PRON	este	0	
+R	PRON	estos	2	e
+R	PRON	go	0	
+R	PRON	ho	0	
+R	PRON	i	1	ú
+R	PRON	ias	2	os
+R	PRON	igo	7	él
+R	PRON	ios	0	
+R	PRON	las	3	él
+R	PRON	le	2	él
+R	PRON	lla	4	él
+R	PRON	llas	5	él
+R	PRON	llo	4	él
+R	PRON	los	5	él
+R	PRON	ma	1	o
+R	PRON	me	2	yo
+R	PRON	migo	7	yo
+R	PRON	mo	0	
+R	PRON	na	1	o
+R	PRON	nes	2	
+R	PRON	no	0	
+R	PRON	nos	3	yo
+R	PRON	nta	1	o
+R	PRON	nto	0	
+R	PRON	ntos	1	
+R	PRON	o	2	él
+R	PRON	oda	1	o
+R	PRON	ra	1	o
+R	PRON	ro	0	
+R	PRON	s	1	
+R	PRON	sa	1	e
+R	PRON	sas	2	e
+R	PRON	se	2	él
+R	PRON	so	1	e
+R	PRON	sos	4	ese
+R	PRON	sotros	8	yo
+R	PRON	ste	4	este
+R	PRON	sí	2	él
+R	PRON	ta	4	este
+R	PRON	tas	5	este
+R	PRON	te	1	ú
+R	PRON	tes	1	
+R	PRON	tigo	7	tú
+R	PRON	to	1	e
+R	PRON	tos	5	este
+R	PRON	uella	2	
+R	PRON	uellas	3	
+R	PRON	uello	2	
+R	PRON	uellos	3	
+R	PRON	un	0	o
+R	PRON	unos	1	
+R	PRON	ya	1	o
+R	PRON	yo	0	
+R	PRON	áles	2	
+R	PRON	ás	0	
+R	PRON	ésa	3	ese
+R	PRON	ésas	4	ese
+R	PRON	ése	3	ese
+R	PRON	í	2	yo
+R	PRON	ía	1	o
+R	PROPN		0	
+R	PROPN	96	10	96
+R	PROPN	alet	12	hospitalet
+R	PROPN	dico	5	ódico
+R	PROPN	l.com	4	
+R	PROPN	ódico	0	
+R	PUNCT		0	
+R	PUNCT	c	0	étera
+R	SCONJ		0	
+R	SYM		0	
+R	SYM	3	6	.23
+R	SYM	6	4	.46
+R	SYM	:	5	.14
+R	VERB		0	
+R	VERB	a	0	r
+R	VERB	abido	3	er
+R	VERB	abiendo	5	er
+R	VERB	abra	1	ir
+R	VERB	acaba	0	r
+R	VERB	acabe	1	ar
+R	VERB	ació	2	er
+R	VERB	ade	1	ir
+R	VERB	aden	2	ir
+R	VERB	adido	2	r
+R	VERB	aga	2	cer
+R	VERB	agamos	5	cer
+R	VERB	agan	3	cer
+R	VERB	agió	1	ar
+R	VERB	ago	2	cer
+R	VERB	ague	2	ar
+R	VERB	aiga	3	er
+R	VERB	ajo	2	er
+R	VERB	alva	0	r
+R	VERB	alía	2	ir
+R	VERB	ame	1	ar
+R	VERB	amplió	1	ar
+R	VERB	ande	1	ar
+R	VERB	ane	1	ar
+R	VERB	anen	2	ar
+R	VERB	ansan	1	r
+R	VERB	ara	1	
+R	VERB	aran	2	
+R	VERB	arda	0	r
+R	VERB	arde	1	ar
+R	VERB	are	1	ar
+R	VERB	aren	2	ar
+R	VERB	arra	0	r
+R	VERB	arran	1	r
+R	VERB	arrido	3	er
+R	VERB	arte	1	ir
+R	VERB	artió	1	r
+R	VERB	arto	1	ir
+R	VERB	asen	3	r
+R	VERB	aso	1	ar
+R	VERB	aste	1	ar
+R	VERB	astra	0	r
+R	VERB	asuman	2	ir
+R	VERB	asé	1	ar
+R	VERB	ate	1	ar
+R	VERB	aten	2	ar
+R	VERB	atiene	4	enerse
+R	VERB	ato	1	ar
+R	VERB	autado	2	rse
+R	VERB	autó	1	arse
+R	VERB	ava	0	r
+R	VERB	avan	1	r
+R	VERB	aya	2	ber
+R	VERB	ayeron	5	er
+R	VERB	ayó	1	ar
+R	VERB	ba	2	r
+R	VERB	bajo	1	ar
+R	VERB	bamos	6	ar
+R	VERB	ban	3	r
+R	VERB	bata	0	
+R	VERB	bate	1	ir
+R	VERB	beren	2	ar
+R	VERB	beza	0	r
+R	VERB	biendo	4	r
+R	VERB	biera	6	aber
+R	VERB	bierne	5	ernar
+R	VERB	bierta	5	rir
+R	VERB	ble	1	ar
+R	VERB	bo	3	aber
+R	VERB	bre	1	ir
+R	VERB	bren	2	ir
+R	VERB	briendo	4	r
+R	VERB	bro	1	ir
+R	VERB	brá	2	er
+R	VERB	bría	3	er
+R	VERB	brían	4	er
+R	VERB	bí	1	ir
+R	VERB	caban	1	r
+R	VERB	caben	2	ar
+R	VERB	carto	1	ar
+R	VERB	cayó	2	er
+R	VERB	ceda	1	er
+R	VERB	cedido	3	er
+R	VERB	cedía	2	er
+R	VERB	cedían	3	er
+R	VERB	centra	0	r
+R	VERB	centran	1	r
+R	VERB	cería	2	
+R	VERB	cese	1	ar
+R	VERB	chacen	3	zar
+R	VERB	chará	1	
+R	VERB	charía	2	
+R	VERB	ciba	1	ir
+R	VERB	ciban	2	ir
+R	VERB	cida	1	ir
+R	VERB	cidar	0	se
+R	VERB	cide	1	ir
+R	VERB	cidió	1	r
+R	VERB	cido	3	er
+R	VERB	cidos	4	er
+R	VERB	cidó	1	arse
+R	VERB	ciera	6	acer
+R	VERB	cieran	7	acer
+R	VERB	cieron	7	acer
+R	VERB	cimos	6	acer
+R	VERB	cio	0	
+R	VERB	ció	1	ar
+R	VERB	co	3	cer
+R	VERB	crita	2	bir
+R	VERB	cte	1	ar
+R	VERB	cten	2	ar
+R	VERB	cuida	0	r
+R	VERB	cutan	2	ir
+R	VERB	cute	1	ir
+R	VERB	cé	2	zar
+R	VERB	cíamos	5	ir
+R	VERB	d	1	r
+R	VERB	da	2	r
+R	VERB	decían	3	ir
+R	VERB	denan	1	r
+R	VERB	dene	1	ar
+R	VERB	dere	1	ar
+R	VERB	dero	1	ar
+R	VERB	dería	2	
+R	VERB	dida	3	er
+R	VERB	didas	4	er
+R	VERB	dido	3	er
+R	VERB	diera	4	ar
+R	VERB	dieran	5	er
+R	VERB	diese	4	er
+R	VERB	diga	3	ecir
+R	VERB	digan	4	ecir
+R	VERB	diría	4	ecir
+R	VERB	done	1	ar
+R	VERB	donen	2	ar
+R	VERB	doy	2	ar
+R	VERB	dquiera	3	rir
+R	VERB	dquiere	3	rir
+R	VERB	dremos	6	er
+R	VERB	drá	3	er
+R	VERB	drán	4	er
+R	VERB	dría	4	er
+R	VERB	dríamos	7	er
+R	VERB	drían	5	er
+R	VERB	dude	1	ar
+R	VERB	e	0	r
+R	VERB	eas	1	r
+R	VERB	eba	4	obar
+R	VERB	eban	5	obar
+R	VERB	ebió	2	er
+R	VERB	eblan	6	oblar
+R	VERB	ebre	1	ar
+R	VERB	eciera	4	er
+R	VERB	ecieron	5	er
+R	VERB	eció	2	er
+R	VERB	ecrea	0	r
+R	VERB	ecute	1	ar
+R	VERB	ecía	2	ir
+R	VERB	eda	0	r
+R	VERB	edido	2	r
+R	VERB	ediera	4	er
+R	VERB	edieron	5	er
+R	VERB	ediría	2	
+R	VERB	edió	2	er
+R	VERB	edo	4	oder
+R	VERB	edí	1	ir
+R	VERB	edía	2	ir
+R	VERB	edían	3	ir
+R	VERB	egamos	3	r
+R	VERB	ege	0	r
+R	VERB	ego	3	gar
+R	VERB	egue	2	ar
+R	VERB	eguen	3	ar
+R	VERB	ele	4	oler
+R	VERB	elen	5	oler
+R	VERB	elo	4	oler
+R	VERB	elta	5	olver
+R	VERB	eme	0	r
+R	VERB	emen	1	r
+R	VERB	emió	1	ar
+R	VERB	emo	1	er
+R	VERB	empla	0	r
+R	VERB	emplan	1	r
+R	VERB	enan	5	onar
+R	VERB	ence	0	r
+R	VERB	enció	2	er
+R	VERB	enda	1	er
+R	VERB	endan	6	ender
+R	VERB	endo	5	er
+R	VERB	ensen	6	ensar
+R	VERB	ente	5	entir
+R	VERB	ento	5	entir
+R	VERB	enza	5	enzar
+R	VERB	enzan	6	enzar
+R	VERB	eo	1	er
+R	VERB	epan	4	aber
+R	VERB	equiere	4	erir
+R	VERB	equirió	4	erir
+R	VERB	eras	5	erer
+R	VERB	erdan	6	ordar
+R	VERB	eremos	3	r
+R	VERB	erido	3	er
+R	VERB	erna	5	ernar
+R	VERB	ernan	6	ernar
+R	VERB	ero	4	erer
+R	VERB	eron	4	r
+R	VERB	erra	5	errar
+R	VERB	erta	5	ertir
+R	VERB	ertan	6	ertir
+R	VERB	erten	6	ertir
+R	VERB	ería	2	er
+R	VERB	eríamos	5	er
+R	VERB	es	1	r
+R	VERB	ese	3	r
+R	VERB	esee	1	ar
+R	VERB	esen	5	er
+R	VERB	eso	4	esar
+R	VERB	esta	5	ostar
+R	VERB	este	5	ostar
+R	VERB	esten	6	ostar
+R	VERB	esto	5	oner
+R	VERB	etas	5	etar
+R	VERB	ete	0	r
+R	VERB	eten	1	r
+R	VERB	etido	3	er
+R	VERB	etiendo	5	er
+R	VERB	etieron	5	er
+R	VERB	etió	2	er
+R	VERB	eto	1	ar
+R	VERB	etí	1	er
+R	VERB	etían	3	er
+R	VERB	eva	0	r
+R	VERB	evamos	3	r
+R	VERB	evan	1	r
+R	VERB	eve	4	over
+R	VERB	even	2	ar
+R	VERB	evido	3	erse
+R	VERB	evieron	5	erse
+R	VERB	evió	2	erse
+R	VERB	evo	1	ar
+R	VERB	evía	2	erse
+R	VERB	eyendo	5	er
+R	VERB	eyeron	5	er
+R	VERB	eyó	2	er
+R	VERB	eza	4	ezar
+R	VERB	eían	3	r
+R	VERB	ferido	2	r
+R	VERB	fería	2	ir
+R	VERB	ferían	3	ir
+R	VERB	fiera	4	erir
+R	VERB	fiere	4	erir
+R	VERB	fieren	5	erir
+R	VERB	fiero	4	erir
+R	VERB	fine	1	ir
+R	VERB	fió	1	ar
+R	VERB	fra	1	ir
+R	VERB	fre	1	ir
+R	VERB	fren	2	ir
+R	VERB	friendo	4	r
+R	VERB	fría	2	ir
+R	VERB	fue	3	ir
+R	VERB	fugar	0	se
+R	VERB	fugó	1	arse
+R	VERB	fía	2	iar
+R	VERB	fían	3	iar
+R	VERB	gamos	5	er
+R	VERB	gas	1	r
+R	VERB	ge	1	ir
+R	VERB	gen	2	ir
+R	VERB	giendo	4	r
+R	VERB	gieren	5	erir
+R	VERB	go	2	er
+R	VERB	grada	0	r
+R	VERB	gre	1	ar
+R	VERB	gren	2	ar
+R	VERB	guiera	7	eguir
+R	VERB	guimos	3	r
+R	VERB	guyeron	6	üir
+R	VERB	gí	1	ir
+R	VERB	gía	2	ir
+R	VERB	gían	3	ir
+R	VERB	haremos	5	cer
+R	VERB	hará	2	cer
+R	VERB	harán	3	cer
+R	VERB	haría	3	cer
+R	VERB	he	1	ar
+R	VERB	hecha	4	acer
+R	VERB	hen	2	ar
+R	VERB	herido	2	r
+R	VERB	hice	3	acer
+R	VERB	ho	4	acer
+R	VERB	honden	2	ar
+R	VERB	hos	5	acer
+R	VERB	i	1	ar
+R	VERB	ibe	1	ir
+R	VERB	iben	2	ir
+R	VERB	ibiera	3	r
+R	VERB	ibo	1	ir
+R	VERB	ibía	2	ir
+R	VERB	icaban	3	r
+R	VERB	ice	3	ecir
+R	VERB	icen	4	ecir
+R	VERB	icho	4	ecir
+R	VERB	iciendo	7	ecir
+R	VERB	ico	1	ar
+R	VERB	idan	2	ir
+R	VERB	ide	3	edir
+R	VERB	iden	2	ir
+R	VERB	idido	2	r
+R	VERB	idiendo	7	edir
+R	VERB	idiera	6	edir
+R	VERB	idieran	4	r
+R	VERB	idiría	2	
+R	VERB	idió	4	edir
+R	VERB	idía	2	ir
+R	VERB	idían	3	ir
+R	VERB	ie	1	ar
+R	VERB	iega	4	egar
+R	VERB	iegan	5	egar
+R	VERB	ien	2	ar
+R	VERB	ienda	5	endar
+R	VERB	iende	5	ender
+R	VERB	ienden	6	ender
+R	VERB	ienta	5	entar
+R	VERB	ientan	6	entar
+R	VERB	ienten	6	entir
+R	VERB	iera	4	er
+R	VERB	ieran	4	r
+R	VERB	ierda	5	erder
+R	VERB	iesa	4	esar
+R	VERB	iesta	5	estar
+R	VERB	iestan	6	estar
+R	VERB	iestra	0	r
+R	VERB	iezan	5	ezar
+R	VERB	igamos	6	ecir
+R	VERB	igan	4	eguir
+R	VERB	igo	3	ecir
+R	VERB	ije	3	ecir
+R	VERB	ijeron	6	ecir
+R	VERB	ilió	1	ar
+R	VERB	imita	0	r
+R	VERB	imitan	1	r
+R	VERB	imite	1	ar
+R	VERB	inde	1	ir
+R	VERB	indió	5	endir
+R	VERB	ine	1	ar
+R	VERB	inemos	4	ar
+R	VERB	inen	2	ar
+R	VERB	inido	2	r
+R	VERB	inieron	7	enir
+R	VERB	io	2	ar
+R	VERB	ione	1	ar
+R	VERB	ionemos	4	ar
+R	VERB	ionen	2	ar
+R	VERB	ipe	1	ar
+R	VERB	ipita	0	r
+R	VERB	ire	1	ar
+R	VERB	iren	2	ar
+R	VERB	iriendo	7	erir
+R	VERB	irieron	7	erir
+R	VERB	irió	4	erir
+R	VERB	irva	4	ervir
+R	VERB	irvan	5	ervir
+R	VERB	is	3	ar
+R	VERB	ise	1	ar
+R	VERB	isieron	7	erer
+R	VERB	iso	3	erer
+R	VERB	ista	1	ir
+R	VERB	istan	2	ir
+R	VERB	istas	5	er
+R	VERB	istra	0	r
+R	VERB	istran	1	r
+R	VERB	istre	1	ar
+R	VERB	ito	2	bir
+R	VERB	itos	3	bir
+R	VERB	iva	0	r
+R	VERB	ivan	1	r
+R	VERB	iviendo	4	r
+R	VERB	ivieron	4	r
+R	VERB	ivimos	3	r
+R	VERB	ivió	1	r
+R	VERB	ivo	1	ir
+R	VERB	ivían	3	ir
+R	VERB	ió	1	r
+R	VERB	jas	1	r
+R	VERB	je	1	ar
+R	VERB	jemos	4	ar
+R	VERB	jen	2	ar
+R	VERB	jera	5	ecir
+R	VERB	jeron	5	cir
+R	VERB	jo	3	ecir
+R	VERB	lara	0	r
+R	VERB	lda	0	r
+R	VERB	ldrá	3	ir
+R	VERB	ldrán	4	ir
+R	VERB	le	1	ir
+R	VERB	lecía	2	er
+R	VERB	leen	2	ar
+R	VERB	len	2	ir
+R	VERB	lesta	0	r
+R	VERB	leve	1	ar
+R	VERB	lga	2	ir
+R	VERB	lice	2	zar
+R	VERB	licen	3	zar
+R	VERB	lida	0	r
+R	VERB	lide	1	ar
+R	VERB	liendo	4	r
+R	VERB	liera	3	r
+R	VERB	lige	3	egir
+R	VERB	ligió	4	egir
+R	VERB	ligue	2	ar
+R	VERB	lite	1	ar
+R	VERB	liten	2	ar
+R	VERB	llara	1	
+R	VERB	lle	1	ar
+R	VERB	llen	2	ar
+R	VERB	lo	1	ar
+R	VERB	logió	1	ar
+R	VERB	lse	1	ar
+R	VERB	lte	1	ar
+R	VERB	lto	5	olver
+R	VERB	ltos	6	olver
+R	VERB	lva	5	olver
+R	VERB	lvamos	4	er
+R	VERB	lvan	6	olver
+R	VERB	lve	5	olver
+R	VERB	lven	6	olver
+R	VERB	lviera	4	er
+R	VERB	lvieron	5	er
+R	VERB	lvía	2	er
+R	VERB	lí	1	ir
+R	VERB	mas	1	r
+R	VERB	mbió	1	ar
+R	VERB	me	1	ir
+R	VERB	men	2	ar
+R	VERB	mente	1	ar
+R	VERB	meta	1	er
+R	VERB	metan	2	er
+R	VERB	meto	1	er
+R	VERB	mida	0	r
+R	VERB	miendan	6	endar
+R	VERB	miendo	4	r
+R	VERB	mita	1	ir
+R	VERB	mitan	2	ir
+R	VERB	mo	1	ar
+R	VERB	mpa	1	er
+R	VERB	mpido	2	r
+R	VERB	mpiera	4	er
+R	VERB	mpieron	5	er
+R	VERB	mpla	1	ir
+R	VERB	mpuesta	5	oner
+R	VERB	mía	2	ir
+R	VERB	mían	3	ir
+R	VERB	n	1	r
+R	VERB	nas	1	r
+R	VERB	ncara	0	r
+R	VERB	nce	2	zar
+R	VERB	nda	0	r
+R	VERB	ndamos	4	er
+R	VERB	ndidos	4	er
+R	VERB	ndiera	4	er
+R	VERB	ndieron	5	er
+R	VERB	ndimos	4	er
+R	VERB	ndió	2	er
+R	VERB	ndo	3	r
+R	VERB	ne	4	ener
+R	VERB	necía	2	er
+R	VERB	nen	5	ener
+R	VERB	nes	5	ener
+R	VERB	nga	2	er
+R	VERB	ngan	3	er
+R	VERB	ngue	1	ir
+R	VERB	nguen	2	ir
+R	VERB	nice	2	zar
+R	VERB	nida	3	er
+R	VERB	nidas	4	er
+R	VERB	nido	3	er
+R	VERB	nidos	4	er
+R	VERB	niera	6	enir
+R	VERB	no	3	enir
+R	VERB	nrió	2	eír
+R	VERB	nsa	5	ensar
+R	VERB	nsan	6	ensar
+R	VERB	nso	5	ensar
+R	VERB	nsé	1	ar
+R	VERB	nte	1	ar
+R	VERB	nten	2	ar
+R	VERB	ntiendo	5	ender
+R	VERB	ntieron	8	entir
+R	VERB	ntirá	1	se
+R	VERB	ntió	5	entir
+R	VERB	nto	1	ar
+R	VERB	ntren	7	ontrar
+R	VERB	nuemos	4	ar
+R	VERB	nvió	1	ar
+R	VERB	nvía	2	iar
+R	VERB	o	2	r
+R	VERB	oba	0	r
+R	VERB	oban	1	r
+R	VERB	ociera	4	er
+R	VERB	ocieran	5	er
+R	VERB	ocieron	5	er
+R	VERB	oció	2	er
+R	VERB	oge	0	r
+R	VERB	ogen	1	r
+R	VERB	ogido	3	er
+R	VERB	ogiendo	5	er
+R	VERB	ogieron	5	er
+R	VERB	ogió	2	er
+R	VERB	ogí	1	er
+R	VERB	oiga	3	ír
+R	VERB	oja	2	ger
+R	VERB	ojan	3	ger
+R	VERB	ole	1	ar
+R	VERB	ome	1	ar
+R	VERB	omió	2	er
+R	VERB	on	2	
+R	VERB	one	0	r
+R	VERB	onen	1	r
+R	VERB	ono	1	ar
+R	VERB	opió	1	ar
+R	VERB	orados	1	
+R	VERB	orde	1	ar
+R	VERB	orden	2	ar
+R	VERB	ore	1	ar
+R	VERB	oren	2	ar
+R	VERB	orre	0	r
+R	VERB	orren	1	r
+R	VERB	orrido	3	er
+R	VERB	orrió	2	er
+R	VERB	orría	2	er
+R	VERB	orte	1	ar
+R	VERB	oría	2	ir
+R	VERB	ostuvo	3	ener
+R	VERB	ote	1	ar
+R	VERB	oto	2	mper
+R	VERB	ovido	3	er
+R	VERB	ovieron	5	er
+R	VERB	ovía	2	er
+R	VERB	oy	3	ir
+R	VERB	oyan	1	r
+R	VERB	oye	2	ír
+R	VERB	oyen	2	ar
+R	VERB	oyó	1	ar
+R	VERB	oído	2	r
+R	VERB	paga	0	r
+R	VERB	pagamos	3	r
+R	VERB	pagan	1	r
+R	VERB	para	0	r
+R	VERB	paran	1	r
+R	VERB	pare	1	ir
+R	VERB	pase	1	ar
+R	VERB	pecho	1	ar
+R	VERB	pen	2	ar
+R	VERB	pensa	0	r
+R	VERB	pere	1	ar
+R	VERB	peremos	4	ar
+R	VERB	pero	1	ar
+R	VERB	pete	1	ar
+R	VERB	petido	2	r
+R	VERB	pida	3	edir
+R	VERB	pidan	4	edir
+R	VERB	piden	4	edir
+R	VERB	pido	3	edir
+R	VERB	piera	6	aber
+R	VERB	pieron	7	aber
+R	VERB	pierta	5	ertar
+R	VERB	pita	3	etir
+R	VERB	pitan	4	etir
+R	VERB	pite	3	etir
+R	VERB	piten	4	etir
+R	VERB	pitió	4	etir
+R	VERB	pió	2	er
+R	VERB	plan	2	ir
+R	VERB	plía	2	iar
+R	VERB	po	3	aber
+R	VERB	poye	1	ar
+R	VERB	pré	1	ar
+R	VERB	pte	1	ar
+R	VERB	pten	2	ar
+R	VERB	puse	3	oner
+R	VERB	que	3	car
+R	VERB	quede	1	ar
+R	VERB	quen	4	car
+R	VERB	qué	3	car
+R	VERB	ras	1	r
+R	VERB	raya	0	r
+R	VERB	rcaban	3	r
+R	VERB	rda	5	ordar
+R	VERB	rde	5	erder
+R	VERB	rden	6	erder
+R	VERB	rdiera	4	er
+R	VERB	rdieron	5	er
+R	VERB	rdió	2	er
+R	VERB	rdo	5	ordar
+R	VERB	re	4	erer
+R	VERB	rea	1	er
+R	VERB	recía	2	er
+R	VERB	remos	4	
+R	VERB	ren	5	erer
+R	VERB	rente	1	ar
+R	VERB	repan	1	r
+R	VERB	rese	1	ar
+R	VERB	resta	0	r
+R	VERB	reza	0	r
+R	VERB	reían	3	er
+R	VERB	rgue	2	ar
+R	VERB	rguen	3	ar
+R	VERB	riba	0	r
+R	VERB	riera	3	r
+R	VERB	rive	1	ar
+R	VERB	rjan	3	gir
+R	VERB	rme	1	ar
+R	VERB	rmiendo	8	ormir
+R	VERB	rne	5	ernir
+R	VERB	ro	1	ar
+R	VERB	rra	1	ir
+R	VERB	rran	6	errar
+R	VERB	rre	1	ir
+R	VERB	rren	2	ir
+R	VERB	rrá	2	er
+R	VERB	rría	2	ir
+R	VERB	rte	5	ertir
+R	VERB	rtiendo	8	ertir
+R	VERB	rtiera	7	ertir
+R	VERB	rtieron	8	ertir
+R	VERB	rtió	5	ertir
+R	VERB	rto	5	rir
+R	VERB	rueda	4	odar
+R	VERB	rva	0	r
+R	VERB	rvan	1	r
+R	VERB	rve	4	ervir
+R	VERB	rven	5	ervir
+R	VERB	rvieron	8	ervir
+R	VERB	rvió	5	ervir
+R	VERB	rza	5	orzar
+R	VERB	rzan	6	orzar
+R	VERB	ré	1	
+R	VERB	ría	2	
+R	VERB	ríamos	5	
+R	VERB	rían	3	
+R	VERB	s	3	r
+R	VERB	sacaba	2	r
+R	VERB	saldría	4	ir
+R	VERB	salían	3	ir
+R	VERB	sas	6	ensar
+R	VERB	scaban	3	r
+R	VERB	sco	1	ar
+R	VERB	se	2	r
+R	VERB	semos	4	ar
+R	VERB	sen	2	ar
+R	VERB	sente	1	ar
+R	VERB	seo	1	ar
+R	VERB	side	1	ir
+R	VERB	sidió	7	esidir
+R	VERB	siera	6	erer
+R	VERB	sieran	7	erer
+R	VERB	sieron	7	oner
+R	VERB	siga	3	eguir
+R	VERB	sigo	3	eguir
+R	VERB	simos	6	oner
+R	VERB	site	1	ar
+R	VERB	sito	1	ar
+R	VERB	slada	0	r
+R	VERB	so	3	oner
+R	VERB	stas	6	oner
+R	VERB	stra	6	ostrar
+R	VERB	stran	7	ostrar
+R	VERB	stre	6	ostrar
+R	VERB	stuvo	3	ar
+R	VERB	svió	1	ar
+R	VERB	sé	1	aber
+R	VERB	tale	1	ar
+R	VERB	tas	1	r
+R	VERB	tañe	0	r
+R	VERB	te	1	ir
+R	VERB	teen	2	ar
+R	VERB	tela	0	
+R	VERB	ten	2	ir
+R	VERB	tenció	1	ar
+R	VERB	tento	1	ar
+R	VERB	tes	2	ar
+R	VERB	testa	0	r
+R	VERB	tice	2	zar
+R	VERB	tienda	5	ender
+R	VERB	tiendo	4	r
+R	VERB	tiera	3	r
+R	VERB	tigan	1	r
+R	VERB	tigue	2	ar
+R	VERB	to	4	er
+R	VERB	tos	6	oner
+R	VERB	toy	2	ar
+R	VERB	tra	6	ontrar
+R	VERB	tran	7	ontrar
+R	VERB	tre	1	ar
+R	VERB	tren	7	ostrar
+R	VERB	tro	6	ontrar
+R	VERB	tudió	1	ar
+R	VERB	tá	1	ar
+R	VERB	tán	2	ar
+R	VERB	tás	2	ar
+R	VERB	tén	2	ar
+R	VERB	tí	1	ir
+R	VERB	tía	2	ir
+R	VERB	tían	3	ir
+R	VERB	uba	1	ir
+R	VERB	uban	2	ir
+R	VERB	ube	1	ir
+R	VERB	ubra	1	ir
+R	VERB	ubría	2	ir
+R	VERB	uce	1	ir
+R	VERB	ucen	2	ir
+R	VERB	ucida	2	r
+R	VERB	ucidar	0	
+R	VERB	ucido	2	r
+R	VERB	uciendo	4	r
+R	VERB	ucía	2	ir
+R	VERB	ucían	3	ir
+R	VERB	uda	0	r
+R	VERB	ude	1	ir
+R	VERB	uden	2	ir
+R	VERB	udido	2	r
+R	VERB	udiendo	4	r
+R	VERB	udo	3	oder
+R	VERB	udía	2	ir
+R	VERB	ue	4	eguir
+R	VERB	uebe	4	obar
+R	VERB	uecen	5	ocer
+R	VERB	uede	4	oder
+R	VERB	ueden	2	ar
+R	VERB	uega	3	gar
+R	VERB	uegan	4	gar
+R	VERB	uegue	4	gar
+R	VERB	ueguen	5	gar
+R	VERB	uela	4	olar
+R	VERB	uemos	5	ar
+R	VERB	uen	5	eguir
+R	VERB	uena	4	onar
+R	VERB	uene	4	onar
+R	VERB	uenta	5	ontar
+R	VERB	uentan	6	ontar
+R	VERB	uente	5	ontar
+R	VERB	uenten	6	ontar
+R	VERB	uentre	6	ontrar
+R	VERB	uera	4	orir
+R	VERB	ueran	6	ir
+R	VERB	uerde	5	ordar
+R	VERB	uere	4	orir
+R	VERB	ueren	5	orir
+R	VERB	ueron	6	ir
+R	VERB	uerto	5	orir
+R	VERB	uerían	3	er
+R	VERB	uestan	6	ostar
+R	VERB	uevan	5	over
+R	VERB	ueven	5	over
+R	VERB	uevo	4	over
+R	VERB	ui	3	ir
+R	VERB	uiendo	8	eguir
+R	VERB	uiera	4	erer
+R	VERB	uieran	5	erer
+R	VERB	uieron	8	eguir
+R	VERB	uimos	6	ir
+R	VERB	uirió	1	r
+R	VERB	uió	5	eguir
+R	VERB	ujera	4	cir
+R	VERB	ujo	2	cir
+R	VERB	ule	1	ar
+R	VERB	ulen	2	ar
+R	VERB	umen	2	ir
+R	VERB	umpió	1	r
+R	VERB	unde	1	ir
+R	VERB	unden	2	ir
+R	VERB	undido	2	r
+R	VERB	undió	1	r
+R	VERB	une	1	ir
+R	VERB	unen	2	ir
+R	VERB	unido	2	r
+R	VERB	uniendo	4	r
+R	VERB	unía	2	ir
+R	VERB	ure	1	ar
+R	VERB	uren	2	ar
+R	VERB	uriendo	7	orir
+R	VERB	urieron	7	orir
+R	VERB	urió	4	orir
+R	VERB	urran	2	ir
+R	VERB	use	1	ar
+R	VERB	uste	1	ar
+R	VERB	ustra	0	r
+R	VERB	ute	1	ar
+R	VERB	uto	1	ar
+R	VERB	uve	3	ener
+R	VERB	uya	2	ir
+R	VERB	uyan	3	ir
+R	VERB	uzca	3	cir
+R	VERB	uzcan	4	cir
+R	VERB	ué	2	ar
+R	VERB	uía	2	ir
+R	VERB	uían	3	ir
+R	VERB	va	2	ir
+R	VERB	vale	0	r
+R	VERB	valen	1	r
+R	VERB	valido	3	er
+R	VERB	vamos	5	ir
+R	VERB	van	3	ir
+R	VERB	vas	1	r
+R	VERB	vaya	4	ir
+R	VERB	ve	1	ir
+R	VERB	vea	1	r
+R	VERB	veamos	4	r
+R	VERB	vean	2	r
+R	VERB	vecho	1	ar
+R	VERB	ven	2	ir
+R	VERB	vendrá	3	ir
+R	VERB	vendrán	4	ir
+R	VERB	vendría	4	ir
+R	VERB	venga	2	ir
+R	VERB	vengan	3	ir
+R	VERB	venido	2	r
+R	VERB	venza	2	cer
+R	VERB	venía	2	ir
+R	VERB	venían	3	ir
+R	VERB	veo	1	r
+R	VERB	veremos	4	
+R	VERB	vería	2	
+R	VERB	veía	2	r
+R	VERB	vi	1	er
+R	VERB	vida	0	r
+R	VERB	vide	1	ir
+R	VERB	vidió	1	r
+R	VERB	viene	4	enir
+R	VERB	vienen	5	enir
+R	VERB	viera	6	ener
+R	VERB	vieran	7	ener
+R	VERB	vieron	7	ener
+R	VERB	vimos	6	ener
+R	VERB	vio	2	er
+R	VERB	vista	4	er
+R	VERB	viste	4	er
+R	VERB	viten	2	ar
+R	VERB	viva	1	ir
+R	VERB	vió	2	er
+R	VERB	vo	3	ener
+R	VERB	vé	1	er
+R	VERB	vía	2	ir
+R	VERB	xija	2	gir
+R	VERB	y	1	ber
+R	VERB	yan	5	ir
+R	VERB	ye	2	ir
+R	VERB	yen	3	ir
+R	VERB	yendo	5	ir
+R	VERB	yera	4	ir
+R	VERB	yeran	5	ir
+R	VERB	yeron	5	ir
+R	VERB	yude	1	ar
+R	VERB	yó	2	ir
+R	VERB	z	1	cer
+R	VERB	zca	3	cer
+R	VERB	zcan	4	cer
+R	VERB	zo	3	acer
+R	VERB	á	1	
+R	VERB	án	2	
+R	VERB	ás	2	
+R	VERB	é	1	ar
+R	VERB	én	2	er
+R	VERB	í	1	er
+R	VERB	ía	2	er
+R	VERB	íamos	5	er
+R	VERB	ían	3	er
+R	VERB	íbamos	6	ir
+R	VERB	íbe	3	ibir
+R	VERB	ído	3	er
+R	VERB	ídos	4	er
+R	VERB	íe	2	iar
+R	VERB	íen	3	iar
+R	VERB	íes	3	eír
+R	VERB	ío	2	iar
+R	VERB	ñe	1	ar
+R	VERB	ñee	1	ar
+R	VERB	ó	1	ar
+R	VERB	úa	2	uar
+R	VERB	úan	3	uar
+R	VERB	úe	2	uar
+R	VERB	úen	3	uar
+R	VERB	úne	3	unir
+R	VERB	únen	4	unir
+R	VERB	üe	2	uar
+R	X		0	
+E	"guga"	PROPN	Guga
+E	"steel"	PROPN	Steel
+E	'excelencia'	NOUN	excelencia
+E	'hooligans'	NOUN	hooligan
+E	'síndrome	NOUN	síndrome
+E	--500.000--	NUM	500000
+E	-0,58	NUM	-0.58
+E	-0,7%	SYM	-0.7
+E	-0,9%	SYM	-0.9
+E	-1,1%	SYM	-1.1
+E	-3,01	NUM	-3.01
+E	-lsb-	PROPN	-lsb-
+E	0'5	NUM	0.5
+E	0,0997	NUM	0.0997
+E	0,242	NUM	0.242
+E	0,25	NUM	0.25
+E	0,50	NUM	0.50
+E	0,7	NUM	0.7
+E	0,748	NUM	0.748
+E	0,75	NUM	0.75
+E	0,9001	NUM	0.9001
+E	0,92	NUM	0.92
+E	0,9349	NUM	0.9349
+E	0,9355	NUM	0.9355
+E	0,938	NUM	0.938
+E	0,943	NUM	0.943
+E	0,9452	NUM	0.9452
+E	0,95	NUM	0.95
+E	0,9515	NUM	0.9515
+E	0,9554	NUM	0.9554
+E	0,988	NUM	0.988
+E	0-1,	NUM	0-1
+E	0.	NUM	0
+E	07.28.27	NUM	072827
+E	07.30.42	NUM	073042
+E	1,02	NUM	1.02
+E	1,0456	NUM	1.0456
+E	1,06	NUM	1.06
+E	1,08	NUM	1.08
+E	1,1	NUM	1.1
+E	1,15	NUM	1.15
+E	1,18	NUM	1.18
+E	1,23	NUM	1.23
+E	1,26	NUM	1.26
+E	1,28	NUM	1.28
+E	1,3	NUM	1.3
+E	1,5	NUM	1.5
+E	1,6	NUM	1.6
+E	1,63	NUM	1.63
+E	1,66	NUM	1.66
+E	1,67	NUM	1.67
+E	1,8	NUM	1.8
+E	1,83	NUM	1.83
+E	1,9	NUM	1.9
+E	1,91	NUM	1.91
+E	1,96	NUM	1.96
+E	1.000	NUM	1000
+E	1.000.089	NUM	1000089
+E	1.007,84	NUM	1007.84
+E	1.008.000	NUM	1008000
+E	1.012,72	NUM	1012.72
+E	1.014.630.448,55	NUM	1014630448.55
+E	1.031	NUM	1031
+E	1.034	NUM	1034
+E	1.044	NUM	1044
+E	1.050	NUM	1050
+E	1.064	NUM	1064
+E	1.078	NUM	1078
+E	1.090	NUM	1090
+E	1.100	NUM	1100
+E	1.115	NUM	1115
+E	1.115.856	NUM	1115856
+E	1.124.000	NUM	1124000
+E	1.125	NUM	1125
+E	1.135	NUM	1135
+E	1.144	NUM	1144
+E	1.181	NUM	1181
+E	1.200	NUM	1200
+E	1.223.112	NUM	1223112
+E	1.226	NUM	1226
+E	1.253	NUM	1253
+E	1.260	NUM	1260
+E	1.290	NUM	1290
+E	1.294,7	NUM	1294.7
+E	1.298	NUM	1298
+E	1.299	NUM	1299
+E	1.300	NUM	1300
+E	1.309	NUM	1309
+E	1.324.000	NUM	1324000
+E	1.350	NUM	1350
+E	1.360	NUM	1360
+E	1.365	NUM	1365
+E	1.391	NUM	1391
+E	1.400	NUM	1400
+E	1.422.992,96	NUM	1422992.96
+E	1.451	NUM	1451
+E	1.500	NUM	1500
+E	1.510	NUM	1510
+E	1.531.169	NUM	1531169
+E	1.537.896.862.75	NUM	153789686275
+E	1.570/01	NUM	1570/01
+E	1.584	NUM	1584
+E	1.600	NUM	1600
+E	1.610.000	NUM	1610000
+E	1.700	NUM	1700
+E	1.750	NUM	1750
+E	1.780	NUM	1780
+E	1.850	NUM	1850
+E	1.851	NUM	1851
+E	1.851.110	NUM	1851110
+E	1.864	NUM	1864
+E	1.872	NUM	1872
+E	1.876	NUM	1876
+E	1.886	NUM	1886
+E	1.893	NUM	1893
+E	1.900	NUM	1900
+E	10,3	NUM	10.3
+E	10,5	NUM	10.5
+E	10.000	NUM	10000
+E	10.116	NUM	10116
+E	10.500	NUM	10500
+E	10.531,60	NUM	10531.60
+E	10.581,30	NUM	10581.30
+E	10.700	NUM	10700
+E	10.818	NUM	10818
+E	100.000	NUM	100000
+E	102,30	NUM	102.30
+E	103,08	NUM	103.08
+E	103,6	NUM	103.6
+E	107.256	NUM	107256
+E	108,95	NUM	108.95
+E	108,97	NUM	108.97
+E	109,27	NUM	109.27
+E	109,40	NUM	109.40
+E	109.495	NUM	109495
+E	11,3	NUM	11.3
+E	11,5	NUM	11.5
+E	11,8	NUM	11.8
+E	11.000	NUM	11000
+E	11.134	NUM	11134
+E	11.206,60	NUM	11206.60
+E	11.233	NUM	11233
+E	11.250	NUM	11250
+E	11.532	NUM	11532
+E	110,37	NUM	110.37
+E	110,57	NUM	110.57
+E	110,65	NUM	110.65
+E	110,68	NUM	110.68
+E	110,94	NUM	110.94
+E	111,28	NUM	111.28
+E	111.312	NUM	111312
+E	113.363	NUM	113363
+E	115.472	NUM	115472
+E	116,5	NUM	116.5
+E	116.000	NUM	116000
+E	116.800	NUM	116800
+E	117.951	NUM	117951
+E	12,3	NUM	12.3
+E	12,5	NUM	12.5
+E	12-m	NUM	12
+E	12.000	NUM	12000
+E	12.020	NUM	12020
+E	12.400	NUM	12400
+E	12.463	NUM	12463
+E	12.500	NUM	12500
+E	12.636	NUM	12636
+E	12.650	NUM	12650
+E	12.787	NUM	12787
+E	120.000	NUM	120000
+E	121.181	NUM	121181
+E	124,21	NUM	124.21
+E	125.000	NUM	125000
+E	125cc	NUM	125
+E	127.000	NUM	127000
+E	127.500	NUM	127500
+E	13,50	NUM	13.50
+E	13.000	NUM	13000
+E	13.487	NUM	13487
+E	13.500	NUM	13500
+E	130.000	NUM	130000
+E	136,2	NUM	136.2
+E	136.400	NUM	136400
+E	14,8	NUM	14.8
+E	14.000	NUM	14000
+E	14.300	NUM	14300
+E	14.331	NUM	14331
+E	140.000	NUM	140000
+E	142.500	NUM	142500
+E	146.489	NUM	146489
+E	146.564	NUM	146564
+E	146.819	NUM	146819
+E	147.587	NUM	147587
+E	148,5	NUM	148.5
+E	15,5	NUM	15.5
+E	15,61	NUM	15.61
+E	15.000	NUM	15000
+E	15.100	NUM	15100
+E	15.235	NUM	15235
+E	15.800.000	NUM	15800000
+E	150.000	NUM	150000
+E	153.853	NUM	153853
+E	156,2	NUM	156.2
+E	157.734	NUM	157734
+E	159.000	NUM	159000
+E	16,25	NUM	16.25
+E	16,33	NUM	16.33
+E	16,5	NUM	16.5
+E	16,6	NUM	16.6
+E	16.000	NUM	16000
+E	16.049	NUM	16049
+E	16.450	NUM	16450
+E	16.500	NUM	16500
+E	16.686	NUM	16686
+E	16.700	NUM	16700
+E	16.877.402,99	NUM	16877402.99
+E	160.000	NUM	160000
+E	164,4	NUM	164.4
+E	164.500	NUM	164500
+E	165.476	NUM	165476
+E	168,28	NUM	168.28
+E	16º	NUM	16
+E	17.710	NUM	17710
+E	170.000	NUM	170000
+E	171.600	NUM	171600
+E	174.000	NUM	174000
+E	175,20	NUM	175.20
+E	1751,59	NUM	1751.59
+E	176.482	NUM	176482
+E	18,3	NUM	18.3
+E	18,91	NUM	18.91
+E	18.000	NUM	18000
+E	18.300	NUM	18300
+E	18.621	NUM	18621
+E	18.700	NUM	18700
+E	180.000	NUM	180000
+E	181.471	NUM	181471
+E	183.024	NUM	183024
+E	185,00	NUM	185.00
+E	185,25	NUM	185.25
+E	188.677	NUM	188677
+E	19,7	NUM	19.7
+E	19.100	NUM	19100
+E	19.664	NUM	19664
+E	190.000	NUM	190000
+E	190.887	NUM	190887
+E	191,49	NUM	191.49
+E	2'70	NUM	2.70
+E	2,05	NUM	2.05
+E	2,06	NUM	2.06
+E	2,1	NUM	2.1
+E	2,10	NUM	2.10
+E	2,20	NUM	2.20
+E	2,28	NUM	2.28
+E	2,30	NUM	2.30
+E	2,37	NUM	2.37
+E	2,384	NUM	2.384
+E	2,4	NUM	2.4
+E	2.000	NUM	2000
+E	2.002	NUM	2002
+E	2.022	NUM	2022
+E	2.054	NUM	2054
+E	2.124	NUM	2124
+E	2.130	NUM	2130
+E	2.200	NUM	2200
+E	2.219	NUM	2219
+E	2.237	NUM	2237
+E	2.300	NUM	2300
+E	2.371.300	NUM	2371300
+E	2.400	NUM	2400
+E	2.430.879	NUM	2430879
+E	2.450	NUM	2450
+E	2.500	NUM	2500
+E	2.504	NUM	2504
+E	2.547	NUM	2547
+E	2.560	NUM	2560
+E	2.586	NUM	2586
+E	2.600	NUM	2600
+E	2.600.000	NUM	2600000
+E	2.610	NUM	2610
+E	2.700	NUM	2700
+E	2.750	NUM	2750
+E	2.790	NUM	2790
+E	2.800	NUM	2800
+E	2.829	NUM	2829
+E	2.866	NUM	2866
+E	2.873	NUM	2873
+E	2.915,00	NUM	2915.00
+E	2.995	NUM	2995
+E	20,02	NUM	20.02
+E	20.000	NUM	20000
+E	20.798	NUM	20798
+E	200.000	NUM	200000
+E	203.000	NUM	203000
+E	204.020	NUM	204020
+E	207,5	NUM	207.5
+E	208.000	NUM	208000
+E	21.048.904	NUM	21048904
+E	218,02	NUM	218.02
+E	22,3	NUM	22.3
+E	22.000	NUM	22000
+E	22.645	NUM	22645
+E	22.775	NUM	22775
+E	22.800	NUM	22800
+E	22.926	NUM	22926
+E	22.961	NUM	22961
+E	220.000	NUM	220000
+E	225.468	NUM	225468
+E	23.000	NUM	23000
+E	23.398	NUM	23398
+E	23.400	NUM	23400
+E	232.000	NUM	232000
+E	24,1	NUM	24.1
+E	24.291	NUM	24291
+E	240,71	NUM	240.71
+E	245,8	NUM	245.8
+E	245.800	NUM	245800
+E	25,4	NUM	25.4
+E	25.000	NUM	25000
+E	250.000	NUM	250000
+E	252.000	NUM	252000
+E	259.200	NUM	259200
+E	25º	NUM	25
+E	26,49	NUM	26.49
+E	26.000	NUM	26000
+E	26.927	NUM	26927
+E	260.000	NUM	260000
+E	266,54	NUM	266.54
+E	27,35	NUM	27.35
+E	27.000	NUM	27000
+E	27.050	NUM	27050
+E	27.152	NUM	27152
+E	27.609	NUM	27609
+E	270,85	NUM	270.85
+E	272.100	NUM	272100
+E	275.000	NUM	275000
+E	278.412	NUM	278412
+E	279.000,	NUM	279000
+E	28,02	NUM	28.02
+E	28,2	NUM	28.2
+E	28,4	NUM	28.4
+E	280.000	NUM	280000
+E	286.000	NUM	286000
+E	288.000	NUM	288000
+E	29,40	NUM	29.40
+E	29,73	NUM	29.73
+E	29.924	NUM	29924
+E	291.490	NUM	291490
+E	3,07	NUM	3.07
+E	3,16	NUM	3.16
+E	3,17	NUM	3.17
+E	3,27	NUM	3.27
+E	3,31	NUM	3.31
+E	3,47	NUM	3.47
+E	3,5	NUM	3.5
+E	3,5-2,5	NUM	3.5-2.5
+E	3,6	NUM	3.6
+E	3,7	NUM	3.7
+E	3,700.000	NUM	3.700000
+E	3,8	NUM	3.8
+E	3,85	NUM	3.85
+E	3-3-3-1	NUM	-1
+E	3.000	NUM	3000
+E	3.007.296	NUM	3007296
+E	3.050	NUM	3050
+E	3.100	NUM	3100
+E	3.120	NUM	3120
+E	3.178	NUM	3178
+E	3.200	NUM	3200
+E	3.231	NUM	3231
+E	3.307	NUM	3307
+E	3.379	NUM	3379
+E	3.380	NUM	3380
+E	3.400	NUM	3400
+E	3.406	NUM	3406
+E	3.500	NUM	3500
+E	3.563	NUM	3563
+E	3.700	NUM	3700
+E	3.727.000	NUM	3727000
+E	3.843.800	NUM	3843800
+E	3.873	NUM	3873
+E	30.000	NUM	30000
+E	30.049	NUM	30049
+E	30.500	NUM	30500
+E	300.000	NUM	300000
+E	300.506	NUM	300506
+E	305,70	NUM	305.70
+E	31.500	NUM	31500
+E	313.300	NUM	313300
+E	318.000	NUM	318000
+E	32.000	NUM	32000
+E	32.542	NUM	32542
+E	323.250	NUM	323250
+E	325.200	NUM	325200
+E	33,06	NUM	33.06
+E	33,75	NUM	33.75
+E	33.000	NUM	33000
+E	33.367	NUM	33367
+E	330,6	NUM	330.6
+E	334.064	NUM	334064
+E	335.000	NUM	335000
+E	34,60	NUM	34.60
+E	35,7	NUM	35.7
+E	35.000	NUM	35000
+E	35.226	NUM	35226
+E	350.000	NUM	350000
+E	36.000	NUM	36000
+E	363.686	NUM	363686
+E	37,5	NUM	37.5
+E	37.000	NUM	37000
+E	37.200	NUM	37200
+E	375.000	NUM	375000
+E	38,5	NUM	38.5
+E	38,8	NUM	38.8
+E	38.435	NUM	38435
+E	39,50	NUM	39.50
+E	39.025.287,00	NUM	39025287.00
+E	39.456	NUM	39456
+E	39.548	NUM	39548
+E	4,1	NUM	4.1
+E	4,25	NUM	4.25
+E	4,63	NUM	4.63
+E	4,75	NUM	4.75
+E	4-2-3-1	NUM	-1
+E	4.000	NUM	4000
+E	4.010	NUM	4010
+E	4.120	NUM	4120
+E	4.300	NUM	4300
+E	4.326	NUM	4326
+E	4.375	NUM	4375
+E	4.400	NUM	4400
+E	4.494,30	NUM	4494.30
+E	4.500	NUM	4500
+E	4.630	NUM	4630
+E	40.000	NUM	40000
+E	400.000	NUM	400000
+E	407.654	NUM	407654
+E	41.430	NUM	41430
+E	41.500	NUM	41500
+E	416,1	NUM	416.1
+E	42.000	NUM	42000
+E	425.000	NUM	425000
+E	429.000	NUM	429000
+E	43.500	NUM	43500
+E	434.000	NUM	434000
+E	44.000	NUM	44000
+E	44.350	NUM	44350
+E	445.079	NUM	445079
+E	45.000	NUM	45000
+E	46.632	NUM	46632
+E	47.098	NUM	47098
+E	47.689	NUM	47689
+E	477.000	NUM	477000
+E	48,5	NUM	48.5
+E	48.000	NUM	48000
+E	48.900	NUM	48900
+E	480.809	NUM	480809
+E	482.000	NUM	482000
+E	485.000	NUM	485000
+E	49,7	NUM	49.7
+E	49.915	NUM	49915
+E	4a	NUM	4
+E	4b	NUM	4
+E	4x4	NOUN	4
+E	5,38	NUM	5.38
+E	5,88	NUM	5.88
+E	5.000	NUM	5000
+E	5.008	NUM	5008
+E	5.290	NUM	5290
+E	5.335	NUM	5335
+E	5.361	NUM	5361
+E	5.377	NUM	5377
+E	5.500	NUM	5500
+E	5.663,96	NUM	5663.96
+E	5.729	NUM	5729
+E	5.788	NUM	5788
+E	5.910	NUM	5910
+E	50.000	NUM	50000
+E	500.000	NUM	500000
+E	500cc	NUM	500
+E	51.800	NUM	51800
+E	52,88	NUM	52.88
+E	52.100	NUM	52100
+E	53.273	NUM	53273
+E	538.449	NUM	538449
+E	54.000	NUM	54000
+E	543.000	NUM	543000
+E	547.000	NUM	547000
+E	55.000	NUM	55000
+E	550.000	NUM	550000
+E	56.665	NUM	56665
+E	569,9	NUM	569.9
+E	57,57	NUM	57.57
+E	57.000	NUM	57000
+E	57.280	NUM	57280
+E	58.000	NUM	58000
+E	58.880	NUM	58880
+E	6,1	NUM	6.1
+E	6,7	NUM	6.7
+E	6,9	NUM	6.9
+E	6,90	NUM	6.90
+E	6.000	NUM	6000
+E	6.014	NUM	6014
+E	6.105	NUM	6105
+E	6.145	NUM	6145
+E	6.239,5	NUM	6239.5
+E	6.342,1	NUM	6342.1
+E	6.500	NUM	6500
+E	6.542	NUM	6542
+E	6.700	NUM	6700
+E	6.759	NUM	6759
+E	6.800	NUM	6800
+E	6.816	NUM	6816
+E	6.819	NUM	6819
+E	6.826	NUM	6826
+E	6.950	NUM	6950
+E	60.000	NUM	60000
+E	600.000	NUM	600000
+E	601.012	NUM	601012
+E	607.810	NUM	607810
+E	640.000	NUM	640000
+E	65.000	NUM	65000
+E	650.000	NUM	650000
+E	66,5	NUM	66.5
+E	663.126	NUM	663126
+E	67,61	NUM	67.61
+E	67.000	NUM	67000
+E	67.700	NUM	67700
+E	68.000	NUM	68000
+E	69.715	NUM	69715
+E	7,5	NUM	7.5
+E	7,6	NUM	7.6
+E	7,65	NUM	7.65
+E	7,66	NUM	7.66
+E	7.000	NUM	7000
+E	7.016,69	NUM	7016.69
+E	7.030	NUM	7030
+E	7.201	NUM	7201
+E	7.487	NUM	7487
+E	7.500	NUM	7500
+E	7.585	NUM	7585
+E	7.586	NUM	7586
+E	7.800	NUM	7800
+E	7.943	NUM	7943
+E	70.000	NUM	70000
+E	700.000	NUM	700000
+E	715.000	NUM	715000
+E	722.211	NUM	722211
+E	736.000	NUM	736000
+E	75,5	NUM	75.5
+E	75.124	NUM	75124
+E	75.412	NUM	75412
+E	76.000	NUM	76000
+E	760.000	NUM	760000
+E	761.647	NUM	761647
+E	784.000	NUM	784000
+E	79,80	NUM	79.80
+E	79.800	NUM	79800
+E	793.000	NUM	793000
+E	795.800	NUM	795800
+E	796.000	NUM	796000
+E	8,3	NUM	8.3
+E	8,40	NUM	8.40
+E	8,56	NUM	8.56
+E	8,70	NUM	8.70
+E	8,75	NUM	8.75
+E	8,95	NUM	8.95
+E	8.000	NUM	8000
+E	8.245	NUM	8245
+E	8.319	NUM	8319
+E	8.500	NUM	8500
+E	8.540.000	NUM	8540000
+E	8.561	NUM	8561
+E	8.653	NUM	8653
+E	8.677	NUM	8677
+E	8.715.160	NUM	8715160
+E	8.891	NUM	8891
+E	80,8	NUM	80.8
+E	80.000	NUM	80000
+E	80.206	NUM	80206
+E	80.433	NUM	80433
+E	800.000	NUM	800000
+E	813.000	NUM	813000
+E	817.206	NUM	817206
+E	83.000	NUM	83000
+E	831.000	NUM	831000
+E	835.000	NUM	835000
+E	850.000	NUM	850000
+E	863.000	NUM	863000
+E	878.518	NUM	878518
+E	88.800	NUM	88800
+E	89.764	NUM	89764
+E	892,58	NUM	892.58
+E	892,7	NUM	892.7
+E	9,15	NUM	9.15
+E	9,16	NUM	9.16
+E	9,5	NUM	9.5
+E	9.000	NUM	9000
+E	9.101	NUM	9101
+E	9.319	NUM	9319
+E	9.339,80	NUM	9339.80
+E	9.400	NUM	9400
+E	9.922	NUM	9922
+E	90,15	NUM	90.15
+E	90.000	NUM	90000
+E	902.400.345	NUM	902400345
+E	923.359	NUM	923359
+E	93.400	NUM	93400
+E	93.484.65.62	NUM	934846562
+E	93.980	NUM	93980
+E	95,3	NUM	95.3
+E	95.000	NUM	95000
+E	962,58	NUM	962.58
+E	964,1	NUM	964.1
+E	97.000	NUM	97000
+E	970.000	NUM	970000
+E	980.000	NUM	980000
+E	985.000	NUM	985000
+E	=n-cn	NOUN	=N-CN
+E	a	DET	o
+E	a-2	PROPN	a-2
+E	a-7	SYM	a-7
+E	a-92	PROPN	a-92
+E	a=1016scm	NOUN	a=1016Scm
+E	a=109scml	NOUN	a=109Scml
+E	abertzales	NOUN	abertzale
+E	abierta	ADV	abiertamente
+E	abran	VERB	abrir
+E	abrían	VERB	abrir
+E	absorbidas	VERB	absorber
+E	absorbió	VERB	absorber
+E	abstuvo	VERB	abstener
+E	acabo	VERB	acabar
+E	acepto	VERB	aceptar
+E	aciertan	VERB	acertar
+E	acoplan	VERB	acoplar
+E	acto	VERB	acto
+E	actual-2001	PROPN	actual-2001
+E	acuda	VERB	acudir
+E	acuíferos	NOUN	acuífer
+E	adentra	VERB	adentrar
+E	adhieran	VERB	adherir
+E	adiós	NOUN	adiós
+E	admito	VERB	admitir
+E	adquieren	VERB	adquirir
+E	adquiriendo	VERB	adquirir
+E	adueñado	VERB	adueñarse
+E	adueñaron	VERB	adueñarse
+E	adueñó	VERB	adueñarse
+E	advertencia	PROPN	advertencia
+E	afines	ADJ	afín
+E	agarré	VERB	agarrar
+E	agredida	VERB	agredir
+E	agredidas	VERB	agredir
+E	agredieron	VERB	agredir
+E	agredió	VERB	agredir
+E	agregado	ADJ	Agregado
+E	agua	VERB	agua
+E	ahuyente	VERB	ahuyentar
+E	aigatchúúúú	PROPN	aigatchúúúú
+E	ajusten	VERB	ajustar
+E	al	DET	Al
+E	alarma	PROPN	alarma
+E	albinegra	ADJ	albinegra
+E	alcancen	VERB	alcanzar
+E	alemanas	ADJ	alemán
+E	alerta	VERB	alertar
+E	alerten	VERB	alertar
+E	algo	PROPN	algo
+E	ali	ADV	Ali
+E	alineen	VERB	alinear
+E	altas	NOUN	alto
+E	alteren	VERB	alterar
+E	alterna	VERB	alternar
+E	altos	NOUN	altos
+E	aludiese	VERB	aludir
+E	alía	VERB	aliar
+E	ambas	NUM	ambos
+E	americana	ADJ	americana
+E	amontone	PROPN	amontone
+E	amplían	VERB	ampliar
+E	anales	NOUN	anales
+E	anchas	NOUN	anchas
+E	andarales	NOUN	andarales
+E	andenes	NOUN	andén
+E	anduvo	VERB	andar
+E	anglo-holandesa	ADJ	anglo-holandesa
+E	anglófonas	ADJ	anglófono
+E	angostas	ADJ	angosto
+E	anida	VERB	anidar
+E	anime	VERB	animar
+E	animos	NOUN	ánimo
+E	anteriomente	ADV	Anteriomente
+E	anti-romeo	ADJ	anti-Romeo
+E	antiincendios	ADJ	antiincendios
+E	antoja	VERB	antojarse
+E	apabullarnos	VERB	apabullar
+E	aparten	VERB	apartar
+E	aplaudibles	ADJ	aplaudibles
+E	apreció	VERB	apreciar
+E	ara	PROPN	ara
+E	aragonés	PROPN	Aragonés
+E	aras	NOUN	aras
+E	arbitros	NOUN	árbitros
+E	arc`2000	SYM	2000
+E	archive	VERB	archivar
+E	archivo	VERB	archivar
+E	arde	VERB	arder
+E	arregle	VERB	arreglar
+E	arrepentido	VERB	arrepentirse
+E	arrepentir	VERB	arrepentirse
+E	arrepintió	VERB	arrepentirse
+E	arroja	VERB	arrojar
+E	arte,	PROPN	arte,
+E	artes	NOUN	arte
+E	asesoré	VERB	asesorar
+E	asfixió	VERB	asfixiar
+E	asiste	VERB	asir
+E	asuma	VERB	asumir
+E	atener	VERB	atenerse
+E	atlanta`96	PROPN	96
+E	atlas	NOUN	atlas
+E	atleti	PRON	Atleti
+E	atreva	VERB	atreverse
+E	atreven	VERB	atreverse
+E	atrever	VERB	atreverse
+E	atreverán	VERB	atreverse
+E	atrevo	VERB	atreverse
+E	atrevéos	VERB	atreverse
+E	atuvo	VERB	atenerse
+E	audacias	NOUN	audacia
+E	aumentado	ADJ	aumentar
+E	autodefine	VERB	autodefinirse
+E	autogenerar	VERB	autogenerarse
+E	autorice	VERB	autorizar
+E	autóctona	ADJ	autóctono
+E	avale	VERB	avalar
+E	avista	VERB	avistar
+E	ayudemos	VERB	ayudar
+E	ayuden	VERB	ayudar
+E	azteca	ADJ	azteca
+E	añada	VERB	añadir
+E	añadía	VERB	añadir
+E	añicos	ADJ	añicos
+E	añicos	NOUN	añicos
+E	años	PROPN	años
+E	b-30	PROPN	b-30
+E	baby,	PROPN	baby,
+E	baix	ADJ	Baix
+E	bajo	NOUN	bajar
+E	balcanica	ADJ	balcánico
+E	baratas	ADJ	barato
+E	base	VERB	basar
+E	bastaixos	NOUN	bastaixos
+E	bastos	NOUN	bastos
+E	bebiendo	VERB	beber
+E	bebí	VERB	beber
+E	belenes	NOUN	belén
+E	belgas	ADJ	belga
+E	bell	ADJ	Bell
+E	bidonvilles	NOUN	bidonvilles
+E	bill	INTJ	Bill
+E	blanquee	VERB	blanquear
+E	bons	ADJ	bons
+E	borbotones	NOUN	borbotones
+E	boricua	ADJ	boricua
+E	borra	VERB	borrar
+E	botiguers	NOUN	botiguers
+E	bruces	NOUN	bruces
+E	brundtland	PROPN	Brundtland
+E	bruselas	PROPN	bruselas
+E	bus	PROPN	Bus
+E	buses	NOUN	bus
+E	c-17	PROPN	c-17
+E	c-240	PROPN	c-240
+E	c-35	PROPN	c-35
+E	c-4	SYM	c-4
+E	caben	VERB	caber
+E	cabremos	VERB	caber
+E	cac-40	SYM	cac-40
+E	cadena	ADJ	cadena
+E	cafés	NOUN	café
+E	cagamos	VERB	cagar
+E	caigamos	VERB	caer
+E	caigan	VERB	caer
+E	calientacuchillos	NOUN	calientacuchillos
+E	cambiaste	VERB	cambiar
+E	cameos	NOUN	cameos
+E	campanas	VERB	campanas
+E	campara	VERB	campar
+E	cancele	VERB	cancelar
+E	cancelen	VERB	cancelar
+E	cancerígena	ADJ	cancerígeno
+E	candidatas	NOUN	candidato
+E	candidato-ciudadanas	ADJ	candidato-ciudadanas
+E	cannabis	NOUN	cannabis
+E	cansa	VERB	cansar
+E	cantata	PROPN	cantata
+E	capitalizacion	NOUN	CAPITALIZACION
+E	careciéramos	VERB	carecer
+E	carintia)	PROPN	carintia)
+E	cariocas	ADJ	carioca
+E	cascarrabias	NOUN	cascarrabias
+E	castellanas	ADJ	castellano
+E	caucuses	NOUN	caucuses
+E	cayendo	VERB	caer
+E	cayera	VERB	caer
+E	ceba	VERB	cebar
+E	cedido	VERB	cedido
+E	cedo	VERB	ceder
+E	centren	VERB	centrar
+E	cerros	NOUN	cerros
+E	chafarrinones	NOUN	chafarrinón
+E	chelines	NOUN	chelín
+E	chino'	ADJ	chino
+E	chirría	VERB	chirriar
+E	chirucas	NOUN	chirucas
+E	choques	NOUN	choque
+E	chupasangres	ADJ	chupasangre
+E	churras	NOUN	churras
+E	cielo	VERB	cielo
+E	cientos	NUM	ciento
+E	ciernen	VERB	cerner
+E	ciernes	NOUN	cierne
+E	cierre	VERB	cerrar
+E	cierren	VERB	cerrar
+E	cierro	VERB	cerrar
+E	cifra	VERB	cifrar
+E	circulara	VERB	circular
+E	ciències	NOUN	ciència
+E	cnn+	PROPN	CNN
+E	cnq-itf	NOUN	CNQ-ITF
+E	co	NOUN	Co
+E	co-promotora	ADJ	co-promotora
+E	co2	NOUN	CO2
+E	cobijo	VERB	cobijo
+E	coches-bomba	NOUN	coche-bomba
+E	cogimos	VERB	coger
+E	coincidiendo	VERB	coincidir
+E	collages	NOUN	collage
+E	comanches	ADJ	comanche
+E	combaten	VERB	combatir
+E	comento	VERB	comentar
+E	comerç	NOUN	Comerç
+E	comido	VERB	comer
+E	comience	VERB	comenzar
+E	comiendo	VERB	comer
+E	comieron	VERB	comer
+E	comimos	VERB	comer
+E	compartan	VERB	compartir
+E	compartiendo	VERB	compartir
+E	compartieron	VERB	compartir
+E	compensen	VERB	compensar
+E	compete	VERB	competer
+E	compitiendo	VERB	competir
+E	compitiesen	VERB	competir
+E	compre	VERB	comprar
+E	comprendan	VERB	comprender
+E	comprendo	VERB	comprender
+E	comunes	NOUN	común
+E	comía	VERB	comer
+E	concibe	VERB	concebir
+E	condensa	VERB	condensar
+E	conducidos	VERB	conducir
+E	confines	NOUN	confín
+E	confundan	VERB	confundir
+E	confundidas	VERB	confundir
+E	confundiendo	VERB	confundir
+E	confundieron	VERB	confundir
+E	conocida	VERB	conocer
+E	conozca	PROPN	conozca
+E	conquiste	VERB	conquistar
+E	consciente	ADV	conscientemente
+E	consellera	NOUN	conseller
+E	conselleries	NOUN	conselleries
+E	consideré	VERB	considerar
+E	consigues	VERB	conseguir
+E	consiguieran	VERB	conseguir
+E	consiguiese	VERB	conseguir
+E	conste	VERB	constar
+E	consten	VERB	constar
+E	constriñe	VERB	constreñir
+E	contemplara	VERB	contemplar
+E	contencioso-administrativa	ADJ	contencioso-administrativa
+E	contorsionaban	VERB	contorsionarse
+E	convenzo	VERB	convencer
+E	converja	VERB	convergir
+E	convives	VERB	convivir
+E	coral	PROPN	coral
+E	corleonesa	ADJ	corleonesa
+E	correcta	PROPN	correcta
+E	corresponda	VERB	corresponder
+E	corrieran	VERB	correr
+E	corrieron	VERB	correr
+E	corrige	VERB	corregir
+E	corrigió	VERB	corregir
+E	corrija	VERB	corregir
+E	corroborados	VERB	corroborar
+E	cosmopolitas	ADJ	cosmopolita
+E	cr	NOUN	Cr
+E	creyera	VERB	creer
+E	cristo	NOUN	Cristo
+E	crió	VERB	criar
+E	cruce	VERB	cruzar
+E	crujía	VERB	crujir
+E	ctc	NOUN	CTC
+E	cualquiera	DET	cualquiera
+E	cubertería	PROPN	cuberterÍa
+E	cubran	VERB	cubrir
+E	cubrían	VERB	cubrir
+E	cuelan	VERB	colar
+E	cuelga	VERB	colgar
+E	cuelgan	VERB	colgar
+E	cuentakilómetros	NOUN	cuentakilómetros
+E	cuento	VERB	contar
+E	cuestas	NOUN	cuestas
+E	cuidan	VERB	cuidar
+E	cuido	VERB	cuidar
+E	cumplía	VERB	cumplir
+E	cuántas	PRON	cuánto
+E	d-a	NOUN	D
+E	da	VERB	dar
+E	daguestaníes	NOUN	daguestaníes
+E	darlin	NOUN	Darlin
+E	das	VERB	dar
+E	daños	PROPN	daños
+E	dbttf	NOUN	DBTTF
+E	dealers	NOUN	dealers
+E	deba	VERB	deber
+E	deban	AUX	deber
+E	debas	AUX	deber
+E	debata	VERB	debatir
+E	debería	VERB	deber
+E	debido	VERB	deber
+E	debieron	AUX	deber
+E	debimos	AUX	deber
+E	debo	AUX	deber
+E	decenas	NUM	decena
+E	decides	VERB	decidir
+E	decidida	VERB	decidir
+E	decidiera	VERB	decidir
+E	decidiese	VERB	decidir
+E	decidí	VERB	decidir
+E	decimos	VERB	decir
+E	declaracion	NOUN	DECLARACION
+E	declaran	VERB	declarar
+E	defenderemos	VERB	defender
+E	defienda	VERB	defender
+E	defiendas	VERB	defender
+E	defiendes	VERB	defender
+E	definen	VERB	definir
+E	definieron	VERB	definir
+E	degraden	VERB	degradar
+E	dejo	VERB	dejar
+E	demasiada	PRON	demasiado
+E	democracias	NOUN	democracia
+E	demolidas	VERB	demoler
+E	demoremos	VERB	demorar
+E	demos	NOUN	demos
+E	demos	VERB	dar
+E	demostrada	VERB	demostrado
+E	den	VERB	dar
+E	desagrade	VERB	desagradar
+E	desagües	NOUN	desagüe
+E	desborda	VERB	desbordar
+E	descarte	VERB	descartar
+E	desconcierta	VERB	desconcertar
+E	descubiertas	VERB	descubrir
+E	desempolva	VERB	desempolvar
+E	desempolvan	VERB	desempolvar
+E	desentendió	VERB	desentenderse
+E	desfiles	NOUN	desfile
+E	desgañita	VERB	desgañitarse
+E	desgracias	NOUN	desgracia
+E	desinhibidas	ADJ	desinhibir
+E	desmintiendo	VERB	desmentir
+E	desnudo	PROPN	desnudo
+E	desobedecían	VERB	desobedecer
+E	desolado	ADJ	desolado
+E	desoyendo	VERB	desoír
+E	despidieran	VERB	despedir
+E	despidieron	VERB	despedir
+E	despiertan	VERB	despertar
+E	despierte	VERB	despertar
+E	despiste	VERB	despistar
+E	despojada	ADJ	despojar
+E	desprestigió	VERB	desprestigiar
+E	desvistió	VERB	desvestir
+E	detenidos-desaparecidos	NOUN	detenidos-desaparecidos
+E	dices	VERB	decir
+E	die	PROPN	die
+E	dieran	VERB	dar
+E	dieron	VERB	dar
+E	difundieron	VERB	difundir
+E	digerido	VERB	digerir
+E	dijese	VERB	decir
+E	dijimos	VERB	decir
+E	dijésemos	VERB	decir
+E	dimitan	VERB	dimitir
+E	dimite	VERB	dimitir
+E	dimos	VERB	dar
+E	dios	NOUN	dios
+E	dirigiera	VERB	dirigir
+E	dirija	VERB	dirigir
+E	diriman	VERB	dirimir
+E	dirá	VERB	decir
+E	dirán	VERB	decir
+E	diré	VERB	decir
+E	diríamos	VERB	decir
+E	dirían	VERB	decir
+E	diríase	VERB	diríase
+E	discrepo	VERB	discrepar
+E	disculpe	VERB	disculpar
+E	disminuído	VERB	disminuído
+E	disolviese	VERB	disolver
+E	dispare	VERB	disparar
+E	distinguió	VERB	distinguir
+E	distraigo	VERB	distraer
+E	divida	VERB	dividir
+E	diviertes	VERB	divertir
+E	divulga	VERB	divulgar
+E	divulguen	VERB	divulgar
+E	dolido	VERB	doler
+E	dollys	NOUN	dollys
+E	dormí	VERB	dormir
+E	dos	DET	dos
+E	duerme	VERB	dormir
+E	duras	NOUN	duras
+E	dvd	NOUN	DVD
+E	economicos	PROPN	economicos
+E	ejerza	VERB	ejercer
+E	ejerzan	VERB	ejercer
+E	eligiera	VERB	elegir
+E	eligieron	VERB	elegir
+E	elija	VERB	elegir
+E	eléctrica	NOUN	eléctrico
+E	embalado	NOUN	embalar
+E	empiece	VERB	empezar
+E	empiecen	VERB	empezar
+E	emús	NOUN	emú
+E	encandilaste	VERB	encandilar
+E	encontré	VERB	encontrar
+E	encuentras	VERB	encontrar
+E	enriquecida	VERB	enriquecer
+E	entero	VERB	enterar
+E	entrevistan	VERB	entrevistar
+E	enzarzan	VERB	enzarzar
+E	eras	AUX	ser
+E	es	NOUN	es
+E	escapadas	NOUN	escapada
+E	escarramanchones	NOUN	escarramanchones
+E	escasa	DET	escaso
+E	escasas	DET	escaso
+E	escayolado	ADJ	escayolado
+E	escenita	NOUN	escena
+E	escogidas	VERB	escoger
+E	escondidas	NOUN	escondidas
+E	escucharán	VERB	escuchar
+E	escucho	VERB	escuchar
+E	eses	NOUN	ese
+E	esperas	NOUN	espera
+E	esperen	VERB	esperar
+E	espesa	ADJ	espeso
+E	espíritu	PROPN	espíritu
+E	estaremos	AUX	estar
+E	estaríamos	AUX	estar
+E	estones	NOUN	estones
+E	estricta	ADV	estrictamente
+E	estudio	VERB	estudiar
+E	estuve	VERB	estar
+E	estuviera	VERB	estar
+E	estuvieron	VERB	estar
+E	estuviese	AUX	estar
+E	estuviesen	AUX	estar
+E	estuvimos	AUX	estar
+E	estáis	AUX	estar
+E	etc	PUNCT	etcétera
+E	euzkadi	NOUN	Euzkadi
+E	euzkos	NOUN	euzkos
+E	evidenció	VERB	evidenciar
+E	evite	VERB	evitar
+E	evolucion	PROPN	evolucion
+E	expensas	NOUN	expensas
+E	expuesta	VERB	exponer
+E	extrajeran	VERB	extraer
+E	extrajeron	VERB	extraer
+E	extremen	VERB	extremar
+E	f-1	PROPN	f-1
+E	f-16	PROPN	f-16
+E	facha	ADJ	facha
+E	falle	VERB	fallir
+E	faltan	PROPN	faltan
+E	fantasma	ADJ	fantasma
+E	farmacias	NOUN	farmacia
+E	fastidies	VERB	fastidiar
+E	fauces	NOUN	fauces
+E	feriado	ADJ	feriado
+E	fichajes	PROPN	fichajes
+E	formentera	PROPN	formentera
+E	fortalecida	VERB	fortalecer
+E	fotomultas	NOUN	fotomultas
+E	fracasen	VERB	fracasar
+E	friendo	VERB	freír
+E	frunce	VERB	fruncir
+E	frívola	ADJ	frívolo
+E	frívolas	ADJ	frívolo
+E	ft-100	PROPN	ft-100
+E	fuera	VERB	ir
+E	fuiste	VERB	ir
+E	funciones	ADJ	funciones
+E	fundidos	VERB	fundir
+E	fundiendo	VERB	fundir
+E	g-3	SYM	g-3
+E	g-8	PROPN	g-8
+E	gallos	NOUN	gallo
+E	ganemos	VERB	ganar
+E	gano	VERB	ganar
+E	garanticen	VERB	garantizar
+E	gas	NOUN	gas
+E	gasten	VERB	gastar
+E	gato	VERB	gato
+E	generen	VERB	generar
+E	genes	NOUN	gen
+E	gigabits	NOUN	gigabits
+E	gmt	NOUN	GMT
+E	gmt	NUM	gmt
+E	goleadora	ADJ	goleadora
+E	grabamos	VERB	grabar
+E	gracias	ADP	gracias_a
+E	grito	VERB	grito
+E	gro	PROPN	Gro
+E	gruesa	ADJ	grueso
+E	gruesas	ADJ	grueso
+E	gruñen	VERB	gruñir
+E	guardacoches	NOUN	guardacoches
+E	guardaespaldas	NOUN	guardaespaldas
+E	guardamuebles	NOUN	guardamuebles
+E	guardo	VERB	guardar
+E	gérmenes	NOUN	germen
+E	ha	VERB	haber
+E	hablemos	VERB	hablar
+E	hablen	VERB	hablar
+E	habrás	AUX	haber
+E	habías	AUX	haber
+E	hacéis	VERB	hacer
+E	halaga	VERB	halagar
+E	han	VERB	han
+E	haríamos	VERB	hacer
+E	harían	VERB	hacer
+E	hayamos	AUX	haber
+E	he	VERB	haber
+E	hembras	ADJ	hembra
+E	hermosísimo	ADJ	hermoso
+E	herpes	NOUN	herpes
+E	heteroátomos	NOUN	heteroátomos
+E	hiciese	VERB	hacer
+E	hiela	VERB	helar
+E	hieren	VERB	herir
+E	honoriscausa	ADJ	honoriscausa
+E	hubo	AUX	haber
+E	hunda	VERB	hundir
+E	hundieron	VERB	hundir
+E	ibex-35	PROPN	ibex-35
+E	ibex-35	SYM	ibex-35
+E	ilesas	ADJ	ileso
+E	iluminati	PROPN	iluminati
+E	ilusiones	PROPN	ilusiones
+E	impido	VERB	impedir
+E	imprimido	VERB	imprimido
+E	impusieran	VERB	imponer
+E	inc	PROPN	inc
+E	incautada	PROPN	incautada
+E	incautaron	VERB	incautarse
+E	incendiado	VERB	incendiar-b2
+E	incentive	VERB	incentivar
+E	incentiven	VERB	incentivar
+E	incontrolado	ADJ	incontrolado
+E	incumbe	VERB	incumbir
+E	indaga	VERB	indagar
+E	indies	ADJ	indie
+E	indulto	PROPN	indulto
+E	indústria	NOUN	Indústria
+E	informe	PROPN	Informe
+E	infrinja	VERB	infringir
+E	infrinjan	VERB	infringir
+E	inmediaciones	NOUN	inmediaciones
+E	inmersión	NOUN	Inmersión
+E	inmunes	ADJ	inmune
+E	innata	ADJ	innato
+E	inscriba	VERB	inscribir
+E	inscriban	VERB	inscribir
+E	insisto	VERB	insistir
+E	insospechada	ADV	insospechadamente
+E	instalen	VERB	instalar
+E	intencion	NOUN	intención
+E	intente	VERB	intentar
+E	interpuesta	VERB	interponer
+E	invento	VERB	inventar
+E	investigamos	VERB	investigar
+E	investiguen	VERB	investigar
+E	invito	VERB	invitar
+E	iones	NOUN	ion
+E	irguiendo	VERB	erguir
+E	irrumpieron	VERB	irrumpir
+E	israelís	NOUN	israelí
+E	ja	X	ja
+E	jacarandás	NOUN	jacarandá
+E	jactan	VERB	jactarse
+E	jospin-chirac:	PROPN	jospin-chirac:
+E	juegas	VERB	jugar
+E	juegues	VERB	jugar
+E	jugáramos	VERB	jugar
+E	juzgue	VERB	juzgar
+E	kg.	NOUN	kg
+E	klagenfurt	PROPN	klagenfurt
+E	km/h	NUM	SP_km/h
+E	kms/h	NUM	SP_km/h
+E	kwai	PROPN	kwai
+E	l'alou	PROPN	Alou
+E	l'espresso	PROPN	Espresso
+E	l'estació	PROPN	l'estació
+E	l'hospitalet	PROPN	Hospitalet
+E	l'informatiu	PROPN	Informatiu
+E	l.	NOUN	L.
+E	lame	VERB	lamer
+E	lanzadora	ADJ	lanzadora
+E	lavavajillas	NOUN	lavavajillas
+E	lea	VERB	leer
+E	leamos	VERB	leer
+E	lean	VERB	leer
+E	legal	ADV	legalmente
+E	les	DET	el
+E	leída	VERB	leer
+E	libre	ADV	libremente
+E	libre	VERB	librar
+E	licenció	VERB	licenciar
+E	lidió	VERB	lidiar
+E	lienzos	NOUN	lienzo
+E	limitadísimo	ADJ	limitado
+E	limiten	VERB	limitar
+E	limpiasuelos	NOUN	limpiasuelos
+E	limítrofes	ADJ	limítrofe
+E	lingüística	ADJ	Lingüística
+E	lisboeta	ADJ	lisboeta
+E	lista	ADJ	listo
+E	listas	ADJ	listo
+E	llegalán	VERB	Llegalán
+E	llegaste	VERB	llegar
+E	llibre	PROPN	llibre
+E	los	PRON	él
+E	luchadora	NOUN	luchador
+E	lucharemos	VERB	luchar
+E	lució	VERB	lucir
+E	m-62	PROPN	m-62
+E	m-9958-tk	SYM	m-9958-tk
+E	m.14:	SYM	.14
+E	m.20	SYM	.20
+E	m.30:	SYM	.30
+E	m.35	SYM	.35
+E	m.46	SYM	.46
+E	m.47:	SYM	.47
+E	m.60	SYM	.60
+E	m.70	SYM	.70
+E	m.74	SYM	.74
+E	m.75	SYM	.75
+E	m.77	SYM	.77
+E	m.78	SYM	.78
+E	m.79	SYM	.79
+E	m.84	SYM	.84
+E	maestra	ADJ	maestro
+E	majors	NOUN	majors
+E	malos	PROPN	malos
+E	mando	VERB	mandar
+E	mangueras	NOUN	manguera
+E	mares	NOUN	mare
+E	maricas	ADJ	marica
+E	mariposa	ADJ	mariposa
+E	masculinos	NOUN	masculinos
+E	materie	PROPN	materie
+E	maya	ADJ	maya
+E	mcdonald's	PROPN	McDonald
+E	media	NUM	medio
+E	megaelecciones	NOUN	megaelecciones
+E	meninas	PROPN	meninas
+E	menos	NOUN	menos
+E	menoscaba	VERB	menoscabar
+E	mentalicemos	VERB	mentalizar
+E	menús	NOUN	menú
+E	merecimos	VERB	merecer
+E	merinas	NOUN	merinas
+E	metrópolis	NOUN	metrópoli
+E	metía	VERB	meter
+E	midieron	VERB	medir
+E	miles	NUM	mil
+E	mira	INTJ	mirar
+E	moda	ADJ	moda
+E	modales	NOUN	modales
+E	molidos	VERB	moler
+E	montamuebles	NOUN	montamuebles
+E	monyos	PROPN	monyos
+E	mossos	NOUN	mossos
+E	motivodel	NOUN	motivo
+E	movelán	VERB	mover
+E	movieran	VERB	mover
+E	muchísimos	PRON	muchísimos
+E	mueran	VERB	morir
+E	mueva	VERB	mover
+E	mueves	VERB	mover
+E	multimedia	ADJ	multimedia
+E	multinaciones	NOUN	multinaciones
+E	muriera	VERB	morir
+E	musha	DET	musha
+E	musulmanas	ADJ	musulmán
+E	muñequeras	NOUN	muñequera
+E	mío	PRON	mío
+E	n-2	PROPN	n-2
+E	n-240	PROPN	n-240
+E	nacionalista-conservadora	ADJ	nacionalista-conservadora
+E	naufraga	VERB	naufragar
+E	necesiten	VERB	necesitar
+E	nefasta	ADJ	nefasto
+E	nefastas	ADJ	nefasto
+E	negoció	VERB	negociar
+E	neoconservadores	NOUN	neoconservadores
+E	neptuno-puerta	PROPN	neptuno-puerta
+E	niego	VERB	negar
+E	niponas	ADJ	nipón
+E	noto	VERB	notar
+E	nómadas	ADJ	nómada
+E	o'globo	PROPN	Globo
+E	obedecía	VERB	obedecer
+E	obligan	VERB	obligar
+E	obscenos	ADJ	obsceno
+E	observamos	VERB	observar
+E	observe	VERB	observar
+E	observo	VERB	observar
+E	ocurriendo	VERB	ocurrir
+E	ofreciese	VERB	ofrecer
+E	oigo	VERB	oír
+E	oir	VERB	oír
+E	okupa	ADJ	okupa
+E	ol	PROPN	ol
+E	olvidan	VERB	olvidar
+E	olvide	VERB	olvidar
+E	olvidemos	VERB	olvidar
+E	olviden	VERB	olvidar
+E	om	NOUN	Om
+E	ong	NOUN	ONG
+E	opusiera	VERB	oponer
+E	ordenanzas	NOUN	ordenanza
+E	organicen	VERB	organizar
+E	os	PRON	tú
+E	oto	PROPN	oto
+E	outs	NOUN	outs
+E	ovnis	NOUN	ovni
+E	oyen	VERB	oír
+E	oyes	VERB	oír
+E	oyó	VERB	oír
+E	oí	VERB	oír
+E	oídas	NOUN	oídas
+E	pacíficas	ADJ	pacífico
+E	padecía	VERB	padecer
+E	paguen	VERB	pagar
+E	papas	NOUN	papas
+E	parcial	ADV	parcialmente
+E	paren	VERB	parir
+E	parodió	VERB	parodiar
+E	partiendo	VERB	partir
+E	partieron	VERB	partir
+E	paseen	VERB	pasear
+E	pases	VERB	pasar
+E	pasquines	NOUN	pasquín
+E	patriota	ADJ	patriota
+E	paulistanos	NOUN	paulistanos
+E	pedazos	NOUN	pedazos
+E	pedíamos	VERB	pedir
+E	penaltis	NOUN	penalti
+E	penetra	VERB	penetrar
+E	peneuvistas	ADJ	peneuvista
+E	peras	NOUN	pera
+E	perdamos	VERB	perder
+E	perdimos	VERB	perder
+E	perfumes	NOUN	perfume
+E	periodico	PROPN	Periódico
+E	permaneceremos	VERB	permanecer
+E	personal	ADV	personalmente
+E	persone	VERB	personarse
+E	piamonteses	NOUN	piamontés
+E	picheo	NOUN	pichear
+E	pidieron	VERB	pedir
+E	pidiese	VERB	pedir
+E	piense	VERB	pensar
+E	pierdan	VERB	perder
+E	pierdes	VERB	perder
+E	pisé	VERB	pisar
+E	pizpireta	ADJ	pizpireta
+E	planteo	VERB	plantear
+E	playoffs	NOUN	playoffs
+E	plazas	PROPN	plazas
+E	pluripotenciales	ADJ	pluripotenciales
+E	poca	ADJ	poca
+E	poca	NOUN	poco
+E	pocas	NOUN	pocas
+E	poli-3-alquiltiofenos	NOUN	poli-3-alquiltiofenos
+E	ponchó	VERB	poncharse
+E	poquito	PRON	poquito
+E	pos	NOUN	pos
+E	poscomunistas	ADJ	poscomunistas
+E	posea	VERB	poseer
+E	poses	NOUN	pose
+E	posgrados	NOUN	posgrados
+E	postrera	ADJ	postrer
+E	powered	PROPN	powered
+E	precandidaturas	NOUN	precandidaturas
+E	precie	VERB	preciarse
+E	precipitan	VERB	precipitar
+E	preció	VERB	preciarse
+E	preconcebidos	ADJ	preconcebir
+E	preferí	VERB	preferir
+E	prejubilaron	VERB	prejubilaron
+E	prejuzguen	VERB	prejuzgar
+E	preocupe	VERB	preocupar
+E	preocupes	VERB	preocupar
+E	presa	ADJ	preso
+E	prescindido	VERB	prescindir
+E	prescindiera	VERB	prescindir
+E	prescindieron	VERB	prescindir
+E	presencia	VERB	presencia
+E	presento	VERB	presentar
+E	preste	VERB	prestir
+E	presten	VERB	prestir
+E	pretendan	VERB	pretender
+E	pretendo	VERB	pretender
+E	primeras	NOUN	primeras
+E	prisionera	ADJ	prisionera
+E	priístas	ADJ	priístas
+E	probemos	VERB	probar
+E	procedan	VERB	proceder
+E	prodiga	VERB	prodigar
+E	produjese	VERB	producir
+E	profamilia	ADJ	profamilia
+E	profundicen	VERB	profundizar
+E	prohibían	VERB	prohibir
+E	prohíba	VERB	prohibir
+E	propias	DET	propio
+E	protegiendo	VERB	proteger
+E	protegió	VERB	proteger
+E	proteja	VERB	proteger
+E	protejan	VERB	proteger
+E	práctica	VERB	práctica
+E	pubis	NOUN	pubis
+E	pude	VERB	poder
+E	puedan	VERB	poder
+E	puedas	VERB	poder
+E	pueden	VERB	poder
+E	puesta	VERB	poner
+E	pupitres	NOUN	pupitre
+E	que	VERB	que
+E	quedas	VERB	quedar
+E	quejica	ADJ	quejica
+E	querrán	VERB	querer
+E	querría	VERB	querer
+E	querríamos	VERB	querer
+E	quiera	AUX	querer
+E	quieres	VERB	querer
+E	quinientas	NUM	quinientos
+E	quise	VERB	querer
+E	quitanieves	ADJ	quitanieves
+E	quiten	VERB	quitar
+E	rabos	PROPN	rabos
+E	ras	NOUN	ras
+E	rascacielos	NOUN	rascacielos
+E	rasputines	NOUN	rasputines
+E	reaviva	VERB	reavivar
+E	rebelo	VERB	rebelar
+E	recauden	VERB	recaudar
+E	rechaces	NOUN	rechace
+E	recibíamos	VERB	recibir
+E	recibías	VERB	recibir
+E	recobren	VERB	recobrar
+E	recogida	VERB	recoger
+E	recogían	VERB	recoger
+E	reconocidas	VERB	reconocer
+E	recorrieron	VERB	recorrer
+E	recuerden	VERB	recordar
+E	recurriendo	VERB	recurrir
+E	recíproca	ADV	recíprocamente
+E	refinadísimos	ADJ	refinado
+E	refrenda	VERB	refrendar
+E	refuerce	VERB	reforzar
+E	regalara	VERB	regalar
+E	regalarías	VERB	regalar
+E	regale	VERB	regalar
+E	regañadientes	NOUN	regañadientes
+E	regionalizables	ADJ	regionalizables
+E	rehúye	VERB	rehuir
+E	reir	VERB	reír
+E	remeden	VERB	remedar
+E	rendido	VERB	rendir
+E	rendí	VERB	rendir
+E	renueva	VERB	renovar
+E	renunciemos	VERB	renunciar
+E	repartiendo	VERB	repartir
+E	repartieron	VERB	repartir
+E	repelieron	VERB	repeler
+E	repitiera	VERB	repetir
+E	repitieron	VERB	repetir
+E	replantee	VERB	replantear
+E	repose	VERB	reposar
+E	represalias	NOUN	represalia
+E	requerido	VERB	requerir
+E	requerían	VERB	requerir
+E	requiera	VERB	requerir
+E	requieren	VERB	requerir
+E	res	NOUN	res
+E	resarce	VERB	resarcir
+E	rescinda	VERB	rescindir
+E	rescinden	VERB	rescindir
+E	resentido	VERB	resentirse
+E	resentir	VERB	resentirse
+E	reses	NOUN	res
+E	residiendo	VERB	residir
+E	residió	VERB	residir
+E	resiente	VERB	resentirse
+E	resienten	VERB	resentirse
+E	resintió	VERB	resentirse
+E	resolvimos	VERB	resolver
+E	respalden	VERB	respaldar
+E	respeten	VERB	respetar
+E	respondan	VERB	responder
+E	restarle	VERB	restar
+E	resueltas	VERB	resolver
+E	reunían	VERB	reunir
+E	revisten	VERB	revestir
+E	revistieron	VERB	revestir
+E	reían	VERB	reír
+E	reúnan	VERB	reunir
+E	riendo	VERB	reír
+E	rige	VERB	regir
+E	rinde	VERB	rendir
+E	rinden	VERB	rendir
+E	rió	VERB	reír
+E	roces	NOUN	roce
+E	rompen	VERB	romper
+E	rompieran	VERB	romper
+E	rotas	VERB	romper
+E	ru	NOUN	Ru
+E	rubioceniza	ADJ	rubioceniza
+E	ruede	VERB	rodar
+E	récords	NOUN	récord
+E	ríen	VERB	reír
+E	s'agaró	PROPN	Agaró
+E	sabrán	VERB	saber
+E	sainsbury`s	PROPN	Sainsbury
+E	saldríamos	VERB	salir
+E	saldrían	VERB	salir
+E	sallent	PROPN	sallent
+E	salvavidas	NOUN	salvavidas
+E	sandwiches	NOUN	sandwiches
+E	sea	VERB	sea
+E	seas	AUX	ser
+E	secas	NOUN	secas
+E	secuestran	VERB	secuestrar
+E	selectivo	PROPN	selectivo
+E	sepa	VERB	saber
+E	sepamos	VERB	saber
+E	servían	VERB	servir
+E	serías	AUX	ser
+E	seu	DET	Seu
+E	seva	DET	Seva
+E	señores	INTJ	señor
+E	siembran	VERB	sembrar
+E	sientes	VERB	sentir
+E	sietemachos	NOUN	sietemachos
+E	siina	PROPN	siina
+E	silba	VERB	silbar
+E	sinfonía	PROPN	sinfonía
+E	sintaxis	NOUN	sintaxis
+E	sintiendo	VERB	sentir
+E	sirviese	VERB	servir
+E	sketches	NOUN	sketch
+E	sobras	NOUN	sobras
+E	sobrepasen	VERB	sobrepasar
+E	solas	ADJ	solo
+E	solemnes	ADJ	solemne
+E	solicite	VERB	solicitar
+E	solidaricen	VERB	solidarizar
+E	solidarizo	VERB	solidarizar
+E	solita	ADJ	solito
+E	sometidos	VERB	someter
+E	sonata	PROPN	sonata
+E	sonreía	VERB	sonreír
+E	sonrieron	VERB	sonreír
+E	sonríe	VERB	sonreír
+E	sp3	NOUN	Sp3
+E	speed	PROPN	speed
+E	spurs	NOUN	spurs
+E	squatters	NOUN	squatters
+E	sub'23	SYM	.23
+E	sub`23	SYM	23
+E	suben	VERB	subir
+E	subía	VERB	subir
+E	sucumben	VERB	sucumbir
+E	sucumbió	VERB	sucumbir
+E	sueltan	VERB	soltar
+E	suelto	VERB	soltar
+E	suena	PROPN	suena
+E	sueña	VERB	soñar
+E	sueñan	VERB	soñar
+E	sufran	VERB	sufrir
+E	sufrían	VERB	sufrir
+E	sugiere	VERB	sugerir
+E	supe	VERB	saber
+E	supergallos	ADJ	supergallos
+E	supieran	VERB	saber
+E	supimos	VERB	saber
+E	suprimida	VERB	suprimir
+E	surte	VERB	surtir
+E	sustituyese	VERB	sustituir
+E	suyas	DET	suyas
+E	suyos	ADJ	él
+E	sé	AUX	ser
+E	sé	PROPN	sé
+E	tablaos	NOUN	tablao
+E	tcnq-ttf	NOUN	TCNQ-TTF
+E	teles	NOUN	tele
+E	telespectadores	NOUN	telespectadores
+E	temiendo	VERB	temer
+E	tengáis	VERB	tener
+E	tenías	VERB	tener
+E	teruel	NOUN	Teruel
+E	teórico-prácticas	ADJ	teórico-prácticas
+E	teórico/práctica	ADJ	práctico
+E	tientas	NOUN	tientas
+E	tilal	VERB	tirar
+E	tmttf	NOUN	TMTTF
+E	tncq	NOUN	TNCQ
+E	tnq	NOUN	TNQ
+E	tocata	PROPN	tocata
+E	toco	VERB	tocar
+E	todogol.com	PROPN	Todogol
+E	todos	NOUN	todos
+E	tomavistas	NOUN	tomavistas
+E	torpes	ADJ	torpe
+E	total	ADV	totalmente
+E	traeremos	VERB	traer
+E	tragan	VERB	tragar
+E	tramita	VERB	tramitar
+E	tras	NOUN	tras
+E	trasladal	VERB	trasladar
+E	traslade	VERB	trasladar
+E	trasvase	VERB	trasvasar
+E	tres	NOUN	tres
+E	tribus	NOUN	tribu
+E	trizas	ADJ	trizas
+E	trotamundos	NOUN	trotamundos
+E	ttf	NOUN	TTF
+E	ttf-tcnq	NOUN	TTF-TCNQ
+E	tu	PROPN	tu
+E	tuaregs	NOUN	tuaregs
+E	tuerce	VERB	torcer
+E	turisme	NOUN	Turisme
+E	turulatas	ADJ	turulato
+E	turístic	PROPN	Turístic
+E	tuviese	VERB	tener
+E	tuviesen	VERB	tener
+E	tv-3	PROPN	tv-3
+E	tve-1	PROPN	tve-1
+E	técnico-financieros	ADJ	técnico-financieros
+E	ultimamente	ADV	últimamente
+E	ultramarinos	NOUN	ultramarinos
+E	una	NUM	uno
+E	una	VERB	unir
+E	up	PROPN	up
+E	urdida	VERB	urdir
+E	utopía	PROPN	utopía
+E	vacaciones	NOUN	vacaciones
+E	vacía	VERB	vaciar
+E	valdecasas	NOUN	valdecasas
+E	valga	VERB	valer
+E	valorado	ADJ	valorado
+E	varió	VERB	variar
+E	varía	VERB	variar
+E	varían	VERB	variar
+E	vas	VERB	ir
+E	vascaínos	NOUN	vascaínos
+E	ve	VERB	ver
+E	veas	VERB	ver
+E	veintiún	NUM	veintiuno
+E	ven	VERB	ver
+E	vencieron	VERB	vencer
+E	vendedora	ADJ	vendedora
+E	vendremos	VERB	venir
+E	vendré	VERB	venir
+E	venezolanas	ADJ	venezolano
+E	vengo	VERB	vengar
+E	veníamos	VERB	venir
+E	veras	NOUN	veras
+E	vertiendo	VERB	verter
+E	vertiera	VERB	verter
+E	vertieron	VERB	verter
+E	vieron	VERB	ver
+E	vierte	VERB	verter
+E	vietnamitas	ADJ	vietnamita
+E	vimos	VERB	ver
+E	vine	VERB	venir
+E	violen	VERB	violar
+E	violencia	PROPN	violencia
+E	vistas	NOUN	vistas
+E	vistieron	VERB	vestir
+E	viva	PROPN	viva
+E	vivales	NOUN	vivales
+E	vivamos	VERB	vivir
+E	vivíamos	VERB	vivir
+E	volvieran	VERB	volver
+E	voten	VERB	votar
+E	vuelacercas	NOUN	vuelacercas
+E	vuelo	VERB	vuelo
+E	vuelvo	VERB	volver
+E	wanderinos	NOUN	wanderinos
+E	yanquis	NOUN	yanqui
+E	zarpara	VERB	zarpar
+E	zozobre	VERB	zozobrar
+E	álbumes	NOUN	álbum
+E	ímpetus	NOUN	ímpetu
+E	índices	NOUN	índice
+E	óperas	NOUN	ópera
+E	úbeda	NOUN	Úbeda

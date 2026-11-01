@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use text_core::{Token, TokenKind};
 
@@ -60,79 +60,52 @@ pub fn lemmatize_tokens(
     LemmatizationResult { language, lemmas }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-/// Variants describing morph feature.
-pub enum MorphFeature {
-    /// The number sing variant.
-    NumberSing,
-    /// The number plur variant.
-    NumberPlur,
-    /// The person1 variant.
-    Person1,
-    /// The person2 variant.
-    Person2,
-    /// The person3 variant.
-    Person3,
-    /// The tense past variant.
-    TensePast,
-    /// The tense pres variant.
-    TensePres,
-    /// The tense fut variant.
-    TenseFut,
-    /// The aspect prog variant.
-    AspectProg,
-    /// The aspect perf variant.
-    AspectPerf,
-    /// The mood imp variant.
-    MoodImp,
-    /// The verb form fin variant.
-    VerbFormFin,
-    /// The verb form inf variant.
-    VerbFormInf,
-    /// The case nom variant.
-    CaseNom,
-    /// The case acc variant.
-    CaseAcc,
-    /// The case dat variant.
-    CaseDat,
-    /// The gender masc variant.
-    GenderMasc,
-    /// The gender fem variant.
-    GenderFem,
-    /// The gender neut variant.
-    GenderNeut,
-    /// The definiteness def variant.
-    DefinitenessDef,
-    /// The definiteness ind variant.
-    DefinitenessInd,
-    /// The polarity neg variant.
-    PolarityNeg,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-/// Data type for morph tag set.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+/// UD morphological features (`FEATS`), keyed by feature name (`Case`, `Number`, ...).
 pub struct MorphTagSet {
-    /// The features value.
-    pub features: BTreeSet<MorphFeature>,
+    /// Feature name to value, e.g. `Number` -> `Sing`.
+    pub features: BTreeMap<String, String>,
 }
 
 impl MorphTagSet {
-    /// Creates a new value.
+    /// Creates an empty feature set.
     pub fn new() -> Self {
-        Self {
-            features: BTreeSet::new(),
+        Self::default()
+    }
+
+    /// Sets feature `name` to `value`.
+    pub fn insert(&mut self, name: impl Into<String>, value: impl Into<String>) {
+        self.features.insert(name.into(), value.into());
+    }
+
+    /// The value of feature `name`.
+    pub fn get(&self, name: &str) -> Option<&str> {
+        self.features.get(name).map(String::as_str)
+    }
+
+    /// Whether feature `name` has `value`.
+    pub fn has(&self, name: &str, value: &str) -> bool {
+        self.get(name) == Some(value)
+    }
+
+    /// Whether no feature is set.
+    pub fn is_empty(&self) -> bool {
+        self.features.is_empty()
+    }
+
+    /// CoNLL-U `FEATS` notation (`Case=Nom|Number=Sing`, `_` when empty), with
+    /// features in UD's case-insensitive alphabetical order (`Number` before `NumType`).
+    pub fn to_ud_string(&self) -> String {
+        if self.features.is_empty() {
+            return "_".to_string();
         }
-    }
-
-    /// Returns insert.
-    pub fn insert(&mut self, feature: MorphFeature) {
-        self.features.insert(feature);
-    }
-}
-
-impl Default for MorphTagSet {
-    fn default() -> Self {
-        Self::new()
+        let mut features = self.features.iter().collect::<Vec<_>>();
+        features.sort_by_key(|(name, _)| name.to_lowercase());
+        features
+            .into_iter()
+            .map(|(name, value)| format!("{name}={value}"))
+            .collect::<Vec<_>>()
+            .join("|")
     }
 }
 
@@ -186,6 +159,57 @@ pub enum PosTag {
     Verb,
     /// The x variant.
     X,
+}
+
+impl PosTag {
+    /// Every UPOS tag.
+    pub const ALL: &'static [Self] = &[
+        Self::Adj,
+        Self::Adp,
+        Self::Adv,
+        Self::Aux,
+        Self::Cconj,
+        Self::Det,
+        Self::Intj,
+        Self::Noun,
+        Self::Num,
+        Self::Part,
+        Self::Pron,
+        Self::Propn,
+        Self::Punct,
+        Self::Sconj,
+        Self::Sym,
+        Self::Verb,
+        Self::X,
+    ];
+
+    /// The Universal Dependencies UPOS label (`NOUN`, `PROPN`, ...).
+    pub fn as_ud(self) -> &'static str {
+        match self {
+            Self::Adj => "ADJ",
+            Self::Adp => "ADP",
+            Self::Adv => "ADV",
+            Self::Aux => "AUX",
+            Self::Cconj => "CCONJ",
+            Self::Det => "DET",
+            Self::Intj => "INTJ",
+            Self::Noun => "NOUN",
+            Self::Num => "NUM",
+            Self::Part => "PART",
+            Self::Pron => "PRON",
+            Self::Propn => "PROPN",
+            Self::Punct => "PUNCT",
+            Self::Sconj => "SCONJ",
+            Self::Sym => "SYM",
+            Self::Verb => "VERB",
+            Self::X => "X",
+        }
+    }
+
+    /// Parses a UD UPOS label.
+    pub fn from_ud(label: &str) -> Option<Self> {
+        Self::ALL.iter().copied().find(|tag| tag.as_ud() == label)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -249,68 +273,68 @@ pub fn annotate_morphology(
             match pos_tag {
                 PosTag::Pron => {
                     if ["i", "me", "my", "we", "us", "our"].contains(&normalized) {
-                        tags.insert(MorphFeature::Person1);
+                        tags.insert("Person", "1");
                     } else if ["you", "your"].contains(&normalized) {
-                        tags.insert(MorphFeature::Person2);
+                        tags.insert("Person", "2");
                     } else {
-                        tags.insert(MorphFeature::Person3);
+                        tags.insert("Person", "3");
                     }
                     if ["they", "them", "their", "we", "us", "our"].contains(&normalized) {
-                        tags.insert(MorphFeature::NumberPlur);
+                        tags.insert("Number", "Plur");
                     } else {
-                        tags.insert(MorphFeature::NumberSing);
+                        tags.insert("Number", "Sing");
                     }
                     if ["he", "him", "his"].contains(&normalized) {
-                        tags.insert(MorphFeature::GenderMasc);
+                        tags.insert("Gender", "Masc");
                     }
                     if ["she", "her", "hers"].contains(&normalized) {
-                        tags.insert(MorphFeature::GenderFem);
+                        tags.insert("Gender", "Fem");
                     }
                     if ["it", "its"].contains(&normalized) {
-                        tags.insert(MorphFeature::GenderNeut);
+                        tags.insert("Gender", "Neut");
                     }
-                    tags.insert(MorphFeature::CaseNom);
+                    tags.insert("Case", "Nom");
                 }
                 PosTag::Det => {
                     if ["the", "this", "that", "these", "those"].contains(&normalized) {
-                        tags.insert(MorphFeature::DefinitenessDef);
+                        tags.insert("Definite", "Def");
                     } else {
-                        tags.insert(MorphFeature::DefinitenessInd);
+                        tags.insert("Definite", "Ind");
                     }
                 }
                 PosTag::Noun | PosTag::Propn => {
                     if normalized.ends_with('s') && !normalized.ends_with("ss") {
-                        tags.insert(MorphFeature::NumberPlur);
+                        tags.insert("Number", "Plur");
                     } else {
-                        tags.insert(MorphFeature::NumberSing);
+                        tags.insert("Number", "Sing");
                     }
                 }
                 PosTag::Verb | PosTag::Aux => {
                     if normalized.ends_with("ed")
                         || ["was", "were", "did", "had"].contains(&normalized)
                     {
-                        tags.insert(MorphFeature::TensePast);
+                        tags.insert("Tense", "Past");
                     } else if normalized == "will" || normalized == "shall" {
-                        tags.insert(MorphFeature::TenseFut);
+                        tags.insert("Tense", "Fut");
                     } else {
-                        tags.insert(MorphFeature::TensePres);
+                        tags.insert("Tense", "Pres");
                     }
                     if normalized.ends_with("ing") {
-                        tags.insert(MorphFeature::AspectProg);
+                        tags.insert("Aspect", "Prog");
                     }
                     if ["have", "has", "had"].contains(&normalized) {
-                        tags.insert(MorphFeature::AspectPerf);
+                        tags.insert("Aspect", "Perf");
                     }
                     if normalized == "to" {
-                        tags.insert(MorphFeature::VerbFormInf);
+                        tags.insert("VerbForm", "Inf");
                     } else {
-                        tags.insert(MorphFeature::VerbFormFin);
+                        tags.insert("VerbForm", "Fin");
                     }
                 }
                 _ => {}
             }
             if ["not", "never", "no"].contains(&normalized) {
-                tags.insert(MorphFeature::PolarityNeg);
+                tags.insert("Polarity", "Neg");
             }
             MorphAnnotation {
                 token_index: index,
