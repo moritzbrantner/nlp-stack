@@ -1,0 +1,2088 @@
+# UD lemma table for `en`, built by scripts/build_ud_lemma_tables.py
+# Derived from the training split of UD_English-EWT r2.17 (CC BY-SA 4.0).
+C	PROPN
+K	NUM
+K	PROPN
+K	PUNCT
+K	SYM
+K	X
+R	ADJ		0	
+R	ADJ	ager	0	
+R	ADJ	anest	3	
+R	ADJ	aper	2	
+R	ADJ	armer	2	
+R	ADJ	ater	2	
+R	ADJ	atter	0	
+R	ADJ	cer	1	
+R	ADJ	cest	2	
+R	ADJ	dating	7	modating
+R	ADJ	der	2	
+R	ADJ	dest	3	
+R	ADJ	eatest	3	
+R	ADJ	erse	0	
+R	ADJ	est	4	good
+R	ADJ	fer	1	
+R	ADJ	fore	0	mentioned
+R	ADJ	ger	1	
+R	ADJ	gest	2	
+R	ADJ	gger	3	
+R	ADJ	ggest	4	
+R	ADJ	gher	2	
+R	ADJ	hest	3	
+R	ADJ	hter	2	
+R	ADJ	ider	1	
+R	ADJ	ier	3	y
+R	ADJ	iest	4	y
+R	ADJ	inest	2	
+R	ADJ	ker	2	
+R	ADJ	kest	3	
+R	ADJ	lant	3	ent
+R	ADJ	later	1	
+R	ADJ	ler	2	
+R	ADJ	lest	3	
+R	ADJ	nest	0	
+R	ADJ	nger	2	
+R	ADJ	ngest	3	
+R	ADJ	orst	5	bad
+R	ADJ	over	0	priced
+R	ADJ	owest	3	
+R	ADJ	pest	3	
+R	ADJ	rer	2	
+R	ADJ	rest	3	
+R	ADJ	rse	5	bad
+R	ADJ	rter	0	
+R	ADJ	ser	1	
+R	ADJ	ster	2	
+R	ADJ	ter	6	good
+R	ADJ	test	2	
+R	ADJ	uter	0	
+R	ADJ	wer	2	
+R	ADJ	west	0	
+R	ADP		0	
+R	ADP	and	3	on
+R	ADP	fo	2	of
+R	ADP	he	1	an
+R	ADP	hen	2	an
+R	ADP	ta	2	of
+R	ADP	u	1	ough
+R	ADP	vs	1	ersus
+R	ADV		0	
+R	ADV	.a	0	.
+R	ADV	aly	1	ly
+R	ADV	an	2	en
+R	ADV	em	1	n
+R	ADV	est	4	well
+R	ADV	every	1	
+R	ADV	fter	0	
+R	ADV	ger	2	
+R	ADV	gher	2	
+R	ADV	ie	1	.e.
+R	ADV	ier	3	y
+R	ADV	inately	5	itely
+R	ADV	ir	2	re
+R	ADV	ka	2	.k.a.
+R	ADV	letly	2	ely
+R	ADV	ner	2	
+R	ADV	orst	5	bad
+R	ADV	rse	5	badly
+R	ADV	ruely	3	ly
+R	ADV	ser	1	
+R	ADV	ster	2	
+R	ADV	ter	1	
+R	ADV	to	0	o
+R	ADV	tter	6	well
+R	ADV	were	3	here
+R	ADV	west	0	
+R	AUX		0	
+R	AUX	'd	2	would
+R	AUX	'll	3	will
+R	AUX	've	3	have
+R	AUX	a	0	n
+R	AUX	ad	1	ve
+R	AUX	ar	2	be
+R	AUX	as	3	be
+R	AUX	en	2	
+R	AUX	ere	4	be
+R	AUX	es	2	
+R	AUX	f	2	have
+R	AUX	g	3	
+R	AUX	has	1	ve
+R	AUX	here	5	be
+R	AUX	i	2	be
+R	AUX	id	2	o
+R	AUX	lt	1	l
+R	AUX	m	2	be
+R	AUX	ot	2	et
+R	AUX	r	1	be
+R	AUX	re	3	be
+R	AUX	s	2	be
+R	AUX	ting	4	
+R	AUX	ts	1	
+R	AUX	ud	1	ld
+R	AUX	ving	3	e
+R	AUX	wo	1	ill
+R	CCONJ		0	
+R	CCONJ	n	0	d
+R	DET		0	
+R	DET	d	2	
+R	DET	eh	2	he
+R	DET	n	1	
+R	DET	ose	3	at
+R	DET	se	3	is
+R	INTJ		0	
+R	INTJ	mmm	1	
+R	INTJ	mmmm	4	
+R	INTJ	ummmm	3	
+R	NOUN		0	
+R	NOUN	's	2	
+R	NOUN	.m	0	.
+R	NOUN	0's	2	s
+R	NOUN	0s	0	
+R	NOUN	aids	0	
+R	NOUN	amid	0	
+R	NOUN	aos	0	
+R	NOUN	arters	0	
+R	NOUN	banks	1	
+R	NOUN	buses	2	
+R	NOUN	cies	0	
+R	NOUN	com	0	-notebook.url
+R	NOUN	ctics	1	
+R	NOUN	derwear	0	
+R	NOUN	dgies	1	
+R	NOUN	dis	1	
+R	NOUN	eans	0	
+R	NOUN	edings	0	
+R	NOUN	eeves	1	
+R	NOUN	epm	0	
+R	NOUN	eras	1	
+R	NOUN	eth	4	ooth
+R	NOUN	eves	3	f
+R	NOUN	feet	3	oot
+R	NOUN	fics	0	
+R	NOUN	fps	0	
+R	NOUN	gards	0	
+R	NOUN	gas	0	
+R	NOUN	glasses	0	
+R	NOUN	goods	0	
+R	NOUN	hes	2	
+R	NOUN	icies	3	y
+R	NOUN	ies	3	y
+R	NOUN	inks	1	
+R	NOUN	is	0	
+R	NOUN	iseries	3	y
+R	NOUN	iteria	1	on
+R	NOUN	lages	4	ege
+R	NOUN	lens	0	
+R	NOUN	lias	0	
+R	NOUN	likes	0	
+R	NOUN	lives	3	fe
+R	NOUN	lves	3	f
+R	NOUN	mains	0	
+R	NOUN	manners	0	
+R	NOUN	men	2	an
+R	NOUN	mice	3	ouse
+R	NOUN	mics	0	
+R	NOUN	mid	0	day
+R	NOUN	min	0	ute
+R	NOUN	mins	1	ute
+R	NOUN	nages	5	ange
+R	NOUN	nances	0	
+R	NOUN	ncies	3	y
+R	NOUN	news	0	
+R	NOUN	nitals	0	
+R	NOUN	nkies	1	
+R	NOUN	nks	0	
+R	NOUN	nx	1	k
+R	NOUN	okies	1	
+R	NOUN	onies	3	ey
+R	NOUN	oops	0	
+R	NOUN	otics	1	
+R	NOUN	outs	0	
+R	NOUN	pl	2	eople
+R	NOUN	plies	0	
+R	NOUN	pm	1	.m.
+R	NOUN	ps.	2	.
+R	NOUN	ras	0	
+R	NOUN	ren	3	
+R	NOUN	rols	0	
+R	NOUN	rounds	0	
+R	NOUN	rpes	0	
+R	NOUN	rps	0	
+R	NOUN	rwear	3	are
+R	NOUN	s	1	
+R	NOUN	series	0	
+R	NOUN	shanks	1	
+R	NOUN	ss	0	
+R	NOUN	sses	2	
+R	NOUN	suv	0	
+R	NOUN	tabs	0	
+R	NOUN	tanks	1	
+R	NOUN	tarters	1	
+R	NOUN	tc	0	.
+R	NOUN	tcies	3	y
+R	NOUN	tds	0	
+R	NOUN	tents	0	
+R	NOUN	thes	0	
+R	NOUN	tics	0	
+R	NOUN	tks	0	
+R	NOUN	turant	5	aurant
+R	NOUN	umers	0	
+R	NOUN	undings	0	
+R	NOUN	us	0	
+R	NOUN	uv	2	ove
+R	NOUN	v.	3	v
+R	NOUN	vies	1	
+R	NOUN	vings	0	
+R	NOUN	wives	3	fe
+R	NOUN	xes	2	
+R	NOUN	xls	0	
+R	NOUN	yr	1	ear
+R	NOUN	yses	2	is
+R	NUM		0	
+R	NUM	,000	4	000
+R	NUM	,008	4	008
+R	NUM	,200	4	200
+R	NUM	,500	4	500
+R	NUM	,600	4	600
+R	NUM	,700	4	700
+R	NUM	.61	7	202.61
+R	NUM	000,000	12	000000000
+R	NUM	000.00	7	000.00
+R	NUM	b	0	illion
+R	NUM	bn	1	illion
+R	NUM	k	1	thousand
+R	NUM	m	0	illion
+R	NUM	mm	0	
+R	PART		0	
+R	PART	'	0	s
+R	PART	't	2	ot
+R	PART	a	2	to
+R	PART	nt	1	ot
+R	PART	oo	1	
+R	PART	ta	1	o
+R	PART	’	1	's
+R	PART	’s	2	's
+R	PART	’t	2	ot
+R	PRON		0	
+R	PRON	's	2	we
+R	PRON	er	3	she
+R	PRON	ese	3	is
+R	PRON	im	2	e
+R	PRON	ine	3	y
+R	PRON	m	1	y
+R	PRON	me	2	i
+R	PRON	om	0	
+R	PRON	oone	3	-one
+R	PRON	rs	1	
+R	PRON	se	3	at
+R	PRON	t's	2	s
+R	PRON	the	0	y
+R	PRON	us	2	we
+R	PRON	ut	1	r
+R	PRON	ver	0	
+R	PRON	whose	0	
+R	PRON	yo	0	ur
+R	PROPN		0	
+R	PROPN	$	1	s
+R	PROPN	's	2	
+R	PROPN	abs	1	
+R	PROPN	ails	0	
+R	PROPN	als	1	
+R	PROPN	ams	0	
+R	PROPN	an.	1	uary
+R	PROPN	anis	1	
+R	PROPN	apr	0	il
+R	PROPN	arts	1	
+R	PROPN	at.	1	urday
+R	PROPN	ays	0	
+R	PROPN	billy	0	dorsey@enron_development
+R	PROPN	ces	1	
+R	PROPN	ches	2	
+R	PROPN	ct.	1	ober
+R	PROPN	days	1	
+R	PROPN	ders	0	
+R	PROPN	dis	1	
+R	PROPN	ds	1	
+R	PROPN	eans	0	
+R	PROPN	ears	0	
+R	PROPN	eas	1	
+R	PROPN	eb.	1	ruary
+R	PROPN	ec.	1	ember
+R	PROPN	ed.	1	nesday
+R	PROPN	efs	1	
+R	PROPN	elis	1	
+R	PROPN	ens	0	
+R	PROPN	ept	0	ember
+R	PROPN	ews	1	
+R	PROPN	feb	0	ruary
+R	PROPN	fri	0	day
+R	PROPN	gates	0	
+R	PROPN	ges	1	
+R	PROPN	gov.	0	
+R	PROPN	i.	1	day
+R	PROPN	iations	0	
+R	PROPN	icas	1	
+R	PROPN	ies	3	y
+R	PROPN	igs	1	
+R	PROPN	ils	1	
+R	PROPN	ings	1	
+R	PROPN	ins	0	
+R	PROPN	irs	0	
+R	PROPN	jan	0	uary
+R	PROPN	jorge	0	agarcia@enron
+R	PROPN	kers	0	
+R	PROPN	lara	0	leibman@enroncommunications
+R	PROPN	lates	0	
+R	PROPN	lds	0	
+R	PROPN	lics	1	
+R	PROPN	lies	0	
+R	PROPN	mars	0	
+R	PROPN	ms	1	
+R	PROPN	nbondad	6	-bondad
+R	PROPN	ners	0	
+R	PROPN	news	0	
+R	PROPN	nines	4	nines
+R	PROPN	nov	0	ember
+R	PROPN	ns	1	
+R	PROPN	oct	0	ober
+R	PROPN	ods	0	
+R	PROPN	ogers	0	
+R	PROPN	oline	0	abramo@enron
+R	PROPN	on.	1	day
+R	PROPN	orie	0	leigh@ect
+R	PROPN	orts	1	
+R	PROPN	ov.	1	ember
+R	PROPN	pt.	1	ember
+R	PROPN	puters	1	
+R	PROPN	qis	1	
+R	PROPN	r's	2	s
+R	PROPN	rds	0	
+R	PROPN	ries	0	
+R	PROPN	rines	1	
+R	PROPN	rlands	0	
+R	PROPN	rlos	0	alatorre@enron
+R	PROPN	rs	1	
+R	PROPN	rts	0	
+R	PROPN	sces	0	
+R	PROPN	sim	0	hkhan@transredes
+R	PROPN	sters	1	
+R	PROPN	tems	0	
+R	PROPN	ters	0	
+R	PROPN	tes	1	
+R	PROPN	tones	1	
+R	PROPN	tos	1	
+R	PROPN	ts	1	
+R	PROPN	tworks	1	
+R	PROPN	uards	1	
+R	PROPN	un.	1	day
+R	PROPN	unnis	1	
+R	PROPN	ur.	1	sday
+R	PROPN	urds	1	
+R	PROPN	vels	1	
+R	PROPN	wna	0	johnson@enron
+R	PROPN	ys	1	
+R	PROPN	ysa	0	akin@ect
+R	PROPN	znov	0	
+R	PUNCT		0	
+R	PUNCT	–	1	-
+R	PUNCT	—	1	-
+R	PUNCT	‘	1	'
+R	PUNCT	’	2	''
+R	PUNCT	“	1	"
+R	PUNCT	”	1	"
+R	PUNCT	…	1	.
+R	PUNCT	….	2	..
+R	SCONJ		0	
+R	SCONJ	cuse	3	ause
+R	SCONJ	en	2	an
+R	SCONJ	wether	5	hether
+R	SYM		0	
+R	SYM	@	1	at
+R	VERB		0	
+R	VERB	's	2	be
+R	VERB	.	2	ive
+R	VERB	ad	1	ve
+R	VERB	aft	0	
+R	VERB	ag	0	
+R	VERB	aired	2	
+R	VERB	aked	1	
+R	VERB	aking	3	e
+R	VERB	alt	1	
+R	VERB	ame	3	ome
+R	VERB	amed	1	
+R	VERB	ang	0	
+R	VERB	aped	1	
+R	VERB	aping	3	e
+R	VERB	ard	1	
+R	VERB	are	3	be
+R	VERB	ared	1	
+R	VERB	as	1	ve
+R	VERB	asted	1	
+R	VERB	ated	1	
+R	VERB	aten	2	
+R	VERB	ating	3	e
+R	VERB	aught	4	tch
+R	VERB	auled	2	
+R	VERB	auling	3	
+R	VERB	aw	2	ee
+R	VERB	bbed	3	
+R	VERB	bbing	4	
+R	VERB	bed	1	
+R	VERB	been	2	
+R	VERB	bid	0	
+R	VERB	bined	1	
+R	VERB	bing	3	e
+R	VERB	biting	3	e
+R	VERB	bled	1	
+R	VERB	blew	2	ow
+R	VERB	bling	3	e
+R	VERB	bought	5	uy
+R	VERB	bred	1	ed
+R	VERB	breed	0	
+R	VERB	bring	0	
+R	VERB	care	0	
+R	VERB	caring	3	e
+R	VERB	ccused	1	
+R	VERB	ced	1	
+R	VERB	ceded	1	
+R	VERB	cept	0	
+R	VERB	cieve	4	eive
+R	VERB	cieved	5	eive
+R	VERB	ciled	1	
+R	VERB	cing	3	e
+R	VERB	cited	1	
+R	VERB	citing	3	e
+R	VERB	cling	3	e
+R	VERB	cost	0	
+R	VERB	created	1	
+R	VERB	cused	2	
+R	VERB	cusing	3	
+R	VERB	d	2	
+R	VERB	dd	0	
+R	VERB	de	2	ke
+R	VERB	den	3	e
+R	VERB	dhering	3	e
+R	VERB	did	2	o
+R	VERB	died	1	
+R	VERB	dies	1	
+R	VERB	dined	1	
+R	VERB	dining	3	e
+R	VERB	dited	1	
+R	VERB	dled	1	
+R	VERB	dling	3	e
+R	VERB	drew	2	aw
+R	VERB	drove	3	ive
+R	VERB	ead	0	
+R	VERB	eaking	3	
+R	VERB	eamed	2	
+R	VERB	eaming	3	
+R	VERB	eant	1	
+R	VERB	eared	2	
+R	VERB	eated	2	
+R	VERB	eating	3	
+R	VERB	edded	3	
+R	VERB	eed	0	
+R	VERB	eg	0	
+R	VERB	eld	3	old
+R	VERB	elled	3	
+R	VERB	en	1	
+R	VERB	ent	1	d
+R	VERB	erd	1	
+R	VERB	ere	4	be
+R	VERB	esent	0	
+R	VERB	ew	2	ow
+R	VERB	fell	3	all
+R	VERB	fere	0	
+R	VERB	filed	1	
+R	VERB	fined	1	
+R	VERB	fining	3	e
+R	VERB	fled	1	
+R	VERB	flown	3	y
+R	VERB	fold	0	
+R	VERB	ft	2	ave
+R	VERB	g	3	
+R	VERB	gan	2	in
+R	VERB	gard	0	
+R	VERB	gave	3	ive
+R	VERB	ged	1	
+R	VERB	gged	3	
+R	VERB	gging	4	
+R	VERB	gined	1	
+R	VERB	ging	3	e
+R	VERB	gled	1	
+R	VERB	gling	3	e
+R	VERB	gon	1	
+R	VERB	gun	2	in
+R	VERB	hare	0	
+R	VERB	haring	3	e
+R	VERB	hen	0	
+R	VERB	hes	2	
+R	VERB	hew	0	
+R	VERB	hold	0	
+R	VERB	honed	1	
+R	VERB	hoped	1	
+R	VERB	hoping	3	e
+R	VERB	hose	2	ose
+R	VERB	host	0	
+R	VERB	hot	1	ot
+R	VERB	ht	5	ink
+R	VERB	id	2	y
+R	VERB	idding	4	
+R	VERB	ide	0	
+R	VERB	ided	1	
+R	VERB	iding	3	e
+R	VERB	ied	3	y
+R	VERB	ield	0	
+R	VERB	ier	3	e
+R	VERB	ies	3	y
+R	VERB	iew	0	
+R	VERB	ift	0	
+R	VERB	ight	0	
+R	VERB	iked	1	
+R	VERB	iking	3	e
+R	VERB	ild	0	
+R	VERB	ilt	1	d
+R	VERB	iming	3	
+R	VERB	ine	0	
+R	VERB	inging	3	
+R	VERB	ired	1	
+R	VERB	iring	3	e
+R	VERB	is	2	be
+R	VERB	itored	2	
+R	VERB	joking	3	e
+R	VERB	kling	3	e
+R	VERB	lame	0	
+R	VERB	laring	3	e
+R	VERB	lasted	2	
+R	VERB	ld	3	ell
+R	VERB	len	2	
+R	VERB	leted	1	
+R	VERB	leting	3	e
+R	VERB	lew	2	y
+R	VERB	lfilled	3	
+R	VERB	lined	1	
+R	VERB	loose	3	se
+R	VERB	lped	2	
+R	VERB	lt	2	el
+R	VERB	mbed	2	
+R	VERB	mbing	3	
+R	VERB	melt	0	
+R	VERB	ment	0	
+R	VERB	met	1	et
+R	VERB	mined	1	
+R	VERB	ming	3	e
+R	VERB	mining	3	e
+R	VERB	mmed	3	
+R	VERB	mming	4	
+R	VERB	moke	0	
+R	VERB	moting	3	e
+R	VERB	mped	2	
+R	VERB	mpt	0	
+R	VERB	name	0	
+R	VERB	nd	0	
+R	VERB	ne	2	
+R	VERB	nned	3	
+R	VERB	nning	4	
+R	VERB	noring	3	e
+R	VERB	oad	0	
+R	VERB	oard	0	
+R	VERB	oating	3	
+R	VERB	ocuses	2	
+R	VERB	od	3	and
+R	VERB	ode	0	
+R	VERB	oes	2	
+R	VERB	og	0	
+R	VERB	oid	0	
+R	VERB	oided	2	
+R	VERB	oiding	3	
+R	VERB	oke	3	eak
+R	VERB	oken	4	eak
+R	VERB	olen	4	eal
+R	VERB	omed	1	
+R	VERB	omend	6	ommend
+R	VERB	ong	0	
+R	VERB	onged	2	
+R	VERB	onging	3	
+R	VERB	ooming	3	
+R	VERB	oot	0	
+R	VERB	oped	2	
+R	VERB	opt	0	
+R	VERB	ored	1	
+R	VERB	orn	3	ear
+R	VERB	ost	1	e
+R	VERB	ot	2	et
+R	VERB	oted	1	
+R	VERB	otten	5	et
+R	VERB	oured	2	
+R	VERB	ouring	3	
+R	VERB	outing	3	
+R	VERB	pare	0	
+R	VERB	paring	3	e
+R	VERB	pawn	0	
+R	VERB	ped	3	
+R	VERB	pelling	4	
+R	VERB	pen	0	
+R	VERB	peting	3	e
+R	VERB	pled	1	
+R	VERB	pone	0	
+R	VERB	post	0	
+R	VERB	pot	0	
+R	VERB	pping	4	
+R	VERB	pt	2	ep
+R	VERB	rade	0	
+R	VERB	rading	3	e
+R	VERB	raid	0	
+R	VERB	ran	2	un
+R	VERB	rang	3	ing
+R	VERB	raw	0	
+R	VERB	rbing	3	
+R	VERB	rd	0	
+R	VERB	reating	3	e
+R	VERB	reed	1	
+R	VERB	rent	0	
+R	VERB	riting	3	e
+R	VERB	rming	3	
+R	VERB	rnt	1	
+R	VERB	rose	3	ise
+R	VERB	rot	0	
+R	VERB	rote	3	ite
+R	VERB	rought	5	ing
+R	VERB	rred	3	
+R	VERB	rring	4	
+R	VERB	ruck	3	ike
+R	VERB	s	1	
+R	VERB	sat	2	it
+R	VERB	sed	1	
+R	VERB	sen	3	ose
+R	VERB	sing	3	e
+R	VERB	sored	2	
+R	VERB	sought	5	eek
+R	VERB	sound	0	
+R	VERB	ss	0	
+R	VERB	ssed	2	
+R	VERB	sses	2	
+R	VERB	ssing	3	
+R	VERB	tame	0	
+R	VERB	taught	5	each
+R	VERB	teed	1	
+R	VERB	ten	0	
+R	VERB	thing	3	e
+R	VERB	tied	1	
+R	VERB	tled	1	
+R	VERB	tling	3	e
+R	VERB	took	3	ake
+R	VERB	toring	3	e
+R	VERB	trolled	3	
+R	VERB	tted	3	
+R	VERB	tten	3	e
+R	VERB	tting	4	
+R	VERB	tuck	3	ick
+R	VERB	ud	0	
+R	VERB	ude	0	
+R	VERB	uded	1	
+R	VERB	udied	3	y
+R	VERB	uding	3	e
+R	VERB	ued	1	
+R	VERB	uent	0	
+R	VERB	uing	3	e
+R	VERB	uled	1	
+R	VERB	uling	3	e
+R	VERB	ult	0	
+R	VERB	umed	1	
+R	VERB	und	4	ind
+R	VERB	ung	3	ang
+R	VERB	unk	3	ink
+R	VERB	uoting	3	e
+R	VERB	upt	0	
+R	VERB	ured	1	
+R	VERB	uring	3	e
+R	VERB	us	0	
+R	VERB	uted	1	
+R	VERB	uting	3	e
+R	VERB	v	0	e
+R	VERB	ved	1	
+R	VERB	velling	4	
+R	VERB	vent	0	
+R	VERB	ving	3	e
+R	VERB	vited	1	
+R	VERB	viting	3	e
+R	VERB	voke	0	
+R	VERB	voked	1	
+R	VERB	wan	0	t
+R	VERB	ward	0	
+R	VERB	ware	0	
+R	VERB	was	3	be
+R	VERB	went	4	go
+R	VERB	wn	1	
+R	VERB	won	2	in
+R	VERB	xcepted	4	rpt
+R	VERB	yelled	2	
+R	VERB	zed	1	
+R	VERB	zen	4	eeze
+R	VERB	zing	3	e
+R	VERB	’s	2	be
+R	X		0	
+E	$ervice	NOUN	service
+E	$ome	DET	some
+E	$ometime$	ADV	sometimes
+E	',	AUX	be
+E	'em	PRON	they
+E	'n	CCONJ	and
+E	*ss	NOUN	ass
+E	-2-f.doc	X	-2-f.doc
+E	-ect-kedne	X	-ect-kedne
+E	-final.doc	X	-final.doc
+E	-ll	AUX	will
+E	-s	PART	's
+E	-stip	X	-stip
+E	0nside	ADJ	inside
+E	1,000	NUM	1000
+E	1,183	NUM	1183
+E	1,200	NUM	1200
+E	1,350	NUM	1350
+E	1,613	NUM	1613
+E	1,650,000	NUM	1650000
+E	1,700	NUM	1700
+E	1,922,000	NUM	1922000
+E	10,000	NUM	10000
+E	10,000.00	NUM	10000.00
+E	100,000	NUM	100000
+E	100,000,000,000	NUM	100000000000
+E	1002`s	NOUN	1002
+E	120,000	NUM	120000
+E	14,000	NUM	14000
+E	15,000	NUM	15000
+E	150,000	NUM	150000
+E	16,000,000,000	NUM	16000000000
+E	16,900	NUM	16900
+E	1?!?!?	PUNCT	?!?!?
+E	1s9	NOUN	1S9
+E	2	PART	to
+E	2,000	NUM	2000
+E	2,210	NUM	2210
+E	2,500	NUM	2500
+E	20,000	NUM	20000
+E	20,000,000	NUM	20000000
+E	200,000	NUM	200000
+E	200,000,000,000	NUM	200000000000
+E	200,987.33	NUM	200987.33
+E	21,000	NUM	21000
+E	21,600	NUM	21600
+E	215,000	NUM	215000
+E	22,600	NUM	22600
+E	23,000	NUM	23000
+E	24,000	NUM	24000
+E	25,000	NUM	25000
+E	272,000	NUM	272000
+E	3,000	NUM	3000
+E	3,200	NUM	3200
+E	3,202.61	NUM	3202.61
+E	3,300,000	NUM	3300000
+E	3,500	NUM	3500
+E	30,858	NUM	30858
+E	300,000	NUM	300000
+E	31,000	NUM	31000
+E	3143c	PROPN	3143c
+E	33,000	NUM	33000
+E	35,000	NUM	35000
+E	350,000	NUM	350000
+E	36,000,000,000	NUM	36000000000
+E	38,000	NUM	38000
+E	4	ADP	for
+E	4,700	NUM	4700
+E	4-ever	ADV	forever
+E	40,000	NUM	40000
+E	42,000	NUM	42000
+E	42,000.00	NUM	42000.00
+E	42,008	NUM	42008
+E	47,500	NUM	47500
+E	5,000	NUM	5000
+E	50,000	NUM	50000
+E	540,000	NUM	540000
+E	55,008	NUM	55008
+E	59,339	NUM	59339
+E	6,000	NUM	6000
+E	60,000	NUM	60000
+E	60,008	NUM	60008
+E	61,000,000,000	NUM	61000000000
+E	62,500	NUM	62500
+E	7,000	NUM	7000
+E	750,000	NUM	750000
+E	79,000	NUM	79000
+E	80,000	NUM	80000
+E	95,000	NUM	95000
+E	:d	SYM	:d
+E	:o	SYM	:o
+E	:p	SYM	:p
+E	;p	SYM	;p
+E	@	SYM	at
+E	`s	PART	's
+E	a	ADP	of
+E	a	AUX	can
+E	a	CCONJ	and
+E	a	NOUN	A
+E	a	PART	to
+E	aa	DET	a
+E	aa	NOUN	AA
+E	aaaaaggghhhhhh	INTJ	aagh
+E	abou	ADP	about
+E	absent	VERB	absent
+E	absoulutely	ADV	absolutely
+E	abt	ADP	about
+E	abuses	NOUN	abuse
+E	accent	VERB	accent
+E	access	X	access
+E	accomdating	ADJ	accommodating
+E	accord	X	accord
+E	accusing	VERB	accuse
+E	acedraz	X	acedraz
+E	acrylics	PROPN	Acrylic
+E	actully	ADV	actually
+E	adapt	VERB	adapt
+E	adhear	VERB	adhere
+E	adhered	VERB	adhere
+E	adn	CCONJ	and
+E	advise	NOUN	advice
+E	afghan	ADJ	Afghan
+E	african	ADJ	African
+E	agents	PROPN	Agent
+E	ages	PROPN	Age
+E	agreement	X	agreement
+E	aid	VERB	aid
+E	aiding	VERB	aid
+E	airlines	PROPN	Airline
+E	airport	PROPN	Airport
+E	ak	NOUN	AK
+E	ak47's	NOUN	AK47
+E	ak47s	NOUN	AK47
+E	al	X	al.
+E	albanian	ADJ	Albanian
+E	alberta	X	alberta
+E	algae	NOUN	alga
+E	algerians	PROPN	Algerian
+E	allot	VERB	allot
+E	alma	PROPN	AlmaMartinez@ENRON
+E	alt.animals	NOUN	alt.animals
+E	alt.animals.felines.diseases	NOUN	alt.animals.felines.diseases
+E	alt.animals.felines.snowleopards	NOUN	alt.animals.felines.snowleopards
+E	alumni	NOUN	alumnus
+E	am	NOUN	a.m.
+E	amanda	PROPN	AmandaHuble@ENRON
+E	amended	NOUN	amendment
+E	american	ADJ	American
+E	americans	PROPN	American
+E	americas	PROPN	America
+E	ammount	NOUN	amount
+E	amoung	ADP	among
+E	andamans	PROPN	Andaman
+E	andrea	PROPN	AndreaBertone@ENRON_DEVELOPMENT
+E	angeles	PROPN	Angeles
+E	anglo	X	Anglo
+E	ans	CCONJ	and
+E	answetred	VERB	answer
+E	anti-american	ADJ	anti-American
+E	anti-americanism	NOUN	anti-Americanism
+E	anti-indian	ADJ	anti-Indian
+E	anti-israeli	ADJ	anti-Israeli
+E	anti-semite	NOUN	anti-Semite
+E	antipasti	NOUN	antipasto
+E	any	PRON	anyone
+E	any1	PRON	anyone
+E	ap	NOUN	AP
+E	apartments	PROPN	Apartment
+E	appartment	NOUN	apartment
+E	appendices	NOUN	appendix
+E	appologized	VERB	apologize
+E	apr	PROPN	April
+E	aquarium	PROPN	Aquarium
+E	ar	NOUN	AR
+E	arab	ADJ	Arab
+E	arabian	ADJ	Arabian
+E	arabs	PROPN	Arab
+E	archilochus	PROPN	Archilochus
+E	arctic	ADJ	Arctic
+E	art	AUX	be
+E	arts	PROPN	Art
+E	aryan	ADJ	Aryan
+E	as	AUX	have
+E	as400	NOUN	AS400
+E	asap	ADV	ASAP
+E	asbestos	NOUN	asbestos
+E	asian	ADJ	Asian
+E	asians	PROPN	Asian
+E	ask	SCONJ	as
+E	assh@%$e	NOUN	asshole
+E	aswered	VERB	answer
+E	aswering	VERB	answer
+E	at	CCONJ	and
+E	ate	VERB	eat
+E	atlantic	ADJ	Atlantic
+E	atomic	ADJ	Atomic
+E	attitudes	PROPN	Attitude
+E	aubrey	PROPN	Aubrey
+E	aug.	PROPN	August
+E	aunte	NOUN	aunt
+E	auspices	NOUN	auspices
+E	australian	ADJ	Australian
+E	authored	VERB	author
+E	autos	PROPN	Auto
+E	b	ADJ	B
+E	b	NOUN	B
+E	b	NUM	billion
+E	b****	NOUN	bitch
+E	b.	VERB	bear
+E	b/t	ADP	between
+E	b2b	NOUN	B2B
+E	ba'athists	PROPN	Ba'athist
+E	baathist	ADJ	Baathist
+E	baathists	PROPN	Baathist
+E	baba	X	baba
+E	babies	PROPN	Baby
+E	backgrounds	NOUN	background
+E	backpedalling	VERB	backpedal
+E	badder	ADJ	bad
+E	bagh	PROPN	Bagh
+E	baghdadis	PROPN	Baghdadi
+E	banging	VERB	bang
+E	bangladeshi	ADJ	Bangladeshi
+E	bangladeshis	PROPN	Bangladeshi
+E	bare	VERB	bear
+E	bases	NOUN	basis
+E	basic­ally	ADV	basically
+E	bc	NOUN	BC
+E	beans	NOUN	bean
+E	beardies	PROPN	Bearded
+E	becouse	SCONJ	because
+E	becuse	ADP	because
+E	bees'	NOUN	bee
+E	belgian	ADJ	Belgian
+E	bella	ADJ	Bella
+E	billiards	NOUN	billiards
+E	billy	PROPN	BillyDorsey@ENRON_DEVELOPMENT
+E	bitter	ADJ	bitter
+E	blackline	X	blackline
+E	blackouts	NOUN	blackout
+E	blanco	PROPN	Blanco
+E	blocks	PROPN	Block
+E	bn	NUM	billion
+E	boarder	NOUN	border
+E	boarders	NOUN	border
+E	bolivar	ADJ	Bolivar
+E	bore	VERB	bear
+E	borritos	NOUN	burrito
+E	botn	VERB	bear
+E	bouild	VERB	build
+E	bowl	PROPN	Bowl
+E	box	PROPN	Box
+E	bramen	PROPN	Braman
+E	brazilian	ADJ	Brazilian
+E	bredders	NOUN	breeder
+E	breeeding	NOUN	breeding
+E	brenner	X	Brenner
+E	brett	PROPN	Brett
+E	bridget	PROPN	Bridget
+E	brigades	PROPN	Brigade
+E	british	ADJ	British
+E	brothers	PROPN	Brother
+E	bs	NOUN	bs
+E	btwn	ADP	between
+E	buffalo	PROPN	Buffalo
+E	builders	PROPN	Builder
+E	buring	VERB	burn
+E	but	NOUN	butt
+E	buys	ADJ	busy
+E	by	AUX	be
+E	c'm	VERB	come
+E	caches	NOUN	cache
+E	californians	PROPN	Californian
+E	canadian	ADJ	Canadian
+E	canan	PROPN	Canon
+E	canape's	NOUN	canapé
+E	canibal	PROPN	Cannibal
+E	canon	PROPN	Canon
+E	cap	X	cap
+E	captain	PROPN	Captain
+E	caribbean	ADJ	Caribbean
+E	carlos	PROPN	CarlosAlatorre@ENRON
+E	caroline	PROPN	CarolineAbramo@ENRON
+E	carreau	PROPN	Carreau
+E	carribean	ADJ	Carribean
+E	cars	PROPN	Car
+E	catagory	NOUN	category
+E	catholics	PROPN	Catholic
+E	caucasian	ADJ	Caucasian
+E	caucasians	NOUN	Caucasian
+E	caucasians	PROPN	Caucasian
+E	cavies	NOUN	cavy
+E	cd	NOUN	CD
+E	cdg	PROPN	CDG
+E	cehf	NOUN	chef
+E	centres	PROPN	Centre
+E	cge	NOUN	cage
+E	challenges	PROPN	Challenge
+E	charger	VERB	charge
+E	charming	PROPN	Charming
+E	chicks	PROPN	Chick
+E	chiefs	PROPN	Chief
+E	chimichangas	NOUN	chimichanga
+E	chineese	ADJ	Chinese
+E	chinese	ADJ	Chinese
+E	chinese	PROPN	Chinese
+E	chineze	ADJ	Chinese
+E	chiropractric	NOUN	chiropractic
+E	chrisssake	NOUN	chrissake
+E	christ	INTJ	Christ
+E	christian	ADJ	Christian
+E	christian	PROPN	Christian
+E	christians	PROPN	Christian
+E	christmas	PROPN	Christmas
+E	cisco	PROPN	Cisco
+E	class	PROPN	Class
+E	cleaner	ADJ	clean
+E	cleaser	NOUN	cleaner
+E	clement	PROPN	Clement
+E	cliffs	PROPN	Cliff
+E	cling	VERB	cling
+E	clockwork	PROPN	Clockwork
+E	co$t	VERB	cost
+E	co2	NOUN	CO2
+E	cold	AUX	could
+E	colored	VERB	color
+E	com	NOUN	com
+E	comcast	PROPN	Comcast
+E	comets	PROPN	Comet
+E	comfty	ADJ	comfy
+E	comfyy	ADJ	comfy
+E	communications	PROPN	Communication
+E	communists	PROPN	Communist
+E	comp.mail.maps	NOUN	comp.mail.maps
+E	companie$	NOUN	company
+E	compeltly	ADV	completely
+E	compiling	VERB	compile
+E	computers	PROPN	Computer
+E	condominiums	PROPN	Condominium
+E	condone	VERB	condone
+E	confines	NOUN	confines
+E	conflict	X	conflict
+E	conseguences	PROPN	Conseguence
+E	consistantly	ADV	consistently
+E	consumers	NOUN	consumer
+E	consumers	PROPN	Consumer
+E	contract	X	contract
+E	contrasted	VERB	contrast
+E	controlling	VERB	control
+E	cookin'	VERB	cook
+E	coronas	PROPN	Corona
+E	corssing	NOUN	crossing
+E	cos	X	cos
+E	cosmos	NOUN	cosmos
+E	costumer	NOUN	customer
+E	couter-cultural	ADJ	counter-cultural
+E	coz	SCONJ	because
+E	cpa	NOUN	CPA
+E	cravings	NOUN	craving
+E	creams	PROPN	cream
+E	crepes	PROPN	Crepe
+E	critics	NOUN	critic
+E	crustaceans	NOUN	crustacean
+E	ct	NOUN	CT
+E	cuban	ADJ	Cuban
+E	cunclude	VERB	conclude
+E	cus	SCONJ	because
+E	cyanogen	PROPN	cyanogen
+E	cynangon	PROPN	Cynangon
+E	czech	ADJ	Czech
+E	d	AUX	would
+E	d	NOUN	D
+E	d7000	NOUN	D7000
+E	d:	SYM	d:
+E	daniel	PROPN	DanielRCastagnola@ENRON_DEVELOPMENT
+E	dare	VERB	dare
+E	dat	DET	that
+E	days	PROPN	Day
+E	dealship	NOUN	dealership
+E	dec	PROPN	December
+E	dec.	PROPN	December
+E	deemed	VERB	Deem
+E	deeper	ADJ	deep
+E	defanged	VERB	defang
+E	deffenitly	ADV	definitely
+E	deffly	ADV	definitely
+E	degus	NOUN	degu
+E	deli	PROPN	Deli
+E	delicous	ADJ	delicious
+E	deliteful	ADJ	delightful
+E	delvery	NOUN	delivery
+E	democratic	ADJ	Democratic
+E	democrats	PROPN	Democrat
+E	dems	PROPN	Dem
+E	denise	PROPN	Denise
+E	deutsched	PROPN	Deutsche
+E	develope	VERB	develop
+E	diagnostic	ADJ	Diagnostic
+E	diarheya	NOUN	diarrhea
+E	dinasaurs	NOUN	dinosaur
+E	disasters	PROPN	Disaster
+E	disatisfied	ADJ	dissatisfied
+E	dislikes	NOUN	dislike
+E	disposable	ADJ	Disposable
+E	distain	NOUN	disdain
+E	divined	VERB	divine
+E	dna	NOUN	DNA
+E	do	ADJ	due
+E	do	NOUN	dog
+E	domains	NOUN	domain
+E	doors	PROPN	Door
+E	dpr	NOUN	DPR
+E	drving	VERB	drive
+E	dthat	DET	that
+E	du	AUX	do
+E	due	VERB	do
+E	dumbest	ADJ	dumb
+E	dung	VERB	dung
+E	durer	PROPN	Durer
+E	dying	VERB	die
+E	e	NOUN	email
+E	e	VERB	email
+E	e.g	X	e.g
+E	e500's	NOUN	E500
+E	eaiser	ADJ	easy
+E	earthhhhhhh	PROPN	earth
+E	earthquake	PROPN	earthquake
+E	eatables	NOUN	eatables
+E	eather	ADV	either
+E	eatin	VERB	eat
+E	eco	X	eco
+E	ees	NOUN	ees
+E	effects	PROPN	Effect
+E	eg	ADV	e.g.
+E	eg.	ADV	e.g.
+E	egyptian	ADJ	Egyptian
+E	eid	NOUN	Eid
+E	eighties	NOUN	eighties
+E	elder	ADJ	elder
+E	electoral	ADJ	Electoral
+E	electronics	NOUN	electronics
+E	elliotts	PROPN	Elliott
+E	em	PRON	they
+E	em-enro2.doc	NOUN	Em-enro2.doc
+E	emachines	PROPN	eMachine
+E	embarrased	ADJ	embarrassed
+E	embassies	PROPN	embassy
+E	emergencies	PROPN	Emergency
+E	ena	NOUN	ENA
+E	enchladas	NOUN	enchilada
+E	encircled	VERB	encircle
+E	endevour	VERB	endeavor
+E	eneedle	NOUN	needle
+E	enfurates	VERB	infuriate
+E	engineers	PROPN	Engineer
+E	english	ADJ	English
+E	enron	X	enron
+E	enronr~1.doc	NOUN	ENRONR~1.DOC
+E	entie	ADJ	entire
+E	eos	NOUN	eos
+E	epm	NOUN	EPM
+E	et	NOUN	ET
+E	et.	X	et
+E	eta_revision0307.doc	NOUN	ETA_revision0307.doc
+E	ets	NOUN	ets
+E	etter	ADV	well
+E	european	ADJ	European
+E	european	PROPN	European
+E	evangelicals	PROPN	Evangelical
+E	eve.	NOUN	evening
+E	even	VERB	even
+E	everbody	PRON	everybody
+E	every	ADJ	everyday
+E	exocets	PROPN	Exocet
+E	exp.doc	X	exp.doc
+E	expeditionary	ADJ	Expeditionary
+E	exploded	VERB	explode
+E	exploding	VERB	explode
+E	exploring	VERB	explore
+E	export	X	export
+E	extrcurricular	ADJ	extracurricular
+E	f	ADP	for
+E	f	NOUN	F
+E	f%#king	ADJ	fucking
+E	f'ers	NOUN	fucker
+E	f*ck	NOUN	fuck
+E	f*ed	VERB	fuck
+E	fabolous	ADJ	fabulous
+E	falls	NOUN	falls
+E	fanfuckingtastic	ADJ	fantastic
+E	farms	PROPN	Farm
+E	fashion	ADJ	fashioned
+E	fastest	ADJ	fast
+E	fcking	ADV	fucking
+E	feb	PROPN	February
+E	feb.	PROPN	February
+E	fed	VERB	feed
+E	ferrous	ADJ	Ferrous
+E	fever	PROPN	Fever
+E	fiji	NOUN	Fiji
+E	filing	VERB	file
+E	filipino	ADJ	Filipino
+E	filipinos	PROPN	Filipino
+E	fire	PROPN	Fire
+E	fitness	PROPN	Fitness
+E	fives	NOUN	fives
+E	fixeded	VERB	fix
+E	flatten	VERB	flatten
+E	flexibiltiy	NOUN	flexibility
+E	flowers	PROPN	Flower
+E	flyers	PROPN	Flyer
+E	for	VERB	forget
+E	form	ADP	from
+E	fot	ADP	for
+E	fought	VERB	fight
+E	freaked	VERB	freak
+E	french	ADJ	French
+E	fri	PROPN	Friday
+E	fri.	PROPN	Friday
+E	fridays	PROPN	Friday
+E	friends	PROPN	Friend
+E	fro	ADP	for
+E	frothing	VERB	froth
+E	fulfilling	VERB	fulfil
+E	fundamentals	PROPN	Fundamental
+E	furnishings	NOUN	furnishings
+E	fury	PROPN	fury
+E	fy04	NOUN	FY04
+E	fy05	NOUN	FY05
+E	g	NOUN	G
+E	ga	X	ga
+E	gain	ADV	again
+E	galleries	PROPN	Gallery
+E	game	VERB	game
+E	gant	ADJ	gaunt
+E	gardneri	NOUN	gardnerus
+E	gas	VERB	gas
+E	gas	X	gas
+E	gases	NOUN	gas
+E	gelatos	PROPN	gelato
+E	gentel	ADJ	gentle
+E	german	ADJ	German
+E	gi	NOUN	GI
+E	giants	PROPN	Giant
+E	gis	NOUN	GIS
+E	goodwyn	PROPN	Goodwyn
+E	grand	ADJ	Grand
+E	grandure	NOUN	grandeur
+E	grasped	VERB	grasp
+E	greco	PROPN	Greco
+E	greek	ADJ	Greek
+E	groomed	VERB	groom
+E	groped	VERB	grope
+E	grrrrrrr	INTJ	grr
+E	grrrrrrrreeeaaat	ADJ	great
+E	gtc	NOUN	GTC
+E	gtc's	NOUN	GTC
+E	gtcs	NOUN	GTC
+E	guard	VERB	guard
+E	guards	PROPN	Guard
+E	guarentee	NOUN	guarantee
+E	gud	ADJ	good
+E	guilds	PROPN	Guild
+E	guiness	PROPN	Guinness
+E	h	NOUN	H
+E	h=guys	NOUN	guy
+E	habits	PROPN	Habit
+E	hackles	NOUN	hackles
+E	handcuffs	NOUN	handcuffs
+E	hanging	VERB	hang
+E	hats	PROPN	Hat
+E	hav	AUX	have
+E	heights	PROPN	Height
+E	here	VERB	hear
+E	hid	VERB	hide
+E	hideouts	NOUN	hideout
+E	high	INTJ	hi
+E	highest	ADV	high
+E	hippies	NOUN	hippie
+E	hirsohima	PROPN	Hiroshima
+E	his	DET	this
+E	hmmmm	INTJ	hmm
+E	hochrenaissance	X	hochrenaissance
+E	holdings	PROPN	Holding
+E	homes	PROPN	Home
+E	hopless	ADJ	hopeless
+E	horse	ADJ	horse
+E	hospitals	PROPN	Hospital
+E	hotter	ADJ	hot
+E	hr	NOUN	HR
+E	hub	X	hub
+E	humvees	PROPN	Humvee
+E	hunks	NOUN	hunk
+E	hvae	AUX	have
+E	hz	NOUN	Hz
+E	i	PRON	I
+E	i'd	SCONJ	if
+E	i.e	ADV	i.e.
+E	i/s	NOUN	i/s
+E	igts	X	igts
+E	iis	AUX	be
+E	impacts	PROPN	Impact
+E	in	AUX	be
+E	indescriminately	ADV	indescriminately
+E	indian	ADJ	Indian
+E	indians	PROPN	Indian
+E	indices	NOUN	index
+E	indiscriminately	ADV	indiscriminately
+E	indonesians	PROPN	Indonesian
+E	inks	NOUN	link
+E	inquires	NOUN	inquiry
+E	instilling	VERB	instil
+E	intents	NOUN	intent
+E	inter	X	inter
+E	interconnect	X	interconnect
+E	interesting	NOUN	interest
+E	interfering	VERB	interfere
+E	intervening	VERB	intervene
+E	intimidating	ADJ	intimidating
+E	invade	VERB	invade
+E	invaded	VERB	invade
+E	invading	VERB	invade
+E	invoking	VERB	invoke
+E	invovled	VERB	involve
+E	iranian	ADJ	Iranian
+E	iranians	PROPN	Iranian
+E	iraqi	ADJ	Iraqi
+E	iraqis	PROPN	Iraqi
+E	irish	ADJ	Irish
+E	is	PRON	it
+E	isdas	PROPN	ISDA
+E	islamic	ADJ	Islamic
+E	islamist	ADJ	Islamist
+E	islamist	NOUN	Islamist
+E	islamists	NOUN	Islamist
+E	islamists	PROPN	Islamist
+E	islands	PROPN	Island
+E	israeli	ADJ	Israeli
+E	israelis	PROPN	Israeli
+E	it	ADP	in
+E	it	ADV	in
+E	it	AUX	be
+E	it	NOUN	IT
+E	it	SCONJ	if
+E	italian	ADJ	Italian
+E	iw	PRON	I
+E	j	NOUN	J
+E	j.doc	X	j.doc
+E	jamaican	ADJ	Jamaican
+E	jan	PROPN	January
+E	jan.	PROPN	January
+E	japanese	ADJ	Japanese
+E	jejudo	PROPN	Jejudo
+E	jets	PROPN	Jet
+E	jewish	ADJ	Jewish
+E	jews	PROPN	Jew
+E	jorge	PROPN	JorgeAGarcia@ENRON
+E	joys	PROPN	Joy
+E	juego	X	juego
+E	k	NUM	thousand
+E	karol	PROPN	Karol
+E	kc	PROPN	KC
+E	kevalam	X	kevalam
+E	kiddies	NOUN	kiddie
+E	kids	PROPN	Kid
+E	kimberly	PROPN	Kimberly
+E	kindy	PROPN	Kindy
+E	knights	PROPN	Knight
+E	knives	NOUN	knife
+E	knowledgable	ADJ	knowledgeable
+E	knowledge	ADJ	knowledgeable
+E	koran	PROPN	Koran
+E	kurdish	ADJ	Kurdish
+E	kurds	PROPN	Kurd
+E	l.p	NOUN	LP
+E	lable	NOUN	label
+E	lackluster	ADJ	lackluster
+E	lagesse	PROPN	Lagesse
+E	lankan	ADJ	Lankan
+E	lara	PROPN	LaraLeibman@ENRONCOMMUNICATIONS
+E	later	NOUN	layer
+E	latin	ADJ	Latin
+E	lauded	VERB	laud
+E	lawyers	PROPN	Lawyer
+E	lb	PROPN	LB
+E	leaned	VERB	learn
+E	lebanese	ADJ	Lebanese
+E	led	VERB	lead
+E	legit	ADJ	Legit
+E	lesser	ADJ	less
+E	lessons	PROPN	Lesson
+E	letter	X	letter
+E	levi`s	PROPN	Levis
+E	libro	X	libro
+E	libyan	ADJ	Libyan
+E	lied	VERB	lie
+E	lies	NOUN	lie
+E	lies	VERB	lie
+E	lightest	ADJ	light
+E	lik	ADP	like
+E	likley	ADV	likely
+E	lil	ADJ	little
+E	lisenced	ADJ	licensed
+E	lit	VERB	light
+E	litttle	ADJ	little
+E	ll	AUX	will
+E	lo9nger	ADV	long
+E	locust	PROPN	Locust
+E	longest	ADV	long
+E	looser	NOUN	loser
+E	loosing	VERB	lose
+E	lorie	PROPN	LorieLeigh@ECT
+E	los	PROPN	Los
+E	loss	VERB	lose
+E	ltake	VERB	take
+E	lucio	PROPN	Lucio
+E	lunatics	NOUN	lunatic
+E	lv.	VERB	lv.
+E	lying	VERB	lie
+E	lynx	PROPN	Lynx
+E	lysa	PROPN	LysaAkin@ECT
+E	m	AUX	be
+E	m	NOUN	M
+E	m	NUM	million
+E	m5j	NOUN	M5J
+E	made	AUX	may
+E	madea	VERB	make
+E	maids	NOUN	maid
+E	maids	PROPN	Maid
+E	majoos	PROPN	Majoo
+E	malaysian	ADJ	Malaysian
+E	manged	VERB	manage
+E	mangers	NOUN	manager
+E	manifest	ADJ	manifest
+E	maoists	PROPN	Maoist
+E	mar	PROPN	March
+E	marches	PROPN	March
+E	marines	PROPN	Marine
+E	markets	PROPN	Market
+E	martyr	NOUN	martyr
+E	martyrs	PROPN	Martyr
+E	masonic	ADJ	Masonic
+E	massacring	VERB	massacre
+E	master	X	master
+E	masters	PROPN	Master
+E	mayors	PROPN	Mayor
+E	mcallister	PROPN	McAllister
+E	mcclelland	PROPN	McClelland
+E	mcnuggets	PROPN	McNugget
+E	me	PRON	I
+E	me$$age	NOUN	message
+E	mechaincs	NOUN	mechanic
+E	mechanicly	ADV	mechanically
+E	mega	NOUN	megapixel
+E	mellow	ADJ	melodramatic
+E	mercury	PROPN	Mercury
+E	metals	PROPN	Metal
+E	methodist	ADJ	Methodist
+E	mexican	ADJ	Mexican
+E	microsystems	PROPN	Microsystem
+E	mid-nineties	NOUN	mid-nineties
+E	middle	ADJ	Middle
+E	mines	PRON	my
+E	mins.	NOUN	min.
+E	minutes	PROPN	Minute
+E	miracle	PROPN	Miracle
+E	mircles	NOUN	miracle
+E	mm	NUM	mm
+E	mmmm	INTJ	mmmm
+E	mod	PROPN	Mod
+E	modest	ADJ	modest
+E	mon.	PROPN	Monday
+E	monarchs	PROPN	Monarchs
+E	monday's	PROPN	Monday
+E	mongolian	ADJ	Mongolian
+E	mormons	PROPN	Mormon
+E	moslem	ADJ	Moslem
+E	moslems	PROPN	Moslem
+E	most	AUX	must
+E	motors	PROPN	Motor
+E	mountains	PROPN	Mountain
+E	mp3	NOUN	MP3
+E	mt	NOUN	MT
+E	mullahs	NOUN	mulla
+E	muslim	ADJ	Muslim
+E	muslims	PROPN	Muslim
+E	mystics	PROPN	Mystics
+E	myths	PROPN	Myths
+E	n	CCONJ	and
+E	n	PART	not
+E	nagaski	PROPN	Nagasaki
+E	nam	X	nam
+E	nasim	PROPN	NasimHKhan@TRANSREDES
+E	national	ADJ	National
+E	nations	PROPN	Nation
+E	nationwide	ADJ	Nationwide
+E	nazis	PROPN	Nazi
+E	needles	PROPN	Needle
+E	neeeeeeeeeverrrr	ADV	never
+E	neo-nazi	ADJ	neo-Nazi
+E	nepalese	ADJ	Nepalese
+E	networks	PROPN	Network
+E	new	NOUN	New
+E	new	VERB	know
+E	newest	ADJ	new
+E	ngoc	PROPN	NgocLuanDo@ENRON_DEVELOPMENT
+E	nighstand	NOUN	nightstand
+E	no	VERB	know
+E	non	NOUN	nonrespect
+E	non-arab	ADJ	non-Arab
+E	non-bondad	PROPN	non-Bondad
+E	non-indians	PROPN	non-Indian
+E	non-moslem	ADJ	non-Moslem
+E	nonbondad	PROPN	non-Bondad
+E	nordic	ADJ	Nordic
+E	norwegian	ADJ	Norwegian
+E	norwegians	PROPN	Norwegian
+E	notes	PROPN	Note
+E	nov	PROPN	November
+E	nov.	PROPN	November
+E	nx1	NOUN	NX1
+E	nx3	NOUN	NX3
+E	o	ADP	of
+E	obsf	NOUN	OBSF
+E	ocnversation	NOUN	conversation
+E	oct	PROPN	October
+E	oct.	PROPN	October
+E	of	CCONJ	or
+E	offices	PROPN	Office
+E	ok'd	VERB	OK
+E	olympic	ADJ	Olympic
+E	olympus	PROPN	Olympus
+E	on	NUM	one
+E	only.doc	X	only.doc
+E	operations	PROPN	Operation
+E	operators	PROPN	Operator
+E	opinon	NOUN	opinion
+E	or	ADP	of
+E	orange	ADJ	Orange
+E	orbiting	VERB	orbit
+E	orginals	NOUN	original
+E	os	NOUN	os
+E	ot	PART	to
+E	otc	NOUN	otc
+E	ould	AUX	would
+E	out	ADJ	outstanding
+E	outshone	VERB	outshine
+E	over	VERB	overpay
+E	overt	ADP	over
+E	ovr	ADV	over
+E	own	VERB	own
+E	pagen	ADJ	pagan
+E	pairing	VERB	pair
+E	pakistani	ADJ	Pakistani
+E	pakistanis	PROPN	Pakistani
+E	palces	NOUN	place
+E	palestinian	ADJ	Palestinian
+E	palestinians	PROPN	Palestinian
+E	panamal	PROPN	Panama
+E	panicking	VERB	panic
+E	pants	NOUN	pants
+E	paraded	NOUN	parade
+E	paraded	VERB	parade
+E	parentheses	NOUN	parentheses
+E	parents	PROPN	Parent
+E	parisian	ADJ	Parisian
+E	parisians	PROPN	Parisian
+E	particlular	ADJ	particular
+E	pashtun	ADJ	Pashtun
+E	pashtuns	PROPN	Pashtun
+E	pcs	PROPN	pc
+E	pdt	NOUN	PDT
+E	peddle	NOUN	pedal
+E	peddles	NOUN	pedal
+E	pen	PROPN	Penn
+E	penines	PROPN	Pennines
+E	percell,	X	percell,
+E	peregrino	PROPN	Peregrino
+E	perez	PROPN	Perez
+E	performance	VERB	perform
+E	persians	PROPN	Persian
+E	persuade	VERB	persuade
+E	persuading	VERB	persuade
+E	petco	PROPN	Petco
+E	peter	X	peter
+E	pets	PROPN	Pet
+E	petsmart	PROPN	PetSmart
+E	pg&e	X	pg&e
+E	philipines	PROPN	Philippines
+E	philipinos	PROPN	Filipino
+E	phillies	PROPN	Phillies
+E	pho-nomenal	ADJ	phenomenal
+E	phonies	NOUN	phony
+E	pies	NOUN	pie
+E	pigs	PROPN	Pig
+E	pilates	NOUN	pilates
+E	pioneers	PROPN	Pioneer
+E	piping	VERB	pipe
+E	planing	VERB	plane
+E	please	ADJ	pleased
+E	plummet	VERB	plummet
+E	poa	NOUN	POA
+E	poisonous	ADJ	Poisonous
+E	ponchatoula	PROPN	Ponchatoula
+E	poneh	NOUN	pony
+E	populous	NOUN	populace
+E	portugese	ADJ	Portugese
+E	pos	NOUN	pos
+E	post-chavez	ADJ	post-Chavez
+E	post-saddam	ADJ	post-Saddam
+E	postive	ADJ	positive
+E	postmaster	PROPN	Postmaster
+E	postponed	VERB	postpone
+E	powersports	PROPN	Powersport
+E	pp	NOUN	page
+E	ppm	NOUN	ppm
+E	prc	NOUN	PRC
+E	pre	NOUN	preorder
+E	pre-arrest	ADJ	pre-arrest
+E	prefere	VERB	prefer
+E	premier	ADJ	premier
+E	press	PROPN	Press
+E	pricing	X	pricing
+E	priests	PROPN	Priest
+E	primary	X	primary
+E	privatly	ADV	privately
+E	pro-palestinian	ADJ	pro-Palestinian
+E	pro-zionist	ADJ	pro-Zionist
+E	producers	PROPN	Producer
+E	products	PROPN	Product
+E	professional	ADV	professionally
+E	professors	PROPN	Professor
+E	prolly	ADV	probably
+E	proper	ADV	properly
+E	proposal	X	proposal
+E	proposed	X	proposed
+E	pros	PROPN	Pro
+E	protestants	PROPN	Protestant
+E	prs	NOUN	prs
+E	prudential	ADJ	Prudential
+E	ps	NOUN	ps
+E	ps.	NOUN	ps.
+E	ps3	NOUN	PS3
+E	ps4	NOUN	PS4
+E	pst	NOUN	PST
+E	pt	NOUN	PT
+E	publications	PROPN	Publication
+E	purchace	VERB	purchase
+E	put	ADP	out
+E	pwople	NOUN	people
+E	q	NOUN	Q
+E	q1	NOUN	Q1
+E	questar	X	questar
+E	quicker	ADV	quick
+E	quieter	ADJ	quiet
+E	quietest	ADJ	quiet
+E	quizzing	VERB	quiz
+E	r.	NOUN	respect
+E	rajavis	PROPN	Rajavi
+E	rams	PROPN	Ram
+E	ranks	NOUN	rank
+E	raphael	PROPN	Raphael
+E	rates	X	rates
+E	rcommended	VERB	recommend
+E	re	AUX	be
+E	reaaaally	ADV	really
+E	realtion	NOUN	relationship
+E	reaped	VERB	reap
+E	reaping	VERB	reap
+E	reccommend	VERB	recommend
+E	reclining	VERB	recline
+E	recomend	VERB	recommend
+E	reconciling	VERB	reconcile
+E	recovery	PROPN	Recovery
+E	recruiting	X	recruiting
+E	rediculous	ADJ	ridiculous
+E	reffered	VERB	refer
+E	refund	VERB	refund
+E	regading	VERB	regade
+E	regimen	NOUN	regimen
+E	reigon	NOUN	region
+E	relaxes	VERB	relax
+E	releases	X	releases
+E	renigged	VERB	renege
+E	repent	VERB	repent
+E	replies	NOUN	reply
+E	repoire	NOUN	rapport
+E	reporters	PROPN	Reporter
+E	representatives	PROPN	Representative
+E	republican	ADJ	Republican
+E	republicans	PROPN	Republican
+E	resond	VERB	respond
+E	rest	ADJ	rest
+E	resume	X	resume
+E	revolutionary	ADJ	Revolutionary
+E	ridiculized	VERB	ridicule
+E	rights	PROPN	Right
+E	rights	X	rights
+E	riiight	INTJ	right
+E	ring	VERB	ring
+E	roadhouse	PROPN	Roadhouse
+E	roaming	VERB	roam
+E	roasted	VERB	roast
+E	rockers	PROPN	Rockers
+E	rockies	PROPN	Rocky
+E	rocky	ADJ	Rocky
+E	rode	NOUN	road
+E	rode	VERB	ride
+E	roderigo	PROPN	Roderigo
+E	rolling	VERB	Roll
+E	rom	NOUN	ROM
+E	romatic	ADJ	romantic
+E	roms	NOUN	ROM
+E	rounds	NOUN	round
+E	royal	ADJ	Royal
+E	royal	PROPN	Royal
+E	royale	ADJ	Royale
+E	rrly	ADV	rarely
+E	rudest	ADJ	rude
+E	rule	X	rule
+E	rumored	VERB	rumor
+E	russian	ADJ	Russian
+E	russians	PROPN	Russian
+E	s	AUX	be
+E	s	PART	's
+E	s	PRON	we
+E	s	VERB	be
+E	s&s	NOUN	s&s
+E	saaaaaam	PROPN	Sam
+E	sacred	ADJ	Sacred
+E	saddamites	PROPN	Saddamite
+E	safest	ADJ	safe
+E	saints	PROPN	Saint
+E	saloon	PROPN	Saloon
+E	saltimboca	NOUN	saltimbocca
+E	sanders	X	sanders
+E	sandwiches	PROPN	Sandwich
+E	sanwiches	NOUN	sandwich
+E	sap	NOUN	SAP
+E	sat	PROPN	Saturday
+E	sat.	PROPN	Saturday
+E	satanic	ADJ	Satanic
+E	satanism	PROPN	Satanism
+E	satanists	PROPN	Satanist
+E	saudi	ADJ	Saudi
+E	saudis	PROPN	Saudi
+E	saxon	ADJ	Saxon
+E	saxons	PROPN	Saxon
+E	schedule	X	schedule
+E	scheduled	NOUN	schedule
+E	sciences	PROPN	Science
+E	scissors	NOUN	scissors
+E	scold	VERB	scold
+E	scots	PROPN	Scot
+E	scottish	ADJ	Scottish
+E	screw	VERB	screw
+E	se	AUX	be
+E	sear's	PROPN	Sears
+E	seas	NOUN	seas
+E	seas	PROPN	Sea
+E	securities	PROPN	Security
+E	segueway	VERB	segue
+E	seince	SCONJ	since
+E	senators	PROPN	Senator
+E	seperates	VERB	separate
+E	sept	PROPN	September
+E	sept.	PROPN	September
+E	sercvice	NOUN	service
+E	serivce	NOUN	service
+E	services	PROPN	Service
+E	settlement	X	settlement
+E	severly	ADV	severely
+E	sez	VERB	say
+E	sh*t	NOUN	shit
+E	shackled	VERB	shackle
+E	shakespearean	ADJ	Shakespearean
+E	shallac	NOUN	shellac
+E	shawna	PROPN	ShawnaJohnson@ENRON
+E	shed	VERB	shed
+E	shedding	VERB	shed
+E	sheisters	NOUN	shyster
+E	shi'ite	ADJ	Shi'ite
+E	shia	ADJ	Shia
+E	shiite	ADJ	Shiite
+E	shiites	PROPN	Shiite
+E	shock	PROPN	Shock
+E	shoes	VERB	shoe
+E	sice	SCONJ	since
+E	sicilian	ADJ	Sicilian
+E	sieze	VERB	seize
+E	signs	PROPN	Sign
+E	simple	ADV	simply
+E	simpler	ADJ	simple
+E	sinhala	ADJ	Sinhala
+E	sinhalese	ADJ	Sinhalese
+E	siphoned	VERB	siphon
+E	sitcom	NOUN	sitcom
+E	sixties	NOUN	sixties
+E	skies	PROPN	Sky
+E	slant	ADJ	slant
+E	slower	ADV	slow
+E	smarter	ADJ	smart
+E	smartest	ADJ	smart
+E	smiling	VERB	smile
+E	smoked	VERB	smoke
+E	smoking	VERB	smoke
+E	smoother	ADJ	smooth
+E	sms	NOUN	sms
+E	sms	VERB	SMS
+E	snake	PROPN	Snake
+E	so	X	so
+E	soaked	VERB	soak
+E	soaking	VERB	soak
+E	socialists	PROPN	Socialist
+E	sol	PROPN	Sol
+E	soldiers	PROPN	Soldier
+E	some	PRON	someone
+E	someon	PRON	someone
+E	somethin	PRON	something
+E	soo	ADV	so
+E	sooo	ADV	so
+E	sound	PROPN	sound
+E	south	ADJ	South
+E	soviets	PROPN	Soviet
+E	sox	PROPN	Sox
+E	spanish	ADJ	Spanish
+E	sparks	PROPN	Sparks
+E	spoilt	VERB	spoil
+E	sponoring	VERB	sponor
+E	sports	PROPN	Sport
+E	squirelled	VERB	squirrel
+E	squirrels	PROPN	Squirrel
+E	sri	ADJ	Sri
+E	sstaff	NOUN	staff
+E	stanley	PROPN	StanleyHorton@ENRON
+E	stare	VERB	stare
+E	starzz	PROPN	Starzz
+E	states	PROPN	State
+E	stipulation	X	stipulation
+E	stole	VERB	steal
+E	stones	PROPN	Stone
+E	straits	PROPN	Strait
+E	studies	PROPN	Study
+E	studies	VERB	study
+E	styled	VERB	style
+E	sun.	PROPN	Sunday
+E	sundays	PROPN	Sunday
+E	sunni	ADJ	Sunni
+E	sunnis	PROPN	Sunni
+E	super	ADJ	Super
+E	superintendant	NOUN	superintendent
+E	supreme	ADJ	Supreme
+E	surest	ADJ	sure
+E	surley	ADJ	surly
+E	surounded	VERB	surround
+E	surpluses	NOUN	surplus
+E	surv	VERB	survive
+E	survivors	PROPN	Survivor
+E	sus	ADJ	suspect
+E	svce	NOUN	service
+E	swedish	ADJ	Swedish
+E	swiss	ADJ	Swiss
+E	swung	VERB	swing
+E	syrian	ADJ	Syrian
+E	t	NOUN	truthout
+E	t	NUM	trillion
+E	t.	ADP	to
+E	t.v.	NOUN	TV
+E	t1	NOUN	T1
+E	t2i	NOUN	T2i
+E	tabors	X	tabors
+E	taiwanese	ADJ	Taiwanese
+E	tajiks	PROPN	Tajik
+E	tamil	ADJ	Tamil
+E	tamils	PROPN	Tamil
+E	tasting	VERB	taste
+E	taylors	PROPN	Taylor
+E	tc	NOUN	tc
+E	te	DET	the
+E	technologies	PROPN	Technology
+E	temperment	NOUN	temperament
+E	th	SCONJ	that
+E	thai	ADJ	Thai
+E	thaks	NOUN	thanks
+E	thanksgiv8ing	PROPN	Thanksgiving
+E	that	ADP	than
+E	the	PART	to
+E	theeth	NOUN	tooth
+E	thei	PRON	they
+E	then	PRON	they
+E	ther	DET	the
+E	theraphy	NOUN	therapy
+E	thes	DET	the
+E	they're	PRON	their
+E	thi$	DET	this
+E	things	PROPN	Thing
+E	thinnest	ADJ	thin
+E	tho	SCONJ	though
+E	though	ADP	through
+E	thouhgt	VERB	think
+E	threaten	VERB	threaten
+E	through	ADJ	thorough
+E	through	VERB	throw
+E	thu	PROPN	Thursday
+E	thur.	PROPN	Thursday
+E	ti	PRON	it
+E	ties	NOUN	tie
+E	tigers	PROPN	Tiger
+E	til	ADP	till
+E	til	SCONJ	till
+E	tints	PROPN	tint
+E	titts	NOUN	tit
+E	tms	NOUN	tms
+E	to	DET	the
+E	to	VERB	do
+E	toda	NOUN	today
+E	toned	VERB	tone
+E	too	ADP	to
+E	torrance	PROPN	Torrance
+E	totalling	VERB	total
+E	tots	PROPN	Tot
+E	tours	PROPN	Tour
+E	township	PROPN	Township
+E	traders	PROPN	Trader
+E	trails	X	trails
+E	transcendental	ADJ	Transcendental
+E	transmission	X	transmission
+E	travels	PROPN	Travel
+E	treating	VERB	treat
+E	tress	NOUN	tree
+E	trinidadian	ADJ	Trinidadian
+E	trivial	ADJ	Trivial
+E	trousers	NOUN	trousers
+E	tryed	VERB	trye
+E	tue.	PROPN	Tuesday
+E	tues.	PROPN	Tuesday
+E	tuesday's	PROPN	Tuesday
+E	tuned	VERB	tune
+E	turkish	ADJ	Turkish
+E	tv	NOUN	TV
+E	twinkies	NOUN	twinky
+E	u	PRON	you
+E	u$	PROPN	US
+E	ubs	NOUN	ubs
+E	uc	X	uc
+E	uhh	INTJ	uh
+E	un-ruly	ADJ	unruly
+E	unconcious	ADJ	unconscious
+E	unde$tood	VERB	understand
+E	under	ADJ	undereducated
+E	unfortunalty	ADV	unfortunately
+E	unitary	ADJ	Unitary
+E	united	ADJ	United
+E	unlce	NOUN	uncle
+E	unlimited	PROPN	Unlimited
+E	unneccesary	ADJ	unnecessary
+E	ur	PRON	your
+E	ursula	X	Ursula
+E	usally	ADV	usually
+E	usb	NOUN	USB
+E	use	ADJ	used
+E	use	PRON	we
+E	useing	VERB	usee
+E	uv	NOUN	ultra-violet
+E	v	AUX	have
+E	v02	NOUN	V02
+E	vanguards	PROPN	Vanguard
+E	varie$	VERB	vary
+E	ve	AUX	have
+E	venezuelan	ADJ	Venezuelan
+E	ventures	PROPN	Venture
+E	veterans	PROPN	veteran
+E	veterinary	ADJ	Veterinary
+E	vietnamese	ADJ	Vietnamese
+E	vigilant	ADJ	vigilant
+E	visa	ADV	vice
+E	vitamins	NOUN	vitamin
+E	w	ADJ	W
+E	w	ADP	with
+E	w/	ADP	with
+E	w/o	ADP	without
+E	w/out	SCONJ	without
+E	waaaaaaaaaaaaay	ADV	way
+E	wagin	VERB	wag
+E	wahhabis	PROPN	Wahhabi
+E	waht	PRON	what
+E	walkin	VERB	walk
+E	wandering	VERB	wonder
+E	waning	VERB	wane
+E	wantons	NOUN	wonton
+E	warrenty	NOUN	warranty
+E	wars	PROPN	War
+E	wase	AUX	be
+E	wasting	VERB	waste
+E	we	AUX	be
+E	weaken	VERB	weaken
+E	wed	PROPN	Wednesday
+E	wed	VERB	wed
+E	wed.	PROPN	Wednesday
+E	wednesday's	PROPN	Wednesday
+E	wel	INTJ	well
+E	werewolf	PROPN	Werewolf
+E	wetter	ADJ	wet
+E	whasssup	INTJ	whassup
+E	what	VERB	want
+E	where-ever	ADV	wherever
+E	whhich	PRON	which
+E	whie	SCONJ	while
+E	who's	PRON	whose
+E	wholes	NOUN	hole
+E	whoooooo	PRON	who
+E	wht	PRON	what
+E	wider	ADV	wide
+E	widest	ADJ	wide
+E	wierd	ADJ	weird
+E	wil	AUX	will
+E	will	PROPN	Will
+E	will	SCONJ	while
+E	willl	AUX	will
+E	win	ADP	within
+E	windsheild	NOUN	windshield
+E	with	AUX	will
+E	woke	VERB	wake
+E	woken	VERB	wake
+E	wore	VERB	wear
+E	worht	ADJ	worth
+E	workpapers	X	workpapers
+E	worshiped	VERB	worship
+E	wreathed	VERB	wreathe
+E	wud	AUX	would
+E	x33098	NOUN	X33098
+E	x37047	NOUN	X37047
+E	xferring	VERB	transfer
+E	y	ADV	why
+E	ya	PRON	you
+E	ya'll	PRON	y'all
+E	ye	NOUN	YE
+E	ye$	INTJ	yes
+E	years	PROPN	Year
+E	yes	NOUN	yes
+E	yorkedness	NOUN	Yorkedness
+E	yorkshire	PROPN	Yorkshire
+E	you're	PRON	your
+E	youngsteers	NOUN	youngster
+E	youre	PRON	your
+E	yrs	NOUN	year
+E	yrs.	NOUN	year
+E	yuor	PRON	your
+E	zionist	ADJ	Zionist
+E	ã³l	ADJ	old
+E	–	PUNCT	-
+E	—	PUNCT	-
+E	‘	PUNCT	'
+E	‘’	PUNCT	''
+E	’	PUNCT	'
+E	’72	NUM	'72
+E	’73	NUM	'73
+E	’s	PRON	we
+E	’ve	AUX	have
+E	’’	PUNCT	''
+E	“	PUNCT	"
+E	”	PUNCT	"
+E	…	PUNCT	.
+E	….	PUNCT	..

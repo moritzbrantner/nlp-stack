@@ -1,7 +1,8 @@
-//! UD-derived lemma lookup for German and Spanish.
+//! UD-derived lemma lookup for English, German and Spanish.
 //!
 //! Tables are built by `scripts/build_ud_lemma_tables.py` from the training splits
-//! of UD_German-GSD 2.17 (CC BY-SA 4.0) and UD_Spanish-AnCora 2.17 (CC BY 4.0):
+//! of UD_English-EWT 2.17 (CC BY-SA 4.0), UD_German-GSD 2.17 (CC BY-SA 4.0) and
+//! UD_Spanish-AnCora 2.17 (CC BY 4.0):
 //! suffix edit rules per UPOS plus an exception list for the training words the
 //! rules miss. The rule application here mirrors that script.
 
@@ -24,6 +25,7 @@ pub struct UdLemmatizer {
 impl UdLemmatizer {
     /// The lemmatizer for the primary subtag of `language`, if a table ships for it.
     pub fn for_language(language: &str) -> Option<&'static Self> {
+        static EN: OnceLock<UdLemmatizer> = OnceLock::new();
         static DE: OnceLock<UdLemmatizer> = OnceLock::new();
         static ES: OnceLock<UdLemmatizer> = OnceLock::new();
         let primary = language
@@ -33,6 +35,7 @@ impl UdLemmatizer {
             .unwrap_or_default()
             .to_ascii_lowercase();
         match primary.as_str() {
+            "en" => Some(EN.get_or_init(|| Self::parse(include_str!("../data/lemmas/en.tsv")))),
             "de" => Some(DE.get_or_init(|| Self::parse(include_str!("../data/lemmas/de.tsv")))),
             "es" => Some(ES.get_or_init(|| Self::parse(include_str!("../data/lemmas/es.tsv")))),
             _ => None,

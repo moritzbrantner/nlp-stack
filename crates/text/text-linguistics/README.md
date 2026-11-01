@@ -104,15 +104,16 @@ TEXT_LINGUISTICS_MODEL_DIR=.model-runtime cargo test -p moenarch-text-linguistic
 The test downloads missing bundles from Hugging Face and fails when a preset
 scores below 0.8 F1 for a language it declares.
 
-## UD morphology (de/es)
+## UD morphology (en/de/es)
 
 With `candle,model-bundles`, setting
 `LinguisticAnalysisOptions::morphology` to `MorphologyOptions::local_model()` (or
 `local_model_with_downloads()`) replaces the heuristic lemma, POS and morphology
-layers for German and Spanish. The layers come from:
+layers for English, German and Spanish. The layers come from:
 
 | Preset | Model (pinned) | Training data |
 | --- | --- | --- |
+| `UdModelPreset::ComboEnglishEwt` | `clarin-pl/combo-nlp-xlm-roberta-base-english-ewt-ud2.17` @ `2c0ea96a` | UD_English-EWT 2.17 (CC BY-SA 4.0) |
 | `UdModelPreset::ComboGermanGsd` | `clarin-pl/combo-nlp-xlm-roberta-base-german-gsd-ud2.17` @ `55234be1` | UD_German-GSD 2.17 (CC BY-SA 4.0) |
 | `UdModelPreset::ComboSpanishAncora` | `clarin-pl/combo-nlp-xlm-roberta-base-spanish-ancora-ud2.17` @ `3f5885ee` | UD_Spanish-AnCora 2.17 (CC BY 4.0) |
 
@@ -126,19 +127,28 @@ plus an exception list, both built from the treebank training splits by
 `scripts/build_ud_lemma_tables.py` (`data/lemmas/*.tsv`; see `docs/PROVENANCE.md`
 for licences). Contractions (`zum`, `im`, `del`, `al`) are tagged as two
 syntactic words. The token keeps the adposition's UPOS and lemma and the
-article's features. English sentences keep the English heuristics; other languages report the layers as unsupported.
+article's features. English clitics are split as EWT splits them (`don't` ->
+`do n't`, `can't` -> `ca n't`, `John's` -> `John 's`, `I'm`, `we'll`, `cannot`);
+the token keeps the host word's UPOS, lemma and features (`can't`: AUX `can`).
+Sentences in other languages report the layers as unsupported.
 
 Scores, measured 2026-11-01. The UD test splits use gold word segmentation, and
 lemma accuracy uses the predicted UPOS. The fixtures are
 `evaluation/corpora/morphology-multilingual-v1.jsonl`, run through the full
 pipeline with each sentence routed by its detected language:
 
-| | UPOS | UFeats | Lemma |
-| --- | --- | --- | --- |
-| de, UD_German-GSD test (16,499 words) | 0.973 | 0.920 | 0.972 |
-| es, UD_Spanish-AnCora test (53,622 words) | 0.991 | 0.985 | 0.992 |
-| de, gold fixtures (87 tokens) | 1.000 | 1.000 | 0.989 |
-| es, gold fixtures (83 tokens) | 0.988 | 0.988 | 1.000 |
+| | UPOS | UFeats | Lemma | COMBO published UPOS / UFeats / Lemma |
+| --- | --- | --- | --- | --- |
+| en, UD_English-EWT test (25,094 words) | 0.981 | 0.978 | 0.976 | 0.981 / 0.982 / 0.982 |
+| de, UD_German-GSD test (16,499 words) | 0.973 | 0.920 | 0.972 | |
+| es, UD_Spanish-AnCora test (53,622 words) | 0.991 | 0.985 | 0.992 | |
+| en, gold fixtures (83 tokens) | 1.000 | 1.000 | 1.000 | |
+| de, gold fixtures (87 tokens) | 1.000 | 1.000 | 0.989 | |
+| es, gold fixtures (83 tokens) | 0.988 | 0.988 | 1.000 | |
+
+The English published numbers are the EWT card's "aligned accuracy" row. COMBO's
+lemmas come from its own lemmatizer head, which this crate does not run; the
+UD-derived table is 0.6 points behind it.
 
 ```bash
 UD_TREEBANK_DIR=path/to/ud-2.17-test-splits TEXT_LINGUISTICS_MODEL_DIR=.model-runtime \
@@ -146,17 +156,17 @@ UD_TREEBANK_DIR=path/to/ud-2.17-test-splits TEXT_LINGUISTICS_MODEL_DIR=.model-ru
   --test ud_model_external --release -- --ignored --nocapture --test-threads 1
 ```
 
-`UD_TREEBANK_DIR` must hold `de_gsd-ud-test.conllu` and
-`es_ancora-ud-test.conllu` from the UD 2.17 releases. The test downloads about
-2.3 GB of checkpoints. On the UD test splits it fails below 0.95 UPOS, 0.85
+`UD_TREEBANK_DIR` must hold `en_ewt-ud-test.conllu`, `de_gsd-ud-test.conllu`
+and `es_ancora-ud-test.conllu` from the UD 2.17 releases. The test downloads
+about 3.4 GB of checkpoints. On the UD test splits it fails below 0.95 UPOS, 0.85
 UFeats or 0.90 lemma accuracy. On the fixtures it fails below 0.90 UPOS, 0.75
 UFeats or 0.90 lemma accuracy.
 
-## UD dependency syntax (de/es)
+## UD dependency syntax (en/de/es)
 
 Setting `LinguisticAnalysisOptions::dependency_parsing` to
 `DependencyParsingOptions::local_model()` (or `local_model_with_downloads()`)
-replaces the heuristic dependency trees for German and Spanish with the
+replaces the heuristic dependency trees for English, German and Spanish with the
 checkpoint's biaffine dependency head. The head uses the same presets and the
 same `UdModel` as morphology. When both layers select the same model and bundle
 directory, each sentence is encoded once.
@@ -170,18 +180,24 @@ it and the others attach to that word, as COMBO's decoder does. The result is
 always one tree with one root. Root arcs are labelled `root`, and no other arc is.
 Relations are the full UD v2 set (`DependencyRelation`) plus the treebank's
 subtype (`DependencyNode::subtype`, for example `pass` in `nsubj:pass`). A
-contraction token (`zum`, `del`) takes the attachment of its word nearest the
-root (the adposition), so the token-level result is still a tree.
+contraction token (`zum`, `del`, `John's`) takes the attachment of its word
+nearest the root (the adposition, the possessor), or of its first word when both
+attach to the same head (`doesn't`: `aux`), so the token-level result is still a
+tree.
 
 Scores, measured 2026-11-01. LAS compares universal relations and ignores
 subtypes, as the CoNLL 2018 scorer does. The UD test splits use gold word
 segmentation. COMBO's published scores are from the model cards: "aligned
-accuracy" (German) and full-text F1 (Spanish, whose card has no aligned row).
+accuracy" (English, German) and full-text F1 (Spanish, whose card has no aligned
+row). The cards parse combo-seg's predicted sentences; with gold sentences the
+English EWT web text parses noticeably better, hence the higher UAS/LAS here.
 
 | | UAS | LAS | LAS with subtypes | COMBO published UAS / LAS |
 | --- | --- | --- | --- | --- |
+| en, UD_English-EWT test (25,094 words) | 0.951 | 0.934 | 0.933 | 0.931 / 0.914 |
 | de, UD_German-GSD test (16,499 words) | 0.897 | 0.868 | 0.865 | 0.890 / 0.861 |
 | es, UD_Spanish-AnCora test (53,622 words) | 0.943 | 0.927 | 0.924 | 0.940 / 0.925 |
+| en, gold fixtures (83 tokens) | 1.000 | 1.000 | | |
 | de, gold fixtures (87 tokens) | 1.000 | 1.000 | | |
 | es, gold fixtures (83 tokens) | 0.988 | 0.976 | | |
 
@@ -232,7 +248,7 @@ test splits, one UD sentence per unit):
 
 | Sample | Sentences | Decided | Decided correctly |
 | --- | --- | --- | --- |
-| en/de/es gold fixtures (NER, morphology, dependencies, sentence languages) | 102 | 100 | 100 (0 misrouted) |
+| en/de/es gold fixtures (NER, morphology, dependencies, sentence languages) | 122 | 120 | 120 (0 misrouted) |
 | en, UD_English-EWT test | 2,077 | 77.5% | 99.4% |
 | de, UD_German-GSD test | 977 | 96.7% | 99.7% |
 | es, UD_Spanish-AnCora test | 1,721 | 97.2% | 100% |
@@ -258,20 +274,20 @@ Current state:
 | Sentence segmentation | language-neutral rules | language-neutral rules | language-neutral rules |
 | Tokenization | language-neutral rules | language-neutral rules | language-neutral rules |
 | Named entities (local model) | **model, gold-scored** | **model, gold-scored** | **model, gold-scored** |
-| Lemma / morphology (`MorphologyMode::LocalModel`) | English heuristics (`Partial`) | **UD model + UD lemma table, scored** | **UD model + UD lemma table, scored** |
-| Part of speech (`MorphologyMode::LocalModel`) | English heuristics (`Partial`) | **UD model, scored** | **UD model, scored** |
-| Dependency syntax (`DependencyParsingMode::LocalModel`) | English heuristics (`Partial`, unscored) | **UD model, scored** | **UD model, scored** |
+| Lemma / morphology (`MorphologyMode::LocalModel`) | **UD model + UD lemma table, scored** | **UD model + UD lemma table, scored** | **UD model + UD lemma table, scored** |
+| Part of speech (`MorphologyMode::LocalModel`) | **UD model, scored** | **UD model, scored** | **UD model, scored** |
+| Dependency syntax (`DependencyParsingMode::LocalModel`) | **UD model, scored** | **UD model, scored** | **UD model, scored** |
 
-English lemma, morphology, POS and dependency syntax are still heuristics; a UD
-model for English is not wired in yet. With the default heuristic modes, German
-and Spanish sentences report those three layers as `Unsupported` instead of
-receiving English heuristic output.
+The `LocalModel` modes route every en/de/es sentence to its language's UD model.
+The default heuristic modes stay English rules: English sentences get them as
+`Partial` (unscored), and German and Spanish sentences report those three layers
+as `Unsupported` instead of receiving English heuristic output.
 
-The browser does not do de/es POS, morphology or dependency syntax. The COMBO
-checkpoints are custom heads on XLM-RoBERTa base, which Transformers.js cannot
-load as-is, and an int8 ONNX export would be roughly 280 MB per language, about
-twice the browser NER model. The Pages workbench's Sentences view shows those
-layers as "Rust only" for German and Spanish sentences. In the browser it runs
+The browser does not run the UD models. The COMBO checkpoints are custom heads on
+XLM-RoBERTa base, which Transformers.js cannot load as-is, and an int8 ONNX
+export would be roughly 280 MB per language, about twice the browser NER model.
+The Pages workbench's Sentences view shows those layers as "Rust only" for German
+and Spanish sentences; English sentences there still get the `Partial` heuristics. In the browser it runs
 language detection, segmentation and tokenization in Rust/Wasm and NER with the
 browser model, per sentence language.
 

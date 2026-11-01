@@ -793,10 +793,24 @@ fn ud_presets_route_by_primary_language_and_split_contractions() {
         UdModelPreset::for_language("es"),
         Some(UdModelPreset::ComboSpanishAncora)
     );
-    assert_eq!(UdModelPreset::for_language("en"), None);
+    assert_eq!(
+        UdModelPreset::for_language("en-GB"),
+        Some(UdModelPreset::ComboEnglishEwt)
+    );
+    assert_eq!(UdModelPreset::for_language("fr"), None);
     assert_eq!(split_contraction("de", "Zum"), Some(["zu", "dem"]));
     assert_eq!(split_contraction("es", "del"), Some(["de", "el"]));
     assert_eq!(split_contraction("es", "im"), None);
+    assert_eq!(split_contraction("en", "Don't"), Some(["Do", "n't"]));
+    assert_eq!(split_contraction("en", "can't"), Some(["ca", "n't"]));
+    assert_eq!(split_contraction("en", "won’t"), Some(["wo", "n’t"]));
+    assert_eq!(split_contraction("en", "John's"), Some(["John", "'s"]));
+    assert_eq!(split_contraction("en", "I'm"), Some(["I", "'m"]));
+    assert_eq!(split_contraction("en", "they're"), Some(["they", "'re"]));
+    assert_eq!(split_contraction("en", "Cannot"), Some(["Can", "not"]));
+    assert_eq!(split_contraction("en", "'s"), None);
+    assert_eq!(split_contraction("en", "o'clock"), None);
+    assert_eq!(split_contraction("en", "im"), None);
 }
 
 #[test]
@@ -1143,7 +1157,13 @@ fn ud_lemmatizer_applies_table_rules_and_exceptions() {
     assert_eq!(es.lemmatize("niños", PosTag::Noun), "niño");
     assert_eq!(es.lemmatize("jugaban", PosTag::Verb), "jugar");
     assert_eq!(es.lemmatize("las", PosTag::Det), "el");
-    assert!(UdLemmatizer::for_language("en").is_none());
+    let en = UdLemmatizer::for_language("en").unwrap();
+    assert_eq!(en.lemmatize("children", PosTag::Noun), "child");
+    assert_eq!(en.lemmatize("was", PosTag::Aux), "be");
+    assert_eq!(en.lemmatize("ca", PosTag::Aux), "can");
+    assert_eq!(en.lemmatize("n't", PosTag::Part), "not");
+    assert_eq!(en.lemmatize("I", PosTag::Pron), "I");
+    assert!(UdLemmatizer::for_language("fr").is_none());
 
     let table = UdLemmatizer::parse("C\tNOUN\nR\tNOUN\ter\t2\t\nE\tmänner\tNOUN\tMann\n");
     assert_eq!(table.lemmatize("Lehrer", PosTag::Noun), "Lehr");

@@ -1,6 +1,6 @@
 //! UD-treebank-trained part-of-speech, morphological feature and dependency analysis.
 //!
-//! The German and Spanish models run the morphological and biaffine dependency
+//! The English, German and Spanish models run the morphological and biaffine dependency
 //! heads of the [COMBO-NLP](https://gitlab.clarin-pl.eu/syntactic-tools/combo-nlp)
 //! UD 2.17 checkpoints (XLM-RoBERTa base, first-subword pooling) through Candle.
 //! Arcs are decoded into a single-rooted tree with Chu-Liu-Edmonds. Lemmas come
@@ -27,6 +27,8 @@ use text_core::{DetectError, Result};
 
 use crate::morphology::{MorphTagSet, PosTag};
 
+/// Pinned Hugging Face commit of `clarin-pl/combo-nlp-xlm-roberta-base-english-ewt-ud2.17`.
+pub const COMBO_ENGLISH_EWT_REVISION: &str = "2c0ea96aebadf8966dfc8e8d4cf4fb08307ba014";
 /// Pinned Hugging Face commit of `clarin-pl/combo-nlp-xlm-roberta-base-german-gsd-ud2.17`.
 pub const COMBO_GERMAN_GSD_REVISION: &str = "55234be1713fb4ae47a598e43325185248e4d651";
 /// Pinned Hugging Face commit of `clarin-pl/combo-nlp-xlm-roberta-base-spanish-ancora-ud2.17`.
@@ -38,6 +40,8 @@ pub const XLM_ROBERTA_BASE_REVISION: &str = "e73636d4f797dec63c3081bb6ed5c7b0bb3
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// UD-treebank-trained UPOS/feature taggers understood by text-linguistics.
 pub enum UdModelPreset {
+    /// COMBO-NLP trained on UD_English-EWT 2.17 (CC BY-SA 4.0).
+    ComboEnglishEwt,
     /// COMBO-NLP trained on UD_German-GSD 2.17 (CC BY-SA 4.0).
     ComboGermanGsd,
     /// COMBO-NLP trained on UD_Spanish-AnCora 2.17 (CC BY 4.0).
@@ -45,12 +49,17 @@ pub enum UdModelPreset {
 }
 
 impl UdModelPreset {
-    /// Every UD morphology preset.
-    pub const ALL: &'static [Self] = &[Self::ComboGermanGsd, Self::ComboSpanishAncora];
+    /// Every UD model preset.
+    pub const ALL: &'static [Self] = &[
+        Self::ComboEnglishEwt,
+        Self::ComboGermanGsd,
+        Self::ComboSpanishAncora,
+    ];
 
     /// Stable preset id.
     pub fn as_str(self) -> &'static str {
         match self {
+            Self::ComboEnglishEwt => "combo-english-ewt-ud2.17",
             Self::ComboGermanGsd => "combo-german-gsd-ud2.17",
             Self::ComboSpanishAncora => "combo-spanish-ancora-ud2.17",
         }
@@ -59,6 +68,7 @@ impl UdModelPreset {
     /// Hugging Face repository the preset loads.
     pub fn repo_id(self) -> &'static str {
         match self {
+            Self::ComboEnglishEwt => "clarin-pl/combo-nlp-xlm-roberta-base-english-ewt-ud2.17",
             Self::ComboGermanGsd => "clarin-pl/combo-nlp-xlm-roberta-base-german-gsd-ud2.17",
             Self::ComboSpanishAncora => {
                 "clarin-pl/combo-nlp-xlm-roberta-base-spanish-ancora-ud2.17"
@@ -69,6 +79,7 @@ impl UdModelPreset {
     /// Pinned Hugging Face commit.
     pub fn revision(self) -> &'static str {
         match self {
+            Self::ComboEnglishEwt => COMBO_ENGLISH_EWT_REVISION,
             Self::ComboGermanGsd => COMBO_GERMAN_GSD_REVISION,
             Self::ComboSpanishAncora => COMBO_SPANISH_ANCORA_REVISION,
         }
@@ -77,6 +88,7 @@ impl UdModelPreset {
     /// ISO 639-1 language the preset is trained and evaluated for.
     pub fn language(self) -> &'static str {
         match self {
+            Self::ComboEnglishEwt => "en",
             Self::ComboGermanGsd => "de",
             Self::ComboSpanishAncora => "es",
         }
@@ -143,8 +155,12 @@ pub struct UdWordAnalysis {
 }
 
 /// Splits surface contractions into the syntactic words UD treebanks tag
-/// (`zum` -> `zu dem`, `del` -> `de el`). Returns `None` for ordinary words.
-pub fn split_contraction(language: &str, word: &str) -> Option<[&'static str; 2]> {
+/// (`zum` -> `zu dem`, `del` -> `de el`, `don't` -> `do n't`, `John's` -> `John 's`).
+/// Returns `None` for ordinary words.
+pub fn split_contraction<'a>(language: &str, word: &'a str) -> Option<[&'a str; 2]> {
+    if language == "en" {
+        return split_english_clitic(word);
+    }
     let lower = word.to_lowercase();
     let table: &[(&str, [&str; 2])] = match language {
         "de" => &[
@@ -174,6 +190,29 @@ pub fn split_contraction(language: &str, word: &str) -> Option<[&'static str; 2]
         .iter()
         .find(|(surface, _)| *surface == lower)
         .map(|(_, words)| *words)
+}
+
+/// English clitics as UD_English-EWT splits them: `n't` (`can't` -> `ca n't`,
+/// `won't` -> `wo n't`), `'s`, `'m`, `'re`, `'ve`, `'ll`, `'d`, and `cannot`.
+/// Both apostrophes (`'`, `’`) are recognised; the host keeps its surface case.
+fn split_english_clitic(word: &str) -> Option<[&str; 2]> {
+    if word.eq_ignore_ascii_case("cannot") {
+        return Some([&word[..3], &word[3..]]);
+    }
+    let apostrophe = word.rfind(['\'', '’'])?;
+    let clitic = word[apostrophe..]
+        .chars()
+        .skip(1)
+        .collect::<String>()
+        .to_ascii_lowercase();
+    let split = match clitic.as_str() {
+        // The `n` before the apostrophe belongs to the clitic.
+        "t" if apostrophe > 1 && word[..apostrophe].ends_with(['n', 'N']) => apostrophe - 1,
+        "s" | "m" | "re" | "ve" | "ll" | "d" => apostrophe,
+        _ => return None,
+    };
+    let host = &word[..split];
+    (!host.is_empty() && host.chars().all(char::is_alphanumeric)).then_some([host, &word[split..]])
 }
 
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
