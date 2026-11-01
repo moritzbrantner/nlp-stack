@@ -20,7 +20,9 @@ server/CLI builds with `local-onnx` use
 predictions or caller backend are supplied. Missing bundles are resolved through
 `moritzbrantner-model-runtime` and materialized under `.model-runtime` unless
 the request disables `auto_download`. The ONNX session and tokenizer are loaded
-once per bundle root and preset and reused by later requests.
+once per bundle root and preset and reused by later requests. ONNX Runtime >= 1.24
+is loaded from `ORT_DYLIB_PATH` (or the loader path); a missing or older library
+is an `ONNX Runtime unavailable: … set ORT_DYLIB_PATH …` error, not a hang.
 
 ## Package surface
 

@@ -25,6 +25,12 @@ call reuses them, and clones share them across threads. The local classify and
 sentiment requests keep one loaded classifier per bundle root and model id.
 `classify_batch` pads up to 16 texts into one forward pass: labels and their
 ranking match per-text `classify`, scores can differ in the last float bits.
+Local zero-shot requests likewise keep one loaded `OnnxZeroShotClassifier`
+(ONNX session and tokenizer) per bundle root and model id.
+
+The ONNX paths load ONNX Runtime >= 1.24 from `ORT_DYLIB_PATH` (or the loader
+path). A missing or older library is an `ONNX Runtime unavailable: … set
+ORT_DYLIB_PATH …` error, not a hang.
 
 ## Package surface
 

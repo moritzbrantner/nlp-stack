@@ -60,3 +60,9 @@ nlp-package-registry = { package = "moenarch-nlp-package-registry", version = "=
 text-question-answering = { package = "moenarch-text-question-answering", version = "=0.1.1", path = "crates/text/text-question-answering" }
 text-retrieval = { package = "moenarch-text-retrieval", version = "=0.1.1", path = "crates/text/text-retrieval" }
 text-transcripts = { package = "moenarch-text-transcripts", version = "=0.1.3", path = "crates/text/text-transcripts" }
+
+# Published 0.1.1 builds on ort 2.0.0-rc.12, which deadlocks instead of returning an
+# error when ONNX Runtime is missing or older than 1.24 (#176, vox#159). The foundation
+# source (ort rc.15) returns typed RuntimeUnavailable / RuntimeTooOld errors.
+[patch.crates-io]
+moenarch-runtime-onnx = { git = "https://github.com/moritzbrantner/moenarch-foundation", rev = "cf8d6f1052ad1d5c567e797a56d3bb8910828920" }
