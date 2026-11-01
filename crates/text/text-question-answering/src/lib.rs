@@ -799,7 +799,7 @@ fn unsupported_runtime<T>(message: &str) -> Result<T> {
 fn run_local_qa(request: &QuestionAnsweringRequest) -> Result<QuestionAnsweringResponse> {
     #[cfg(feature = "local-onnx")]
     {
-        use model_runtime::{resolve_or_download_bundle, ModelBundleResolveOptions, ModelPreset};
+        use model_runtime::{ModelBundleResolveOptions, ModelPreset};
 
         let model_id = request
             .local_model
@@ -834,16 +834,15 @@ fn run_local_qa(request: &QuestionAnsweringRequest) -> Result<QuestionAnsweringR
                 resolve_options.overwrite = overwrite;
             }
         }
-        let spec = preset.spec();
-        let bundle = resolve_or_download_bundle(&spec, &resolve_options)
-            .map_err(|error| DetectError::Source(error.to_string()))?;
-        let mut qa = OnnxQuestionAnswerer::from_bundle(bundle)?.with_decode_options(
-            QuestionAnsweringDecodeOptions {
-                max_answer_len: 30,
-                top_k: request.top_k.max(1),
-                min_score: None,
-            },
-        );
+        let qa = local_question_answerer(preset, &resolve_options)?;
+        let mut qa = qa
+            .lock()
+            .map_err(|_| DetectError::Source("question answerer lock poisoned".to_string()))?;
+        qa.set_decode_options(QuestionAnsweringDecodeOptions {
+            max_answer_len: 30,
+            top_k: request.top_k.max(1),
+            min_score: None,
+        });
         let mut answers = qa
             .answer(&request.question, &request.context)?
             .into_iter()
@@ -874,6 +873,32 @@ fn run_local_qa(request: &QuestionAnsweringRequest) -> Result<QuestionAnsweringR
             "native question answering is server-only and requires the `local-onnx` feature",
         )
     }
+}
+
+/// Loaded ONNX answerers keyed by bundle root and preset; each model and tokenizer is read
+/// from disk once per process. The ONNX session needs `&mut`, so callers take the lock.
+#[cfg(feature = "local-onnx")]
+fn local_question_answerer(
+    preset: model_runtime::ModelPreset,
+    resolve_options: &model_runtime::ModelBundleResolveOptions,
+) -> Result<std::sync::Arc<std::sync::Mutex<OnnxQuestionAnswerer>>> {
+    use std::collections::HashMap;
+    use std::sync::{Arc, Mutex, OnceLock};
+
+    type Cache = Mutex<HashMap<(PathBuf, &'static str), Arc<Mutex<OnnxQuestionAnswerer>>>>;
+    static ANSWERERS: OnceLock<Cache> = OnceLock::new();
+    let key = (resolve_options.bundle_root.clone(), preset.as_str());
+    let cache = ANSWERERS.get_or_init(Default::default);
+    if let Some(answerer) = cache.lock().ok().and_then(|cache| cache.get(&key).cloned()) {
+        return Ok(answerer);
+    }
+    let bundle = model_runtime::resolve_or_download_bundle(&preset.spec(), resolve_options)
+        .map_err(|error| DetectError::Source(error.to_string()))?;
+    let answerer = Arc::new(Mutex::new(OnnxQuestionAnswerer::from_bundle(bundle)?));
+    if let Ok(mut cache) = cache.lock() {
+        cache.insert(key, answerer.clone());
+    }
+    Ok(answerer)
 }
 
 fn heuristic_answer_response(

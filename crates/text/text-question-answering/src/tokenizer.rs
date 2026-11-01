@@ -2,20 +2,44 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, OnceLock};
 
 use media_core::{DetectError, Result};
 use model_runtime::ModelBundle;
 
 use crate::models::QuestionAnsweringTokens;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone)]
 /// Tokenizer file plus the model's maximum token count.
+///
+/// The tokenizer file is parsed on the first tokenize call and reused afterwards; clones
+/// share the parsed tokenizer.
 pub(crate) struct TokenizerBundle {
     tokenizer_path: PathBuf,
     max_length: Option<usize>,
+    loaded: Arc<OnceLock<tokenizers::Tokenizer>>,
+}
+
+impl std::fmt::Debug for TokenizerBundle {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("TokenizerBundle")
+            .field("tokenizer_path", &self.tokenizer_path)
+            .field("max_length", &self.max_length)
+            .finish_non_exhaustive()
+    }
 }
 
 impl TokenizerBundle {
+    /// Parses the tokenizer file once and returns the shared tokenizer.
+    fn tokenizer(&self) -> Result<&tokenizers::Tokenizer> {
+        if let Some(tokenizer) = self.loaded.get() {
+            return Ok(tokenizer);
+        }
+        let tokenizer = load_tokenizer(&self.tokenizer_path)?;
+        Ok(self.loaded.get_or_init(|| tokenizer))
+    }
+
     /// Uses the bundle's `tokenizer.json`, falling back to a WordPiece `vocab.txt`.
     pub(crate) fn from_bundle(bundle: &ModelBundle) -> Result<Self> {
         let tokenizer_path = bundle
@@ -30,6 +54,7 @@ impl TokenizerBundle {
         Ok(Self {
             tokenizer_path,
             max_length: None,
+            loaded: Default::default(),
         })
     }
 
@@ -44,7 +69,8 @@ impl TokenizerBundle {
         question: &str,
         context: &str,
     ) -> Result<QuestionAnsweringTokens> {
-        let encoding = load_tokenizer(&self.tokenizer_path)?
+        let encoding = self
+            .tokenizer()?
             .encode((question, context), true)
             .map_err(|err| DetectError::Source(format!("failed to tokenize QA pair: {err}")))?;
         let limit = self.max_length.unwrap_or(usize::MAX);

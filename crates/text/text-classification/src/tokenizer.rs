@@ -2,6 +2,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, OnceLock};
 
 use model_runtime::ModelBundle;
 use text_core::{DetectError, Result};
@@ -22,14 +23,37 @@ pub(crate) struct PairTokens {
     pub(crate) token_type_ids: Option<Vec<i64>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone)]
 /// Tokenizer file plus the model's maximum token count.
+///
+/// The tokenizer file is parsed on the first tokenize call and reused afterwards; clones
+/// share the parsed tokenizer.
 pub(crate) struct TokenizerBundle {
     tokenizer_path: PathBuf,
     max_length: Option<usize>,
+    loaded: Arc<OnceLock<tokenizers::Tokenizer>>,
+}
+
+impl std::fmt::Debug for TokenizerBundle {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("TokenizerBundle")
+            .field("tokenizer_path", &self.tokenizer_path)
+            .field("max_length", &self.max_length)
+            .finish_non_exhaustive()
+    }
 }
 
 impl TokenizerBundle {
+    /// Parses the tokenizer file once and returns the shared tokenizer.
+    fn tokenizer(&self) -> Result<&tokenizers::Tokenizer> {
+        if let Some(tokenizer) = self.loaded.get() {
+            return Ok(tokenizer);
+        }
+        let tokenizer = load_tokenizer(&self.tokenizer_path)?;
+        Ok(self.loaded.get_or_init(|| tokenizer))
+    }
+
     /// Uses the bundle's `tokenizer.json`, falling back to a WordPiece `vocab.txt`.
     pub(crate) fn from_bundle(bundle: &ModelBundle) -> Result<Self> {
         let tokenizer_path = bundle
@@ -44,6 +68,7 @@ impl TokenizerBundle {
         Ok(Self {
             tokenizer_path,
             max_length: None,
+            loaded: Default::default(),
         })
     }
 
@@ -54,7 +79,8 @@ impl TokenizerBundle {
 
     #[cfg(feature = "candle")]
     pub(crate) fn tokenize(&self, text: &str) -> Result<TokenizedText> {
-        let encoding = load_tokenizer(&self.tokenizer_path)?
+        let encoding = self
+            .tokenizer()?
             .encode(text, true)
             .map_err(|err| DetectError::Source(format!("failed to tokenize text: {err}")))?;
         let (input_ids, attention_mask, token_type_ids) = self.ids(&encoding);
@@ -67,7 +93,8 @@ impl TokenizerBundle {
 
     #[cfg(feature = "onnx")]
     pub(crate) fn tokenize_pair(&self, first: &str, second: &str) -> Result<PairTokens> {
-        let encoding = load_tokenizer(&self.tokenizer_path)?
+        let encoding = self
+            .tokenizer()?
             .encode((first, second), true)
             .map_err(|err| DetectError::Source(format!("failed to tokenize text pair: {err}")))?;
         let (input_ids, attention_mask, token_type_ids) = self.ids(&encoding);

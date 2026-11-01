@@ -215,6 +215,11 @@ impl OnnxQuestionAnswerer {
         self.decode_options = options;
         self
     }
+
+    /// Replaces the decode options of a loaded answerer.
+    pub fn set_decode_options(&mut self, options: QuestionAnsweringDecodeOptions) {
+        self.decode_options = options;
+    }
 }
 
 #[cfg(feature = "local-onnx")]

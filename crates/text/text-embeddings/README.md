@@ -69,6 +69,11 @@ The catalog treats hashed embeddings as the default loadable path. MiniLM Candle
 and ONNX entries are loadable only when the matching `.model-runtime` bundles
 exist and the crate is built with `candle` or `onnx` plus `model-bundles`.
 
+`CandleTextEmbedder::from_bundle` (or `from_bundle_on` for an explicit device)
+loads the weights and parses the tokenizer once; every later call reuses them,
+and clones share them across threads. `embed_batch` pads up to 16 texts into one
+forward pass: vectors match per-text `embed_text` except in the last float bits.
+
 ```bash
 scripts/sync_model_bundles.sh
 cargo test -p text-embeddings --features external-tests -- --ignored

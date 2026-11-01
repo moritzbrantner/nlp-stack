@@ -588,6 +588,37 @@ fn provenance_label(metadata: &TextEmbeddingMetadata) -> String {
     format!("{:?}", metadata.backend).to_ascii_lowercase()
 }
 
+/// Loaded Candle embedders keyed by bundle directory (default device); clones share the
+/// weights, so each model is read from disk once per process.
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+fn local_candle_embedder(
+    bundle_dir: &PathBuf,
+) -> std::result::Result<text_embeddings::CandleTextEmbedder, String> {
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+
+    type Cache = Mutex<HashMap<PathBuf, text_embeddings::CandleTextEmbedder>>;
+    static EMBEDDERS: OnceLock<Cache> = OnceLock::new();
+    let cache = EMBEDDERS.get_or_init(Default::default);
+    if let Some(embedder) = cache
+        .lock()
+        .ok()
+        .and_then(|cache| cache.get(bundle_dir).cloned())
+    {
+        return Ok(embedder);
+    }
+    let embedder = model_runtime::ModelBundle::load(bundle_dir)
+        .map_err(|error| error.to_string())
+        .and_then(|bundle| {
+            text_embeddings::CandleTextEmbedder::from_bundle(bundle)
+                .map_err(|error| error.to_string())
+        })?;
+    if let Ok(mut cache) = cache.lock() {
+        cache.insert(bundle_dir.clone(), embedder.clone());
+    }
+    Ok(embedder)
+}
+
 fn candle_embedding_section(
     text: &str,
     bundle_dir: &PathBuf,
@@ -598,13 +629,7 @@ fn candle_embedding_section(
 ) -> Option<EmbeddingAnalysisSection> {
     #[cfg(all(feature = "candle", feature = "model-bundles"))]
     {
-        match model_runtime::ModelBundle::load(bundle_dir)
-            .map_err(|error| error.to_string())
-            .and_then(|bundle| {
-                text_embeddings::CandleTextEmbedder::from_bundle(bundle)
-                    .map(|embedder| embedder.pooling(_pooling))
-                    .map_err(|error| error.to_string())
-            }) {
+        match local_candle_embedder(bundle_dir).map(|embedder| embedder.pooling(_pooling)) {
             Ok(embedder) => embedding_from_backend(text, &embedder, corpus, options, diagnostics),
             Err(error) => {
                 diagnostics.push(TextAnalysisDiagnostic::warning(

@@ -1,10 +1,51 @@
 #![cfg(feature = "external-tests")]
 
+use model_runtime::{HuggingFaceDownloader, ModelBundleStore, ModelPreset};
 use text_classification::{
-    analyze_sentiment, classify_text, zero_shot_classify, SentimentRequest,
-    TextClassificationLocalModelOptions, TextClassificationRequest, TextClassificationRuntime,
-    ZeroShotClassificationRequest,
+    analyze_sentiment, classify_text, zero_shot_classify, CandleSequenceClassifier,
+    SentimentRequest, TextClassificationLocalModelOptions, TextClassificationRequest,
+    TextClassificationRuntime, ZeroShotClassificationRequest,
 };
+
+#[test]
+#[ignore = "downloads the DistilBERT SST-2 bundle and compares batched with per-text inference"]
+fn batched_classification_matches_per_text() {
+    let spec = ModelPreset::DistilbertSst2.spec();
+    let revision = spec.revision_value().unwrap_or("main").to_string();
+    let store = ModelBundleStore::new(
+        std::env::var_os("TEXT_CLASSIFICATION_MODEL_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(workspace_model_root),
+    )
+    .downloader(HuggingFaceDownloader::new().progress(false).max_retries(2));
+    let bundle = store
+        .load(&spec.name, &revision)
+        .or_else(|_| store.download(&spec))
+        .unwrap();
+    let classifier = CandleSequenceClassifier::from_bundle(bundle).unwrap();
+    let texts = [
+        "Short.",
+        "This movie was a complete waste of time.",
+        "Rust text workflows are reliable and useful.",
+        "I expected little, but the second half surprised me with sharp writing and a terrific score.",
+        "Not bad at all, though the ending dragged.",
+    ];
+    let batched = classifier.classify_batch(&texts).unwrap();
+    for (text, batch) in texts.iter().zip(&batched) {
+        let single = classifier.classify(text).unwrap();
+        assert_eq!(single.len(), batch.len(), "{text}");
+        for (single, batch) in single.iter().zip(batch) {
+            // Labels and their ranking (argmax first) match exactly; scores may differ in the
+            // last float bits because a batch changes the matrix-multiply shapes.
+            assert_eq!(single.label, batch.label, "{text}");
+            let (single, batch) = (single.score.unwrap(), batch.score.unwrap());
+            assert!(
+                (single - batch).abs() <= 1e-5,
+                "{text}: {single} vs {batch}"
+            );
+        }
+    }
+}
 
 fn workspace_model_root() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

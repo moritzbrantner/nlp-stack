@@ -19,6 +19,13 @@ Default classification and sentiment fallbacks are deterministic heuristics.
 Catalog entries that are not `loadable` are reference metadata, not runnable
 native models.
 
+`CandleSequenceClassifier::from_bundle` (or `from_bundle_on` for an explicit
+device) loads the weights and parses the tokenizer once; every later `classify`
+call reuses them, and clones share them across threads. The local classify and
+sentiment requests keep one loaded classifier per bundle root and model id.
+`classify_batch` pads up to 16 texts into one forward pass: labels and their
+ranking match per-text `classify`, scores can differ in the last float bits.
+
 ## Package surface
 
 - Primary workflow: `classification.classify` runs imported-prediction or

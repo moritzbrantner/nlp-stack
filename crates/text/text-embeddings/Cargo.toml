@@ -35,7 +35,7 @@ default = []
 model-bundles = ["dep:model-runtime", "tokenizers"]
 tokenizers = ["dep:tokenizers"]
 onnx = ["tokenizers", "model-bundles", "runtime-onnx/onnxruntime"]
-candle = ["tokenizers", "dep:candle-core", "dep:candle-nn", "dep:candle-transformers"]
+candle = ["tokenizers", "model-bundles", "dep:candle-core", "dep:candle-nn", "dep:candle-transformers"]
 cuda = ["candle", "candle-core/cuda"]
 external-tests = ["onnx", "candle", "model-bundles"]
 
