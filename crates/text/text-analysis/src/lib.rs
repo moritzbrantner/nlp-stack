@@ -349,6 +349,9 @@ pub struct LinguisticAnalysisSection {
     /// Nested reported-speech and belief constructions with per-sentence support
     /// (`text_linguistics::ReportingEvidence`).
     pub reporting: serde_json::Value,
+    /// Negation, uncertainty and hypothetical operators with their scope, linked to
+    /// `reporting` (`text_linguistics::ScopeEvidence`).
+    pub scope: serde_json::Value,
     pub tokenizer: serde_json::Value,
     pub lemmas: serde_json::Value,
     pub morphology: serde_json::Value,

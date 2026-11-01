@@ -14,7 +14,7 @@ use serde::Serialize;
 use text_core::{TextSpan, Token, TokenKind};
 
 use crate::pipeline::LinguisticAnalysis;
-use crate::routing::{LinguisticOperation, OperationSupport};
+use crate::routing::{LinguisticOperation, OperationSupport, SentenceAnalysis};
 use crate::syntax::{DependencyRelation, DependencyTree};
 
 /// Producer name recorded on every construction.
@@ -43,7 +43,7 @@ pub enum ReportingForm {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 /// A source-text passage: token range plus its exact text and byte span.
-pub struct ReportingPassage {
+pub struct SourcePassage {
     /// First token index (into [`LinguisticAnalysis::tokens`]).
     pub token_start: usize,
     /// One past the last token index.
@@ -73,16 +73,16 @@ pub struct ReportingConstruction {
     /// Indirect complement or direct quotation.
     pub form: ReportingForm,
     /// The cue verb token.
-    pub cue: ReportingPassage,
+    pub cue: SourcePassage,
     /// The cue's lemma used for the lexicon lookup.
     pub cue_lemma: String,
     /// The grammatical subject of the cue, when the text names one. `None` means
     /// the source does not say who reports or believes; nothing is guessed.
-    pub source: Option<ReportingPassage>,
+    pub source: Option<SourcePassage>,
     /// The reported content, without its complementizer or quotation marks.
-    pub content: ReportingPassage,
+    pub content: SourcePassage,
     /// The complementizer (`that`, `dass`, `que`), when present.
-    pub complementizer: Option<ReportingPassage>,
+    pub complementizer: Option<SourcePassage>,
     /// Producer of this construction ([`REPORTING_PRODUCER`]).
     pub producer: String,
     /// Producer of the dependency tree it was read from.
@@ -137,7 +137,6 @@ pub fn reporting_constructions(analysis: &LinguisticAnalysis) -> ReportingEviden
     let mut sentences = Vec::new();
     for routed in &analysis.sentence_analyses {
         let index = routed.sentence_index;
-        let report = routed.operation(LinguisticOperation::DependencySyntax);
         let mut sentence_report = ReportingSentenceReport {
             sentence_index: index,
             support: OperationSupport::Unknown,
@@ -145,50 +144,38 @@ pub fn reporting_constructions(analysis: &LinguisticAnalysis) -> ReportingEviden
             reason: String::new(),
             construction_count: 0,
         };
-        let tree = analysis
-            .dependencies
-            .iter()
-            .find(|tree| tree.sentence_index == index);
-        let sentence = analysis.sentences.get(index);
-        match (report, routed.language.as_deref(), tree, sentence) {
-            (Some(report), Some(language), Some(tree), Some(_))
-                if report.support == OperationSupport::Supported =>
-            {
-                let producer = report.producer.clone().unwrap_or_default();
-                if lexicon(language).is_none() {
+        match ud_sentence(
+            analysis,
+            routed,
+            "does not mark clausal complements; reporting needs a UD dependency model",
+        ) {
+            Ok(parsed) => {
+                if lexicon(parsed.language).is_none() {
                     sentence_report.support = OperationSupport::Unsupported;
-                    sentence_report.reason = format!("no reporting-verb lexicon for `{language}`");
+                    sentence_report.reason =
+                        format!("no reporting-verb lexicon for `{}`", parsed.language);
                 } else {
                     let found = sentence_constructions(
                         analysis,
                         &analysis.graph.text,
-                        tree,
+                        parsed.tree,
                         index,
-                        language,
-                        &producer,
+                        parsed.language,
+                        &parsed.producer,
                     );
                     sentence_report.support = OperationSupport::Supported;
                     sentence_report.reason = format!(
-                        "clausal complements and quotations of {language} reporting and belief verbs in the {producer} dependency tree"
+                        "clausal complements and quotations of {} reporting and belief verbs in the {} dependency tree",
+                        parsed.language, parsed.producer
                     );
                     sentence_report.construction_count = found.len();
                     constructions.extend(found);
                 }
-                sentence_report.producer = Some(producer);
+                sentence_report.producer = Some(parsed.producer);
             }
-            (Some(report), _, _, _) if report.support == OperationSupport::Partial => {
-                sentence_report.support = OperationSupport::Unsupported;
-                sentence_report.reason = format!(
-                    "dependency trees come from {}, which does not mark clausal complements; reporting needs a UD dependency model",
-                    report.producer.as_deref().unwrap_or("heuristics")
-                );
-            }
-            (Some(report), _, _, _) => {
-                sentence_report.support = report.support;
-                sentence_report.reason = format!("no dependency tree: {}", report.reason);
-            }
-            (None, _, _, _) => {
-                sentence_report.reason = "no dependency report for the sentence".to_string();
+            Err((support, reason)) => {
+                sentence_report.support = support;
+                sentence_report.reason = reason;
             }
         }
         sentences.push(sentence_report);
@@ -198,6 +185,71 @@ pub fn reporting_constructions(analysis: &LinguisticAnalysis) -> ReportingEviden
         constructions,
         sentences,
     }
+}
+
+/// A sentence with a UD-model dependency tree.
+pub(crate) struct UdSentence<'a> {
+    pub tree: &'a DependencyTree,
+    pub language: &'a str,
+    pub producer: String,
+}
+
+/// The UD-model tree of `routed`, or the support level and reason why there is none.
+/// `heuristic_gap` says what a heuristic tree lacks (`does not mark clausal complements; …`).
+pub(crate) fn ud_sentence<'a>(
+    analysis: &'a LinguisticAnalysis,
+    routed: &'a SentenceAnalysis,
+    heuristic_gap: &str,
+) -> Result<UdSentence<'a>, (OperationSupport, String)> {
+    let index = routed.sentence_index;
+    let report = routed.operation(LinguisticOperation::DependencySyntax);
+    let tree = analysis
+        .dependencies
+        .iter()
+        .find(|tree| tree.sentence_index == index);
+    match (report, routed.language.as_deref(), tree) {
+        (Some(report), Some(language), Some(tree))
+            if report.support == OperationSupport::Supported
+                && analysis.sentences.get(index).is_some() =>
+        {
+            Ok(UdSentence {
+                tree,
+                language,
+                producer: report.producer.clone().unwrap_or_default(),
+            })
+        }
+        (Some(report), _, _) if report.support == OperationSupport::Partial => Err((
+            OperationSupport::Unsupported,
+            format!(
+                "dependency trees come from {}, which {heuristic_gap}",
+                report.producer.as_deref().unwrap_or("heuristics")
+            ),
+        )),
+        (Some(report), _, _) => Err((
+            report.support,
+            format!("no dependency tree: {}", report.reason),
+        )),
+        (None, _, _) => Err((
+            OperationSupport::Unknown,
+            "no dependency report for the sentence".to_string(),
+        )),
+    }
+}
+
+/// The lowercased lemma of token `index`, or its lowercased text without one.
+pub(crate) fn token_lemma(analysis: &LinguisticAnalysis, index: usize) -> String {
+    analysis
+        .lemmas
+        .iter()
+        .find(|lemma| lemma.token_index == index)
+        .map(|lemma| lemma.value.to_lowercase())
+        .unwrap_or_else(|| {
+            analysis
+                .tokens
+                .get(index)
+                .map(|token| token.text.to_lowercase())
+                .unwrap_or_default()
+        })
 }
 
 fn sentence_constructions(
@@ -217,15 +269,10 @@ fn sentence_constructions(
         .collect::<Vec<_>>();
     heads.sort_unstable();
     for cue_index in heads {
-        let Some(cue_token) = tokens.get(cue_index) else {
+        if tokens.get(cue_index).is_none() {
             continue;
-        };
-        let cue_lemma = analysis
-            .lemmas
-            .iter()
-            .find(|lemma| lemma.token_index == cue_index)
-            .map(|lemma| lemma.value.to_lowercase())
-            .unwrap_or_else(|| cue_token.text.to_lowercase());
+        }
+        let cue_lemma = token_lemma(analysis, cue_index);
         let Some(kind) = lexicon(language).and_then(|lexicon| lexicon.kind(&cue_lemma)) else {
             continue;
         };
@@ -343,7 +390,7 @@ fn link_nesting(constructions: &mut [ReportingConstruction]) {
 }
 
 /// Token indices dominated by `head` (inclusive), sorted.
-fn subtree(tree: &DependencyTree, head: usize) -> Vec<usize> {
+pub(crate) fn subtree(tree: &DependencyTree, head: usize) -> Vec<usize> {
     let mut members = vec![head];
     let mut frontier = vec![head];
     while let Some(node) = frontier.pop() {
@@ -363,7 +410,7 @@ fn subtree(tree: &DependencyTree, head: usize) -> Vec<usize> {
     }
 }
 
-fn trim_punctuation(tokens: &[Token], members: &mut Vec<usize>) {
+pub(crate) fn trim_punctuation(tokens: &[Token], members: &mut Vec<usize>) {
     let is_punct = |index: &usize| {
         tokens
             .get(*index)
@@ -379,14 +426,19 @@ fn trim_punctuation(tokens: &[Token], members: &mut Vec<usize>) {
 
 /// Tokens `start..end` as a source passage; `None` when their offsets do not
 /// address `text`.
-fn passage(text: &str, tokens: &[Token], start: usize, end: usize) -> Option<ReportingPassage> {
+pub(crate) fn passage(
+    text: &str,
+    tokens: &[Token],
+    start: usize,
+    end: usize,
+) -> Option<SourcePassage> {
     let span = TextSpan::from_byte_range(
         text,
         tokens.get(start)?.span.byte_start,
         tokens.get(end.checked_sub(1)?)?.span.byte_end,
     )
     .ok()?;
-    Some(ReportingPassage {
+    Some(SourcePassage {
         token_start: start,
         token_end: end,
         text: text[span.byte_start..span.byte_end].to_string(),
@@ -510,7 +562,7 @@ fn lexicon(language: &str) -> Option<&'static Lexicon> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::morphology::Lemma;
     use crate::routing::OperationReport;
@@ -520,7 +572,7 @@ mod tests {
     /// The heuristic analysis of `text` with a hand-written UD tree standing in for
     /// the model parse. `arcs` are `(dependent, head, deprel)` by token text (first
     /// occurrence); `head == ""` is the root. `lemmas` are `(token, lemma)`.
-    fn fixture(
+    pub(crate) fn fixture(
         text: &str,
         arcs: &[(&str, &str, &str)],
         lemmas: &[(&str, &str)],

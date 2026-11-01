@@ -224,6 +224,7 @@ fn analyze_request(request: &AnalyzeRequest) -> Result<LinguisticAnalysis, Strin
 
 fn analysis_projection(analysis: LinguisticAnalysis) -> serde_json::Value {
     let reporting = crate::reporting_constructions(&analysis);
+    let scope = crate::scope_operators(&analysis, &reporting);
     serde_json::json!({
         "profile": format!("{:?}", analysis.profile),
         "provenance": format!("{:?}", analysis.provenance),
@@ -237,6 +238,7 @@ fn analysis_projection(analysis: LinguisticAnalysis) -> serde_json::Value {
         "sentences": analysis.sentences,
         "sentenceAnalyses": analysis.sentence_analyses,
         "reporting": reporting,
+        "scope": scope,
         "tokens": analysis.tokens,
         "lemmas": analysis.lemmas.iter().map(|lemma| serde_json::json!({
             "tokenIndex": lemma.token_index,

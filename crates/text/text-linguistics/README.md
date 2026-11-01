@@ -243,6 +243,45 @@ gives the reason. The Pages workbench has only English heuristic trees, so it sh
 section as unsupported. The opt-in `tests/reporting_external.rs` checks the en/de/es
 UD parses.
 
+## Negation, uncertainty and conditional scope (en/de/es)
+
+`scope_operators(&analysis, &reporting)` reads scope operators from the same UD
+dependency trees and links them to the reporting constructions above. Cues come from a
+small per-language list (matched by lemma or form): negation (`not`/`n't`/`never`/`no`,
+`nicht`/`nie`/`kein`, `no`/`nunca`), uncertainty expressed by the text (possibility
+modals as `aux`: `might`/`may`/`could`, `könnte`/`dürfte`, `podría`; hedging adverbs as
+`advmod`: `perhaps`/`probably`, `vielleicht`/`wahrscheinlich`, `quizás`/`probablemente`)
+and conditionals (`mark` of an `advcl`: `if`, `falls`/`wenn`/`sofern`, `si`). Each
+`ScopeOperator` keeps the cue, its UD relation, the `head` it modifies, its `scope` (the
+head's subtree; for a conditional, the antecedent) and a conditional's `consequent`, all as
+exact UTF-8 spans:
+
+```text
+Sarah says John does not believe P.
+  negation  not → believe in "John does not believe P"
+            reportingTarget: John — believe · reportedWithin: Sarah — says
+Sarah does not say John believes P.
+  negation  not → say in "Sarah does not say John believes P"
+            reportingTarget: Sarah — say · reportedWithin: none
+If John leaves, Sarah will call.
+  conditional  antecedent "John leaves" · consequent "Sarah will call"
+```
+
+`reportingTarget` is the reporting construction whose cue the operator modifies;
+`reportedWithin` is the innermost report whose content contains the cue. Operators nest
+when one's scope contains the other's cue but not the reverse; `might not leave` stays
+two siblings. A cue whose attachment does not fix a scope (a negation attached as `conj`,
+or the parse root) is `resolution: Unresolved` with a reason and no scope. `if`/`si`
+introducing a complement (`I wonder if …`) is not a conditional. German `wenn` also reads
+as temporal "when"; it is reported as a conditional.
+
+The output records how the text frames content. A negated belief is not a false
+proposition, `might leave` is not a departure, `Sarah does not say` is not Sarah
+asserting the opposite, and neither side of a conditional is an observed event.
+`confidence` is the dependency-attachment confidence, never the text's hedging. Support
+is per sentence as for reporting; the Pages workbench shows it as unsupported. The opt-in
+`tests/scope_external.rs` checks the en/de/es UD parses.
+
 ## Language detection and per-sentence routing
 
 `LanguageDetector` runs [lingua](https://github.com/pemistahl/lingua-rs) 1.8

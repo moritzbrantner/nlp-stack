@@ -415,6 +415,7 @@ fn linguistic_section(
 fn project_linguistic_analysis(
     analysis: text_linguistics::LinguisticAnalysis,
 ) -> LinguisticAnalysisSection {
+    let reporting = text_linguistics::reporting_constructions(&analysis);
     LinguisticAnalysisSection {
         language: serde_json::json!({
             "primary": analysis.language.primary.as_ref().map(|prediction| serde_json::json!({
@@ -428,7 +429,8 @@ fn project_linguistic_analysis(
             "tokenCount": analysis.language.token_count
         }),
         sentences: serde_json::to_value(&analysis.sentence_analyses).unwrap_or_default(),
-        reporting: serde_json::to_value(text_linguistics::reporting_constructions(&analysis))
+        reporting: serde_json::to_value(&reporting).unwrap_or_default(),
+        scope: serde_json::to_value(text_linguistics::scope_operators(&analysis, &reporting))
             .unwrap_or_default(),
         tokenizer: serde_json::json!({
             "mode": format!("{:?}", analysis.tokenizer.mode),

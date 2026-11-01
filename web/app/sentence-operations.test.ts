@@ -61,3 +61,62 @@ describe("reporting evidence view", () => {
     });
   });
 });
+
+describe("scope evidence view", () => {
+  const negated = "Sarah does not say John believes it.";
+  const at = (byteStart: number, byteEnd: number) => ({ text: negated.slice(byteStart, byteEnd), span: span(byteStart, byteEnd) });
+  const report = (scope: unknown) => ({
+    core: { sentences: [{ text: negated, span: span(0, negated.length), token_count: 8 }] },
+    linguistic: {
+      sentences: [{ sentenceIndex: 0, span: span(0, negated.length), language: "en", operations: [] }],
+      reporting: {
+        constructions: [
+          { id: 0, parent: null, children: [1], sentenceIndex: 0, kind: "speech", form: "indirect", cue: at(15, 18), cueLemma: "say", source: at(0, 5), content: at(19, 35), confidence: 0.99 },
+          { id: 1, parent: 0, children: [], sentenceIndex: 0, kind: "belief", form: "indirect", cue: at(24, 32), cueLemma: "believe", source: at(19, 23), content: at(33, 35), confidence: 0.98 },
+        ],
+        sentences: [{ sentenceIndex: 0, support: "supported", producer: "ud-model:x", reason: "", constructionCount: 2 }],
+      },
+      scope,
+    },
+  });
+
+  it("links a negated report to the report, not the embedded belief", () => {
+    const [view] = sentenceViews(
+      report({
+        operators: [
+          { id: 0, parent: null, children: [], sentenceIndex: 0, kind: "negation", resolution: "resolved", unresolvedReason: null, cue: at(11, 14), cueRelation: "advmod", head: at(15, 18), scope: at(0, 35), consequent: null, reportingTarget: 0, reportedWithin: null, confidence: 0.97 },
+        ],
+        sentences: [{ sentenceIndex: 0, support: "supported", producer: "ud-model:x", reason: "", operatorCount: 1 }],
+      }),
+    );
+    const [negation] = view!.scope.roots;
+    expect(view!.scope.status).toBe("supported");
+    expect([negation!.kind, negation!.cue.text, negation!.head?.text, negation!.reportingTarget?.label]).toEqual([
+      "negation",
+      "not",
+      "say",
+      "Sarah — say",
+    ]);
+    expect(negation!.reportedWithin).toBeNull();
+    expect([negation!.cue.byteStart, negation!.cue.byteEnd]).toEqual([11, 14]);
+  });
+
+  it("keeps an unresolved operator without inventing a scope", () => {
+    const [view] = sentenceViews(
+      report({
+        operators: [
+          { id: 0, parent: null, children: [], sentenceIndex: 0, kind: "negation", resolution: "unresolved", unresolvedReason: "the cue attaches as `conj`", cue: at(11, 14), cueRelation: "conj", head: null, scope: null, consequent: null, reportingTarget: null, reportedWithin: null, confidence: null },
+        ],
+        sentences: [{ sentenceIndex: 0, support: "supported", producer: "ud-model:x", reason: "", operatorCount: 1 }],
+      }),
+    );
+    const [negation] = view!.scope.roots;
+    expect([negation!.resolved, negation!.scope, negation!.unresolvedReason]).toEqual([false, null, "the cue attaches as `conj`"]);
+  });
+
+  it("reports unknown when the analysis has no scope section", () => {
+    const [view] = sentenceViews(report(undefined));
+    expect(view!.scope.status).toBe("unknown");
+    expect(view!.scope.roots).toEqual([]);
+  });
+});
