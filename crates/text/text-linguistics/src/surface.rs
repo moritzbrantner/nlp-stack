@@ -7,8 +7,8 @@ use runtime_core::{
 use serde::Deserialize;
 
 use crate::{
-    LanguageDetectionOptions, LanguageDetector, LanguagePrediction, LanguageProfile,
-    LinguisticAnalysis, TextNlpConfig, TextNlpPipeline,
+    LanguageDetectionOptions, LanguageDetector, LanguageProfile, LinguisticAnalysis, TextNlpConfig,
+    TextNlpPipeline,
 };
 
 /// Returns the package surface exposed by every transport wrapper.
@@ -163,10 +163,7 @@ fn language_detection_value(request: LanguageRequest) -> Result<serde_json::Valu
     if let Some(min_tokens) = request.min_tokens_for_decision {
         options.min_tokens_for_decision = min_tokens;
     }
-    let detector = LanguageDetector {
-        options,
-        ..LanguageDetector::default()
-    };
+    let detector = LanguageDetector { options };
     Ok(language_profile_value(detector.detect_text(&request.text)))
 }
 
@@ -237,6 +234,7 @@ fn analysis_projection(analysis: LinguisticAnalysis) -> serde_json::Value {
             "reason": analysis.tokenizer.reason
         },
         "sentences": analysis.sentences,
+        "sentenceAnalyses": analysis.sentence_analyses,
         "tokens": analysis.tokens,
         "lemmas": analysis.lemmas.iter().map(|lemma| serde_json::json!({
             "tokenIndex": lemma.token_index,
@@ -290,25 +288,7 @@ fn language_value(analysis: &LinguisticAnalysis) -> serde_json::Value {
 }
 
 fn language_profile_value(profile: LanguageProfile) -> serde_json::Value {
-    serde_json::json!({
-        "primary": profile.primary.as_ref().map(language_prediction_value),
-        "alternatives": profile.alternatives.iter().map(language_prediction_value).collect::<Vec<_>>(),
-        "dominantScript": profile.dominant_script,
-        "isMixed": profile.is_mixed,
-        "sentencePredictions": profile.sentence_predictions.iter().map(|prediction| {
-            prediction.as_ref().map(language_prediction_value)
-        }).collect::<Vec<_>>(),
-        "tokenCount": profile.token_count
-    })
-}
-
-fn language_prediction_value(prediction: &LanguagePrediction) -> serde_json::Value {
-    serde_json::json!({
-        "language": prediction.language,
-        "confidence": prediction.confidence,
-        "script": prediction.script,
-        "reason": prediction.reason
-    })
+    serde_json::to_value(profile).unwrap_or_default()
 }
 
 fn entity_values(analysis: &LinguisticAnalysis) -> Vec<serde_json::Value> {
@@ -416,7 +396,7 @@ mod tests {
             }),
         })
         .expect("language");
-        assert!(response.value["result"]["sentencePredictions"]
+        assert!(response.value["result"]["sentences"]
             .as_array()
             .unwrap()
             .is_empty());

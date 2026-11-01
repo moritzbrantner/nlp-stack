@@ -122,45 +122,80 @@ function requestSemanticEmbeddings(texts) {
   return { id, promise };
 }
 
+/**
+ * Each sentence's language from the Rust per-sentence routing records (matched by
+ * UTF-8 start offset), or the caller's language hint for every sentence.
+ */
+function sentenceLanguages(documentResult, sentences, languageHint) {
+  if (typeof languageHint === "string" && languageHint.trim()) {
+    return sentences.map(() => ({ language: languageHint, source: "input" }));
+  }
+  const records = Array.isArray(documentResult?.linguistic?.sentences) ? documentResult.linguistic.sentences : [];
+  const byStart = new Map(records.map((record) => [Number(record?.span?.byte_start), record]));
+  return sentences.map((sentence) => {
+    const record = byStart.get(Number(sentence?.span?.byte_start ?? 0));
+    return { language: typeof record?.language === "string" ? record.language : null, source: "detected" };
+  });
+}
+
+/**
+ * Runs the browser NER model once per sentence language. Sentences in unsupported
+ * languages are reported as such without loading the model; sentences with an
+ * undecided language are not labelled.
+ */
 async function modelNamedEntities(documentResult, input) {
   const sentences = Array.isArray(documentResult?.core?.sentences) ? documentResult.core.sentences : [];
-  const segments = sentences
-    .filter((sentence) => typeof sentence?.text === "string" && sentence.text.length > 0)
-    .map((sentence, index) => ({
-      id: index,
-      text: sentence.text,
-      byteStart: Number(sentence?.span?.byte_start ?? 0),
-    }));
-  // The workbench has no language detection on this path; it states English as an
-  // assumption rather than claiming a detected language (#116/#117 own routing).
-  const knownLanguage = documentResult?.language ?? input?.languageHint;
-  const language = typeof knownLanguage === "string" ? knownLanguage : "en";
+  const languages = sentenceLanguages(documentResult, sentences, input?.languageHint);
+  const groups = new Map();
+  const sentenceReports = sentences.map((sentence, index) => {
+    const { language, source } = languages[index];
+    if (typeof sentence?.text === "string" && sentence.text.length > 0 && language !== null) {
+      if (!groups.has(language)) groups.set(language, []);
+      groups.get(language).push({ id: index, text: sentence.text, byteStart: Number(sentence?.span?.byte_start ?? 0) });
+    }
+    return { sentenceIndex: index, language, languageSource: source, status: "unknown-language", entityCount: 0, truncated: false };
+  });
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     controller.abort(new Error(`Named entity model attempt exceeded ${namedEntityModelAttemptTimeoutMs}ms.`));
   }, namedEntityModelAttemptTimeoutMs);
+  const entities = [];
   try {
-    const result = await browserNer.analyze({ language, segments }, { signal: controller.signal });
-    return {
-      model: {
-        name: result.model.id,
-        revision: result.model.revision,
-        status: result.status,
-        language: result.language,
-        languageSource: typeof knownLanguage === "string" ? "input" : "assumed",
-      },
-      entities: result.entities.map((entity) => ({
-        text: entity.text,
-        kind: entity.label,
-        score: entity.score,
-        span: { byte_start: entity.byteStart, byte_end: entity.byteEnd },
-        sentenceIndex: entity.segmentId,
-      })),
-    };
+    for (const [language, segments] of groups) {
+      const result = await browserNer.analyze({ language, segments }, { signal: controller.signal });
+      for (const segment of result.segments) {
+        Object.assign(sentenceReports[segment.id], {
+          status: result.status,
+          entityCount: segment.entityCount,
+          truncated: segment.truncated,
+        });
+      }
+      for (const entity of result.entities) {
+        entities.push({
+          text: entity.text,
+          kind: entity.label,
+          score: entity.score,
+          span: { byte_start: entity.byteStart, byte_end: entity.byteEnd },
+          sentenceIndex: entity.segmentId,
+          language,
+        });
+      }
+    }
   } finally {
     clearTimeout(timeoutId);
   }
+  entities.sort((left, right) => left.span.byte_start - right.span.byte_start);
+  const { model } = browserNer.capabilities();
+  return {
+    model: {
+      name: model.id,
+      revision: model.revision,
+      supportedLanguages: model.supportedLanguages,
+      sentences: sentenceReports,
+    },
+    entities,
+  };
 }
 
 async function runModelBackedDocumentAnalysis(wasm, request) {

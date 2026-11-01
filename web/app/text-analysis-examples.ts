@@ -3,7 +3,8 @@ export type ExampleResultView =
   | "semantic-corpus"
   | "overview"
   | "keywords"
-  | "semantic-map";
+  | "semantic-map"
+  | "sentences";
 
 export interface TextAnalysisExample {
   id: string;
@@ -55,6 +56,16 @@ export const textAnalysisExamples: TextAnalysisExample[] = [
     focus: "semantic-map",
     text:
       "Elena arrived in Freiburg just before the evening rain, carrying a blue notebook wrapped in brown paper. She had promised her brother Tomas that she would return it to the old library before closing time. At the station, a violinist played a slow melody beneath the departures board while commuters hurried toward the trams. The tune reminded Elena of summer visits to the Black Forest when their father used to whistle while identifying plants along the trail.\n\nShe crossed the square and passed the cathedral as the rain became heavier. Inside a café she opened the parcel for the first time. The notebook contained field notes from a botanist named Marta Weiss, who had catalogued orchids and wetland plants forty years earlier. Several pages described a rare orchid growing near a spring above the Dreisam valley, but the final location was written only as a sketch of a footpath and three old beech trees. Elena understood why Tomas had been reluctant to give the notebook away: their father had copied that same sketch into one of his own hiking journals.\n\nThe library doors were still open when she arrived. Herr Bauer, the evening librarian, recognized the notebook immediately and said it had disappeared during an archive move many years ago. He showed Elena a catalogue card bearing Marta Weiss's name and a note that her field collection had never been completely indexed. Elena asked whether the orchid site had ever been found again. Herr Bauer said a university survey had searched for it twice, but the landscape had changed and the old path names no longer matched modern maps.\n\nFor a moment Elena considered photographing every page before returning the book. Instead she photographed only the catalogue card and the sketch her father had copied, then handed the original to the librarian. Herr Bauer promised that the notebook would be digitized with its provenance rather than separated into anonymous images. That mattered to Elena because the handwriting, dates, and sequence of observations told a story that isolated photographs would lose.\n\nWhen she stepped outside, the rain had stopped. The violinist at the station was playing the same melody as before, and Elena finally remembered its name. She called Tomas and told him that returning the notebook had not erased their connection to their father; it had placed that memory where other people could follow it. Tomas was silent for a while, then asked whether they could hike the old spring path together in October. Elena looked at the photograph of the three beech trees and said yes. The notebook was now behind library glass, but the unfinished search it contained had become theirs.",
+  },
+  {
+    id: "sentence-languages",
+    label: "Sentence languages",
+    category: "Mixed language",
+    description: "English, German and Spanish sentences side by side, plus an undecidable one-word sentence and an unsupported French sentence.",
+    demonstrates: "per-sentence language routing, supported and unsupported operations",
+    focus: "sentences",
+    text:
+      "Sarah says John is late. Er glaubt, dass John nicht kommen wird. María explicó que Ana llegó tarde. Thanks. Nous partirons demain matin pour Lyon.",
   },
   {
     id: "multilingual-note",

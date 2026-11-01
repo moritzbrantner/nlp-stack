@@ -66,3 +66,12 @@ dependency heads and label encoders
 (`clarin-pl/combo-nlp-xlm-roberta-base-*-ud2.17`, same licences, and the MIT
 `FacebookAI/xlm-roberta-base` tokenizer) are downloaded at runtime, pinned by
 commit, and never committed.
+
+## Third-party data: language identification models
+
+Sentence language detection uses the [`lingua`](https://github.com/pemistahl/lingua-rs)
+crate (Apache-2.0) with its English, German, Spanish, French, Italian, Portuguese
+and Dutch language-model crates (`lingua-*-language-model`, Apache-2.0). The
+n-gram models are compiled into every binary and Wasm module that links
+`text-linguistics` (about 31 MB, 34 MB for the Pages `text-analysis` Wasm). They
+come from the crate registry and are not committed here.

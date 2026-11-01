@@ -8,7 +8,8 @@ use std::path::PathBuf;
 use model_runtime::{HuggingFaceDownloader, HuggingFaceModelSpec, ModelBundle, ModelBundleStore};
 use text_linguistics::{
     analyze_text, parse_ud_feats, DependencyParsingOptions, LinguisticAnalysisOptions,
-    MorphologyOptions, PosTag, UdLemmatizer, UdModel, UdModelPreset,
+    LinguisticOperation, MorphologyOptions, OperationSupport, PosTag, UdLemmatizer, UdModel,
+    UdModelPreset,
 };
 
 /// Minimum accuracies on the UD test splits (gold word segmentation).
@@ -196,14 +197,12 @@ fn ud_presets_reach_gold_fixture_accuracy() {
     for line in std::fs::read_to_string(path).unwrap().lines() {
         let case: serde_json::Value = serde_json::from_str(line).unwrap();
         let language = case["language"].as_str().unwrap().to_string();
-        // Score the morphology operation itself; language detection is reported separately.
-        options.morphology.language = Some(language.clone());
+        // No pinned language: each sentence is routed by its detected language.
         let analysis = analyze_text(case["text"].as_str().unwrap(), &options).unwrap();
         let detected = analysis
-            .language
-            .primary
-            .as_ref()
-            .map(|p| p.language.clone());
+            .sentence_analyses
+            .first()
+            .and_then(|sentence| sentence.language.clone());
         let hits = detected_right.entry(language.clone()).or_default();
         hits.0 += usize::from(detected.as_deref() == Some(language.as_str()));
         hits.1 += 1;
@@ -250,6 +249,7 @@ fn ud_presets_reach_gold_fixture_accuracy() {
             rate(feats),
             rate(lemma)
         );
+        assert_eq!(hits, cases, "{language} sentence language detection");
         assert!(rate(upos) >= MIN_GOLD_UPOS, "{language} UPOS");
         assert!(rate(feats) >= MIN_GOLD_UFEATS, "{language} UFeats");
         assert!(rate(lemma) >= MIN_GOLD_LEMMA, "{language} lemma");
@@ -283,9 +283,13 @@ fn ud_presets_reach_gold_dependency_accuracy() {
     for line in std::fs::read_to_string(path).unwrap().lines() {
         let case: serde_json::Value = serde_json::from_str(line).unwrap();
         let language = case["language"].as_str().unwrap().to_string();
-        options.morphology.language = Some(language.clone());
-        options.dependency_parsing.language = Some(language.clone());
         let analysis = analyze_text(case["text"].as_str().unwrap(), &options).unwrap();
+        assert_eq!(
+            analysis.sentence_analyses[0].language.as_deref(),
+            Some(language.as_str()),
+            "detected language of {}",
+            case["text"]
+        );
         let gold = case["tokens"].as_array().unwrap();
         let texts = analysis
             .tokens
@@ -333,6 +337,106 @@ fn ud_presets_reach_gold_dependency_accuracy() {
         );
         assert!(rate(uas) >= MIN_GOLD_UAS, "{language} UAS");
         assert!(rate(las) >= MIN_GOLD_LAS, "{language} LAS");
+    }
+}
+
+/// One document interleaving the German, Spanish and English fixture sentences: each
+/// sentence must reach its own language's UD model, and score as it does alone.
+#[test]
+#[ignore = "downloads the pinned COMBO checkpoints and scores a mixed de/es/en document"]
+fn mixed_document_routes_each_sentence_to_its_model() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../evaluation/corpora/morphology-multilingual-v1.jsonl");
+    let cases = std::fs::read_to_string(path)
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
+        .collect::<Vec<_>>();
+    let (german, spanish): (Vec<_>, Vec<_>) = cases
+        .iter()
+        .partition(|case| case["language"].as_str() == Some("de"));
+    let english = "The committee approved the new budget on Monday.";
+    let mut order = Vec::new();
+    for (index, (de, es)) in german.iter().zip(&spanish).enumerate() {
+        order.push(Some(*de));
+        order.push(Some(*es));
+        if index % 3 == 0 {
+            order.push(None);
+        }
+    }
+    let text = order
+        .iter()
+        .map(|case| case.map_or(english, |case| case["text"].as_str().unwrap()))
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    let mut options = LinguisticAnalysisOptions::heuristic();
+    options.morphology = MorphologyOptions {
+        bundle_dir: bundle_dir(),
+        download_progress: false,
+        max_retries: 2,
+        ..MorphologyOptions::local_model_with_downloads()
+    };
+    options.dependency_parsing = DependencyParsingOptions {
+        bundle_dir: bundle_dir(),
+        download_progress: false,
+        max_retries: 2,
+        ..DependencyParsingOptions::local_model_with_downloads()
+    };
+    let analysis = analyze_text(&text, &options).unwrap();
+    assert_eq!(analysis.sentences.len(), order.len());
+
+    let mut counts = BTreeMap::<String, [usize; 2]>::new();
+    for (index, case) in order.iter().enumerate() {
+        let record = &analysis.sentence_analyses[index];
+        let morphology = record.operation(LinguisticOperation::Morphology).unwrap();
+        let dependencies = record
+            .operation(LinguisticOperation::DependencySyntax)
+            .unwrap();
+        let Some(case) = case else {
+            assert_eq!(record.language.as_deref(), Some("en"));
+            assert_eq!(morphology.support, OperationSupport::Partial);
+            assert_eq!(dependencies.support, OperationSupport::Partial);
+            continue;
+        };
+        let language = case["language"].as_str().unwrap();
+        assert_eq!(record.language.as_deref(), Some(language), "{}", case["id"]);
+        let producer = format!(
+            "ud-model:{}",
+            UdModelPreset::for_language(language).unwrap().as_str()
+        );
+        assert_eq!(morphology.support, OperationSupport::Supported);
+        assert_eq!(morphology.producer.as_deref(), Some(producer.as_str()));
+        assert_eq!(dependencies.producer.as_deref(), Some(producer.as_str()));
+
+        let span = record.span;
+        let tokens = (0..analysis.tokens.len())
+            .filter(|&token| {
+                let start = analysis.tokens[token].span.byte_start;
+                start >= span.byte_start && start < span.byte_end
+            })
+            .collect::<Vec<_>>();
+        let gold = case["tokens"].as_array().unwrap();
+        assert_eq!(tokens.len(), gold.len(), "{} tokenization", case["id"]);
+        let entry = counts.entry(language.to_string()).or_default();
+        for (&token, gold) in tokens.iter().zip(gold) {
+            let tag = analysis
+                .pos
+                .iter()
+                .find(|pos| pos.token_index == token)
+                .expect("UD POS for every routed token");
+            entry[0] += 1;
+            entry[1] += usize::from(tag.tag.as_ud() == gold["upos"].as_str().unwrap());
+        }
+        assert!(analysis
+            .dependencies
+            .iter()
+            .any(|tree| tree.sentence_index == index));
+    }
+    for (language, [tokens, upos]) in counts {
+        let rate = upos as f64 / tokens as f64;
+        eprintln!("{language} in the mixed document: tokens={tokens} UPOS={rate:.3}");
+        assert!(rate >= MIN_GOLD_UPOS, "{language} UPOS");
     }
 }
 

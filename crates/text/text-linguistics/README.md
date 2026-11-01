@@ -5,7 +5,7 @@ Heuristic-first, local-first linguistic analysis pipeline for
 
 ## Highlights
 
-- Language detection with script-aware fallbacks
+- Per-sentence language detection (lingua) and routing, with typed supported/partial/unsupported/unknown reports per operation
 - Tokenizer routing for word, subword, and mixed analysis modes
 - Surface-to-subword alignment
 - Lemmatization, morphology, POS tagging, chunking, and dependency parsing
@@ -126,12 +126,12 @@ plus an exception list, both built from the treebank training splits by
 `scripts/build_ud_lemma_tables.py` (`data/lemmas/*.tsv`; see `docs/PROVENANCE.md`
 for licences). Contractions (`zum`, `im`, `del`, `al`) are tagged as two
 syntactic words. The token keeps the adposition's UPOS and lemma and the
-article's features. Other languages, English included, keep the heuristics.
+article's features. English sentences keep the English heuristics; other languages report the layers as unsupported.
 
 Scores, measured 2026-11-01. The UD test splits use gold word segmentation, and
 lemma accuracy uses the predicted UPOS. The fixtures are
 `evaluation/corpora/morphology-multilingual-v1.jsonl`, run through the full
-pipeline with the language pinned:
+pipeline with each sentence routed by its detected language:
 
 | | UPOS | UFeats | Lemma |
 | --- | --- | --- | --- |
@@ -186,11 +186,66 @@ accuracy" (German) and full-text F1 (Spanish, whose card has no aligned row).
 | es, gold fixtures (83 tokens) | 0.988 | 0.976 | | |
 
 The fixtures are `evaluation/corpora/dependencies-multilingual-v1.jsonl`, run
-through the full pipeline with the language pinned. The same opt-in test as
+through the full pipeline with each sentence routed by its detected language. The same opt-in test as
 above reports these scores. On the UD test splits it fails below 0.85 UAS or 0.82
 LAS, and on the fixtures below 0.90 UAS or 0.85 LAS. It also checks that every
 predicted tree is well formed. Parsing adds little to the encoder cost:
 relation scores are computed only for the decoded arcs.
+
+## Language detection and per-sentence routing
+
+`LanguageDetector` runs [lingua](https://github.com/pemistahl/lingua-rs) 1.8
+(Apache-2.0) in high-accuracy mode over English, German, Spanish, French,
+Italian, Portuguese and Dutch (`DETECTABLE_LANGUAGES`). The four extra languages
+are there so their text is not forced into en/de/es. Each sentence gets a
+`LanguageDecision`:
+
+- `Detected`: the best candidate leads the runner-up by at least
+  `LanguageDetectionOptions::min_margin` (0.25) in lingua's relative confidence;
+- `Ambiguous`: no candidate leads clearly (the candidates are still reported);
+- `TooShort`: fewer than two words (`Thanks.`);
+- `UnsupportedScript`: a script none of the languages use (Cyrillic, Han, ...).
+
+The analysis pipeline then routes every sentence by its own language.
+`LinguisticAnalysis::sentence_analyses` has one `SentenceAnalysis` per sentence:
+its UTF-8 span, the language it was analyzed in, the detection record, and an
+`OperationReport` for each of the seven core operations. A report gives the
+support level, the producer that ran and the reason:
+
+| Support | Meaning | Results in the analysis |
+| --- | --- | --- |
+| `Supported` | a producer evaluated for this language, or language-neutral rules | kept |
+| `Partial` | ran, but unscored for this language (English heuristics, capitalization NER) | kept, labelled |
+| `Unsupported` | the language is known but nothing configured supports it | omitted for this sentence |
+| `Unknown` | the language is undecided, so nothing language-specific ran | omitted for this sentence |
+
+German sentences go to the German UD model and Spanish sentences to the Spanish
+one within the same document, and no relation is drawn across sentences. Lemmas,
+morphology, POS, dependency trees and entities are omitted for sentences whose
+report does not keep them. Chunks, events, topics and style still see every
+sentence. `TextProcessingOptions::language` pins one language for every sentence
+and skips detection.
+
+Accuracy, measured 2026-11-01 (`never_misroutes_a_gold_fixture_sentence` in
+`src/tests.rs`, and the opt-in `tests/language_detection_ud.rs` over the UD 2.17
+test splits, one UD sentence per unit):
+
+| Sample | Sentences | Decided | Decided correctly |
+| --- | --- | --- | --- |
+| en/de/es gold fixtures (NER, morphology, dependencies, sentence languages) | 102 | 100 | 100 (0 misrouted) |
+| en, UD_English-EWT test | 2,077 | 77.5% | 99.4% |
+| de, UD_German-GSD test | 977 | 96.7% | 99.7% |
+| es, UD_Spanish-AnCora test | 1,721 | 97.2% | 100% |
+| fr / it / pt, UD GSD / ISDT / Bosque test | 416 / 482 / 1,167 | 97.1% / 95.9% / 94.2% | 100% / 99.6% / 99.5% |
+
+The two undecided fixture sentences are mostly names ("Angela Merkel met
+Emmanuel Macron in Paris."). EWT has many short web fragments, which come back
+undecided rather than misrouted. The stopword detector this replaces got 3 of the
+10 German and 3 of the 10 Spanish morphology fixture sentences wrong. Before
+choosing lingua, `whatlang` 0.18 (MIT) and `whichlang` 0.1 (MIT) were scored on the
+same sentences. Both are much smaller (about 0.3 MB) but less accurate on short
+sentences, and `whichlang` gives no confidence. lingua's models add about 31 MB
+to every binary that links this crate, including the browser Wasm.
 
 ## Language support (en/de/es)
 
@@ -199,24 +254,30 @@ Current state:
 
 | Operation | en | de | es |
 | --- | --- | --- | --- |
-| Language detection | stopword-lexicon heuristic | stopword-lexicon heuristic | stopword-lexicon heuristic |
+| Language detection | **lingua, scored** | **lingua, scored** | **lingua, scored** |
 | Sentence segmentation | language-neutral rules | language-neutral rules | language-neutral rules |
 | Tokenization | language-neutral rules | language-neutral rules | language-neutral rules |
 | Named entities (local model) | **model, gold-scored** | **model, gold-scored** | **model, gold-scored** |
-| Lemma / morphology (`MorphologyMode::LocalModel`) | English heuristics | **UD model + UD lemma table, scored** | **UD model + UD lemma table, scored** |
-| Part of speech (`MorphologyMode::LocalModel`) | English heuristics | **UD model, scored** | **UD model, scored** |
-| Dependency syntax (`DependencyParsingMode::LocalModel`) | English heuristics (unscored) | **UD model, scored** | **UD model, scored** |
+| Lemma / morphology (`MorphologyMode::LocalModel`) | English heuristics (`Partial`) | **UD model + UD lemma table, scored** | **UD model + UD lemma table, scored** |
+| Part of speech (`MorphologyMode::LocalModel`) | English heuristics (`Partial`) | **UD model, scored** | **UD model, scored** |
+| Dependency syntax (`DependencyParsingMode::LocalModel`) | English heuristics (`Partial`, unscored) | **UD model, scored** | **UD model, scored** |
 
-The browser module does not do de/es POS, morphology or dependency syntax. The COMBO checkpoints are
-custom heads on XLM-RoBERTa base, which Transformers.js cannot load as-is, and an
-int8 ONNX export would be roughly 280 MB per language, about twice the browser NER
-model. Language detection is still the stopword heuristic: it got the language wrong
-for 3 of the 10 German and 3 of the 10 Spanish fixture sentences. Set `MorphologyOptions::language` and
-`DependencyParsingOptions::language` to skip detection. Per-sentence routing is #162.
+English lemma, morphology, POS and dependency syntax are still heuristics; a UD
+model for English is not wired in yet. With the default heuristic modes, German
+and Spanish sentences report those three layers as `Unsupported` instead of
+receiving English heuristic output.
+
+The browser does not do de/es POS, morphology or dependency syntax. The COMBO
+checkpoints are custom heads on XLM-RoBERTa base, which Transformers.js cannot
+load as-is, and an int8 ONNX export would be roughly 280 MB per language, about
+twice the browser NER model. The Pages workbench's Sentences view shows those
+layers as "Rust only" for German and Spanish sentences. In the browser it runs
+language detection, segmentation and tokenization in Rust/Wasm and NER with the
+browser model, per sentence language.
 
 Heuristic NER (the default `EntityRecognitionMode::Heuristic`) is
-capitalization-based and is not language-aware. Per-sentence language routing
-and the end-to-end en/de/es journey are tracked in #162.
+capitalization-based and is not language-aware; it reports `Partial` for every
+sentence.
 
 Browser package apps expose local benchmark scenarios in the `Benchmarks` tab.
 Root scripts `bun run text-native:bench` and `bun run text-wasm:bench:all`

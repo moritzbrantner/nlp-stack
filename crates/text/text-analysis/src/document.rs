@@ -427,6 +427,7 @@ fn project_linguistic_analysis(
             "isMixed": analysis.language.is_mixed,
             "tokenCount": analysis.language.token_count
         }),
+        sentences: serde_json::to_value(&analysis.sentence_analyses).unwrap_or_default(),
         tokenizer: serde_json::json!({
             "mode": format!("{:?}", analysis.tokenizer.mode),
             "source": analysis.tokenizer.source.map(|source| format!("{source:?}")),

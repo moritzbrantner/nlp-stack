@@ -1,4 +1,3 @@
-#[cfg(all(feature = "candle", feature = "model-bundles"))]
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 
@@ -11,12 +10,16 @@ use crate::entities::{
     merge_model_and_heuristic_entities, CanonicalEntity, CorefCluster, CorefResolver,
     EntityLinkingOptions, EventExtractor, ExtractedEvent, NamedEntity, RelationTriple,
 };
-use crate::language::{LanguageDetectionOptions, LanguageDetector, LanguageProfile, LexiconStore};
+use crate::language::{
+    primary_language_subtag, LanguageDecision, LanguageDetectionOptions, LanguageDetector,
+    LanguagePrediction, LanguageProfile, SentenceLanguage, LANGUAGE_DETECTOR_PRODUCER,
+};
 use crate::local_models::{CandleTokenClassifier, SequenceLabeler};
 use crate::morphology::{
     annotate_morphology, lemmatize_tokens, Lemma, LemmaOptions, LemmatizationResult,
     MorphAnnotation, PosAnnotation, PosTagger, PosTaggingOptions,
 };
+use crate::routing::{LinguisticOperation, OperationReport, OperationSupport, SentenceAnalysis};
 use crate::syntax::{chunk_phrases, DependencyParser, DependencyTree, PhraseChunk};
 use crate::tokenization::{
     TokenAlignmentMap, TokenizationMode, TokenizerPolicy, TokenizerRegistry, TokenizerSelection,
@@ -126,15 +129,6 @@ impl ModelPreset {
     }
 }
 
-fn primary_language_subtag(language: &str) -> String {
-    language
-        .trim()
-        .split(['-', '_'])
-        .next()
-        .unwrap_or_default()
-        .to_ascii_lowercase()
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// Entity recognition runtime selection.
 ///
@@ -198,20 +192,24 @@ impl EntityRecognitionOptions {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// How lemmas, part of speech and morphological features are produced.
 pub enum MorphologyMode {
-    /// English heuristics for every language.
+    /// English heuristics. Sentences in other languages report the layer as
+    /// unsupported and get no lemma, POS or morphology annotations.
     Heuristic,
     /// UD-treebank-trained taggers ([`UdModelPreset`]) plus UD-derived lemma tables
-    /// for languages that have a preset (de, es); English heuristics otherwise.
+    /// for sentences in a language that has a preset (de, es); English heuristics
+    /// for English sentences; unsupported otherwise.
     LocalModel,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// Lemma/POS/morphology runtime selection. Defaults are heuristic and no-download.
+///
+/// Each sentence uses the model for its own language (see
+/// [`LinguisticAnalysis::sentence_analyses`]). Pin one language for every sentence
+/// with `TextProcessingOptions::language`.
 pub struct MorphologyOptions {
     /// Whether to use heuristics or the UD-trained local models.
     pub mode: MorphologyMode,
-    /// Language whose UD model to use; `None` uses the detected primary language.
-    pub language: Option<String>,
     /// Directory containing local model bundles when `mode` is `LocalModel`.
     pub bundle_dir: PathBuf,
     /// Whether missing model bundles may be downloaded.
@@ -233,7 +231,6 @@ impl MorphologyOptions {
     pub fn local_model() -> Self {
         Self {
             mode: MorphologyMode::LocalModel,
-            language: None,
             bundle_dir: PathBuf::from(".model-runtime"),
             auto_download: false,
             download_progress: false,
@@ -258,12 +255,9 @@ impl MorphologyOptions {
         }
     }
 
-    fn ud_model_source(&self, detected: Option<&str>) -> Option<UdModelSource> {
-        if self.mode != MorphologyMode::LocalModel {
-            return None;
-        }
-        Some(UdModelSource {
-            preset: UdModelPreset::for_language(self.language.as_deref().or(detected)?)?,
+    fn ud_model_source(&self, preset: UdModelPreset) -> Option<UdModelSource> {
+        (self.mode == MorphologyMode::LocalModel).then(|| UdModelSource {
+            preset,
             bundle_dir: self.bundle_dir.clone(),
             auto_download: self.auto_download,
             download_progress: self.download_progress,
@@ -275,10 +269,12 @@ impl MorphologyOptions {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// How dependency trees are produced.
 pub enum DependencyParsingMode {
-    /// English POS-pattern heuristics for every language.
+    /// English POS-pattern heuristics. Sentences in other languages report the
+    /// layer as unsupported and get no tree.
     Heuristic,
     /// The biaffine dependency head of the UD-treebank-trained models
-    /// ([`UdModelPreset`]) for languages that have a preset (de, es); heuristics otherwise.
+    /// ([`UdModelPreset`]) for sentences in a language that has a preset (de, es);
+    /// English heuristics for English sentences; unsupported otherwise.
     LocalModel,
 }
 
@@ -286,12 +282,11 @@ pub enum DependencyParsingMode {
 /// Dependency parser runtime selection. Defaults are heuristic and no-download.
 ///
 /// When this and [`MorphologyOptions`] select the same UD model from the same
-/// bundle directory, each sentence is encoded once for both layers.
+/// bundle directory, each sentence is encoded once for both layers. Routing is per
+/// sentence, as for [`MorphologyOptions`].
 pub struct DependencyParsingOptions {
     /// Whether to use heuristics or the UD-trained local models.
     pub mode: DependencyParsingMode,
-    /// Language whose UD model to use; `None` uses the detected primary language.
-    pub language: Option<String>,
     /// Directory containing local model bundles when `mode` is `LocalModel`.
     pub bundle_dir: PathBuf,
     /// Whether missing model bundles may be downloaded.
@@ -313,7 +308,6 @@ impl DependencyParsingOptions {
     pub fn local_model() -> Self {
         Self {
             mode: DependencyParsingMode::LocalModel,
-            language: None,
             bundle_dir: PathBuf::from(".model-runtime"),
             auto_download: false,
             download_progress: false,
@@ -338,12 +332,9 @@ impl DependencyParsingOptions {
         }
     }
 
-    fn ud_model_source(&self, detected: Option<&str>) -> Option<UdModelSource> {
-        if self.mode != DependencyParsingMode::LocalModel {
-            return None;
-        }
-        Some(UdModelSource {
-            preset: UdModelPreset::for_language(self.language.as_deref().or(detected)?)?,
+    fn ud_model_source(&self, preset: UdModelPreset) -> Option<UdModelSource> {
+        (self.mode == DependencyParsingMode::LocalModel).then(|| UdModelSource {
+            preset,
             bundle_dir: self.bundle_dir.clone(),
             auto_download: self.auto_download,
             download_progress: self.download_progress,
@@ -635,21 +626,25 @@ pub struct LinguisticAnalysis {
     pub tokenizer: TokenizerSelection,
     /// The sentences value.
     pub sentences: Vec<Sentence>,
+    /// Per-sentence language routing: the language each sentence was analyzed in and
+    /// the support, producer and reason for each core operation. Parallel to
+    /// `sentences`.
+    pub sentence_analyses: Vec<SentenceAnalysis>,
     /// The tokens value.
     pub tokens: Vec<Token>,
     /// The alignments value.
     pub alignments: Option<TokenAlignmentMap>,
-    /// The lemmas value.
+    /// Lemmas, only for sentences whose morphology report keeps results.
     pub lemmas: Vec<Lemma>,
-    /// The morphology value.
+    /// Morphology, only for sentences whose morphology report keeps results.
     pub morphology: Vec<MorphAnnotation>,
-    /// The pos value.
+    /// POS tags, only for sentences whose part-of-speech report keeps results.
     pub pos: Vec<PosAnnotation>,
     /// The chunks value.
     pub chunks: Vec<PhraseChunk>,
-    /// The dependencies value.
+    /// Dependency trees, only for sentences whose dependency report keeps results.
     pub dependencies: Vec<DependencyTree>,
-    /// The entities value.
+    /// Entities, only for sentences whose entity report keeps results.
     pub entities: Vec<NamedEntity>,
     /// The canonical entities value.
     pub canonical_entities: Vec<CanonicalEntity>,
@@ -800,55 +795,113 @@ fn analyze_text_with_config_and_labeler(
     entity_labeler: Option<&mut dyn SequenceLabeler>,
 ) -> Result<LinguisticAnalysis> {
     let options = &config.options;
+    let sentences = split_sentence_spans(text, &options.processing);
     let language_detector = LanguageDetector {
         options: options.language_detection.clone(),
-        lexicons: LexiconStore::default(),
     };
-    let language = language_detector.detect_text(text);
+    let language = if options.language_detection.sentence_level {
+        language_detector.detect_sentences(text, &sentences)
+    } else {
+        language_detector.detect_sentences(text, &[])
+    };
+    let pinned_language = options
+        .processing
+        .language
+        .as_deref()
+        .map(primary_language_subtag)
+        .filter(|language| !language.is_empty());
+    let routes = sentence_routes(&language, &sentences, pinned_language.as_deref());
+    let primary_language = pinned_language.clone().or_else(|| {
+        language
+            .primary
+            .as_ref()
+            .map(|prediction| prediction.language.clone())
+    });
+    let primary_language = primary_language.as_deref();
     let registry = TokenizerRegistry {
         policy: options.tokenizer_policy.clone(),
     };
     let tokenizer = registry.select(
-        language
-            .primary
-            .as_ref()
-            .map(|prediction| prediction.language.as_str()),
+        primary_language,
         Some("linguistic-analysis"),
         config.model_family.as_deref(),
     );
 
-    let sentences = split_sentence_spans(text, &options.processing);
     let tokens = tokenize(text, &options.processing);
+    let token_sentences = token_sentence_indices(&sentences, &tokens);
     let alignments = if options.enable_alignment {
         registry.align(text, &tokens, &tokenizer)?
     } else {
         None
     };
-    let primary_language = language
-        .primary
-        .as_ref()
-        .map(|prediction| prediction.language.as_str());
-    let (ud_morphology, ud_dependencies) = ud_model_layers(
-        options.morphology.ud_model_source(primary_language),
-        options.dependency_parsing.ud_model_source(primary_language),
+
+    // Each sentence goes to the UD model of its own language, when one is selected.
+    let sentence_presets = routes
+        .iter()
+        .map(|route| {
+            route
+                .language
+                .as_deref()
+                .and_then(UdModelPreset::for_language)
+        })
+        .collect::<Vec<_>>();
+    let ud = ud_model_layers(
+        &options.morphology,
+        &options.dependency_parsing,
+        &sentence_presets,
         &sentences,
         &tokens,
     )?;
-    let (lemmas, pos, morphology) = ud_morphology.unwrap_or_else(|| {
-        let lemmas = lemmatize_tokens(&tokens, primary_language, &options.lemma);
-        let pos_tagger = PosTagger {
-            options: options.pos.clone(),
-        };
-        let pos = pos_tagger.tag_tokens(&tokens, &lemmas);
-        let morphology = annotate_morphology(&tokens, &lemmas, &pos);
-        (lemmas, pos, morphology)
+    let heuristic_lemmas = lemmatize_tokens(&tokens, primary_language, &options.lemma);
+    let heuristic_pos = PosTagger {
+        options: options.pos.clone(),
+    }
+    .tag_tokens(&tokens, &heuristic_lemmas);
+    let heuristic_morphology = annotate_morphology(&tokens, &heuristic_lemmas, &heuristic_pos);
+    let mut lemma_values = merge_by_token(heuristic_lemmas.lemmas, ud.lemmas, |lemma| {
+        lemma.token_index
+    });
+    for lemma in &mut lemma_values {
+        let sentence = token_sentences.get(lemma.token_index).copied().flatten();
+        let from_ud = sentence.is_some_and(|sentence| {
+            options.morphology.mode == MorphologyMode::LocalModel
+                && sentence_presets[sentence].is_some()
+        });
+        if !from_ud {
+            if let Some(route) = sentence.and_then(|sentence| routes.get(sentence)) {
+                lemma.language = route.language.clone();
+            }
+        }
+    }
+    let lemmas = LemmatizationResult {
+        language: primary_language.map(ToString::to_string),
+        lemmas: lemma_values,
+    };
+    let pos = merge_by_token(heuristic_pos, ud.pos, |pos| pos.token_index);
+    let morphology = merge_by_token(heuristic_morphology, ud.morphology, |morphology| {
+        morphology.token_index
     });
     let chunks = chunk_phrases(text, &sentences, &tokens, &pos);
-    let dependencies = ud_dependencies
-        .unwrap_or_else(|| DependencyParser.parse_document(&sentences, &tokens, &pos));
+    let mut dependencies = DependencyParser.parse_document(&sentences, &tokens, &pos);
+    if !ud.dependencies.is_empty() {
+        let parsed = ud
+            .dependencies
+            .iter()
+            .map(|tree| tree.sentence_index)
+            .collect::<BTreeSet<_>>();
+        dependencies.retain(|tree| !parsed.contains(&tree.sentence_index));
+        dependencies.extend(ud.dependencies);
+        dependencies.sort_by_key(|tree| tree.sentence_index);
+    }
     let heuristic_entities = extract_named_entities(text, &sentences, &tokens, &pos);
-    let used_entity_model = entity_labeler.is_some()
-        || options.entity_recognition.mode == EntityRecognitionMode::LocalModel;
+    let entity_producer = if entity_labeler.is_some() {
+        EntityProducer::CallerLabeler
+    } else if options.entity_recognition.mode == EntityRecognitionMode::LocalModel {
+        EntityProducer::Preset(options.entity_recognition.preset)
+    } else {
+        EntityProducer::Heuristic
+    };
+    let used_entity_model = entity_producer != EntityProducer::Heuristic;
     let entities = if let Some(entity_labeler) = entity_labeler {
         entities_with_model_labeler(
             text,
@@ -869,6 +922,35 @@ fn analyze_text_with_config_and_labeler(
     } else {
         heuristic_entities
     };
+    let sentence_analyses = sentence_analyses(
+        routes,
+        entity_producer,
+        &options.morphology,
+        &options.dependency_parsing,
+        &sentence_presets,
+    );
+    // Language-specific layers keep results only for sentences whose report says so;
+    // chunks, events, topics and style still see every sentence's internal layers.
+    let keeps = |operation: LinguisticOperation, sentence: Option<usize>| {
+        sentence
+            .and_then(|sentence| sentence_analyses.get(sentence))
+            .is_none_or(|analysis| analysis.keeps(operation))
+    };
+    let token_keeps = |operation: LinguisticOperation, token_index: usize| {
+        keeps(
+            operation,
+            token_sentences.get(token_index).copied().flatten(),
+        )
+    };
+    let entities = entities
+        .into_iter()
+        .filter(|entity| {
+            keeps(
+                LinguisticOperation::NamedEntities,
+                Some(entity.sentence_index),
+            )
+        })
+        .collect::<Vec<_>>();
     let canonical_entities = canonicalize_entities(&entities, &options.entity_linking);
     let coreference = if options.enable_coreference {
         CorefResolver::default().resolve(&tokens, &canonical_entities)
@@ -923,6 +1005,28 @@ fn analyze_text_with_config_and_labeler(
         config.prefer_model_backends,
         used_entity_model,
     );
+    let lemmas = lemmas
+        .lemmas
+        .into_iter()
+        .filter(|lemma| token_keeps(LinguisticOperation::Morphology, lemma.token_index))
+        .collect();
+    let morphology = morphology
+        .into_iter()
+        .filter(|annotation| token_keeps(LinguisticOperation::Morphology, annotation.token_index))
+        .collect();
+    let pos = pos
+        .into_iter()
+        .filter(|annotation| token_keeps(LinguisticOperation::PartOfSpeech, annotation.token_index))
+        .collect();
+    let dependencies = dependencies
+        .into_iter()
+        .filter(|tree| {
+            keeps(
+                LinguisticOperation::DependencySyntax,
+                Some(tree.sentence_index),
+            )
+        })
+        .collect();
 
     Ok(LinguisticAnalysis {
         profile: config.profile,
@@ -932,9 +1036,10 @@ fn analyze_text_with_config_and_labeler(
         language,
         tokenizer,
         sentences,
+        sentence_analyses,
         tokens,
         alignments,
-        lemmas: lemmas.lemmas,
+        lemmas,
         morphology,
         pos,
         chunks,
@@ -966,6 +1071,309 @@ fn entities_with_model_labeler(
     ))
 }
 
+/// The language one sentence is analyzed in.
+struct SentenceRoute {
+    /// ISO 639-1 primary subtag every language-specific operation uses.
+    language: Option<String>,
+    /// Whether `language` came from `TextProcessingOptions::language`.
+    pinned: bool,
+    detection: SentenceLanguage,
+}
+
+fn sentence_routes(
+    language: &LanguageProfile,
+    sentences: &[Sentence],
+    pinned: Option<&str>,
+) -> Vec<SentenceRoute> {
+    sentences
+        .iter()
+        .enumerate()
+        .map(|(index, sentence)| {
+            let detection = language
+                .sentences
+                .get(index)
+                .cloned()
+                .unwrap_or_else(|| document_level_decision(language, index, sentence));
+            let language = match pinned {
+                Some(pinned) => Some(pinned.to_string()),
+                None => detection
+                    .language()
+                    .map(|prediction| primary_language_subtag(&prediction.language)),
+            };
+            SentenceRoute {
+                language,
+                pinned: pinned.is_some(),
+                detection,
+            }
+        })
+        .collect()
+}
+
+/// With sentence-level detection off, every sentence takes the document's decision.
+fn document_level_decision(
+    language: &LanguageProfile,
+    sentence_index: usize,
+    sentence: &Sentence,
+) -> SentenceLanguage {
+    let candidates = language
+        .primary
+        .iter()
+        .chain(&language.alternatives)
+        .filter(|prediction| prediction.language != "und")
+        .map(|prediction| LanguagePrediction {
+            reason: format!("document-level detection ({})", prediction.reason),
+            ..prediction.clone()
+        })
+        .collect::<Vec<_>>();
+    SentenceLanguage {
+        sentence_index,
+        span: sentence.span,
+        decision: language.decision,
+        candidates,
+    }
+}
+
+/// The sentence each token starts in.
+fn token_sentence_indices(sentences: &[Sentence], tokens: &[Token]) -> Vec<Option<usize>> {
+    tokens
+        .iter()
+        .map(|token| {
+            let start = token.span.byte_start;
+            let index = sentences.partition_point(|sentence| sentence.span.byte_end <= start);
+            sentences
+                .get(index)
+                .filter(|sentence| sentence.span.byte_start <= start)
+                .map(|_| index)
+        })
+        .collect()
+}
+
+/// `base` with every token that `overrides` annotates replaced, in token order.
+fn merge_by_token<T>(base: Vec<T>, overrides: Vec<T>, key: impl Fn(&T) -> usize) -> Vec<T> {
+    if overrides.is_empty() {
+        return base;
+    }
+    let mut merged = base
+        .into_iter()
+        .map(|item| (key(&item), item))
+        .collect::<std::collections::BTreeMap<_, _>>();
+    for item in overrides {
+        merged.insert(key(&item), item);
+    }
+    merged.into_values().collect()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum EntityProducer {
+    Heuristic,
+    Preset(ModelPreset),
+    CallerLabeler,
+}
+
+fn sentence_analyses(
+    routes: Vec<SentenceRoute>,
+    entities: EntityProducer,
+    morphology: &MorphologyOptions,
+    dependencies: &DependencyParsingOptions,
+    sentence_presets: &[Option<UdModelPreset>],
+) -> Vec<SentenceAnalysis> {
+    use LinguisticOperation as Op;
+    use OperationSupport as Support;
+
+    routes
+        .into_iter()
+        .zip(sentence_presets)
+        .map(|(route, &preset)| {
+            let language = route.language.as_deref();
+            let detection = language_detection_report(&route);
+            let segmentation = OperationReport::new(
+                Op::SentenceSegmentation,
+                Support::Supported,
+                Some("text-core:sentence-rules".to_string()),
+                "language-neutral sentence boundary rules",
+            );
+            let tokenization = OperationReport::new(
+                Op::Tokenization,
+                Support::Supported,
+                Some("text-core:word-rules".to_string()),
+                "language-neutral word tokenization rules",
+            );
+            let named_entities = match (entities, language) {
+                (EntityProducer::Heuristic, _) => OperationReport::new(
+                    Op::NamedEntities,
+                    Support::Partial,
+                    Some("heuristic:capitalization".to_string()),
+                    "capitalization rules; not language-aware and not scored",
+                ),
+                (EntityProducer::CallerLabeler, _) => OperationReport::new(
+                    Op::NamedEntities,
+                    Support::Partial,
+                    Some("caller-sequence-labeler".to_string()),
+                    "caller-supplied labeler; its language support is not declared",
+                ),
+                (EntityProducer::Preset(_), None) => undecided_report(Op::NamedEntities),
+                (EntityProducer::Preset(preset), Some(language))
+                    if preset.supports_language(language) =>
+                {
+                    OperationReport::new(
+                        Op::NamedEntities,
+                        Support::Supported,
+                        Some(format!("ner-model:{}", preset.as_str())),
+                        format!("{} is gold-scored for `{language}`", preset.repo_id()),
+                    )
+                }
+                (EntityProducer::Preset(preset), Some(language)) => OperationReport::new(
+                    Op::NamedEntities,
+                    Support::Unsupported,
+                    None,
+                    format!(
+                        "{} supports {}, not `{language}`",
+                        preset.as_str(),
+                        preset.supported_languages().join(", ")
+                    ),
+                ),
+            };
+            let morphology_from_ud = morphology.mode == MorphologyMode::LocalModel;
+            let dependencies_from_ud = dependencies.mode == DependencyParsingMode::LocalModel;
+            let operations = vec![
+                detection,
+                segmentation,
+                tokenization,
+                named_entities,
+                layer_report(
+                    Op::Morphology,
+                    language,
+                    morphology_from_ud.then_some(preset).flatten(),
+                    "MorphologyMode::LocalModel",
+                ),
+                layer_report(
+                    Op::PartOfSpeech,
+                    language,
+                    morphology_from_ud.then_some(preset).flatten(),
+                    "MorphologyMode::LocalModel",
+                ),
+                layer_report(
+                    Op::DependencySyntax,
+                    language,
+                    dependencies_from_ud.then_some(preset).flatten(),
+                    "DependencyParsingMode::LocalModel",
+                ),
+            ];
+            SentenceAnalysis {
+                sentence_index: route.detection.sentence_index,
+                span: route.detection.span,
+                language: route.language,
+                language_pinned: route.pinned,
+                detection: route.detection,
+                operations,
+            }
+        })
+        .collect()
+}
+
+fn language_detection_report(route: &SentenceRoute) -> OperationReport {
+    let operation = LinguisticOperation::LanguageDetection;
+    if route.pinned {
+        return OperationReport::new(
+            operation,
+            OperationSupport::Supported,
+            Some("caller".to_string()),
+            format!(
+                "language pinned to `{}` by the caller",
+                route.language.as_deref().unwrap_or_default()
+            ),
+        );
+    }
+    let detection = &route.detection;
+    let producer = Some(LANGUAGE_DETECTOR_PRODUCER.to_string());
+    let candidates = detection
+        .candidates
+        .iter()
+        .map(|candidate| format!("{} {:.2}", candidate.language, candidate.confidence))
+        .collect::<Vec<_>>()
+        .join(", ");
+    match detection.decision {
+        LanguageDecision::Detected => OperationReport::new(
+            operation,
+            OperationSupport::Supported,
+            producer,
+            format!("detected ({candidates})"),
+        ),
+        LanguageDecision::Ambiguous => OperationReport::new(
+            operation,
+            OperationSupport::Unknown,
+            producer,
+            format!("ambiguous, no candidate reached the confidence threshold ({candidates})"),
+        ),
+        LanguageDecision::TooShort => OperationReport::new(
+            operation,
+            OperationSupport::Unknown,
+            producer,
+            "too few words to decide a language",
+        ),
+        LanguageDecision::UnsupportedScript => OperationReport::new(
+            operation,
+            OperationSupport::Unknown,
+            producer,
+            detection
+                .candidates
+                .first()
+                .map(|candidate| candidate.reason.clone())
+                .unwrap_or_else(|| "script not covered by the detector".to_string()),
+        ),
+    }
+}
+
+fn undecided_report(operation: LinguisticOperation) -> OperationReport {
+    OperationReport::new(
+        operation,
+        OperationSupport::Unknown,
+        None,
+        "sentence language undecided; no language-specific producer ran",
+    )
+}
+
+/// Report for a lemma/morphology, POS or dependency layer. `ud_preset` is the UD
+/// model that ran for the sentence, if any.
+fn layer_report(
+    operation: LinguisticOperation,
+    language: Option<&str>,
+    ud_preset: Option<UdModelPreset>,
+    local_model_mode: &str,
+) -> OperationReport {
+    match (language, ud_preset) {
+        (None, _) => undecided_report(operation),
+        (Some(_), Some(preset)) => OperationReport::new(
+            operation,
+            OperationSupport::Supported,
+            Some(format!("ud-model:{}", preset.as_str())),
+            format!("{} (UD-treebank-trained, scored)", preset.repo_id()),
+        ),
+        (Some("en"), None) => OperationReport::new(
+            operation,
+            OperationSupport::Partial,
+            Some("heuristic:english-rules".to_string()),
+            "English rules; unscored",
+        ),
+        (Some(language), None) if UdModelPreset::for_language(language).is_some() => {
+            OperationReport::new(
+                operation,
+                OperationSupport::Unsupported,
+                None,
+                format!(
+                    "only English heuristics are configured; the `{language}` UD model needs {local_model_mode}"
+                ),
+            )
+        }
+        (Some(language), None) => OperationReport::new(
+            operation,
+            OperationSupport::Unsupported,
+            None,
+            format!("no model for `{language}`"),
+        ),
+    }
+}
+
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn local_entity_labeler(options: &EntityRecognitionOptions) -> Result<CandleTokenClassifier> {
     let bundle = ensure_local_entity_bundle(options)?;
@@ -980,37 +1388,61 @@ fn local_entity_labeler(options: &EntityRecognitionOptions) -> Result<CandleToke
     ))
 }
 
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 type MorphologyLayers = (
     LemmatizationResult,
     Vec<PosAnnotation>,
     Vec<MorphAnnotation>,
 );
 
-/// The UD-model morphology and dependency layers, for whichever of the two selects
-/// a UD model.
-type UdLayers = (Option<MorphologyLayers>, Option<Vec<DependencyTree>>);
+/// UD-model annotations for the sentences routed to a UD model. Morphology covers
+/// only those sentences' tokens; trees only those sentences.
+#[derive(Default)]
+struct UdLayers {
+    lemmas: Vec<Lemma>,
+    pos: Vec<PosAnnotation>,
+    morphology: Vec<MorphAnnotation>,
+    dependencies: Vec<DependencyTree>,
+}
+
+/// The distinct presets of `sentence_presets`, in first-seen order.
+fn distinct_presets(sentence_presets: &[Option<UdModelPreset>]) -> Vec<UdModelPreset> {
+    let mut presets = Vec::new();
+    for preset in sentence_presets.iter().flatten() {
+        if !presets.contains(preset) {
+            presets.push(*preset);
+        }
+    }
+    presets
+}
 
 #[cfg(not(all(feature = "candle", feature = "model-bundles")))]
 fn ud_model_layers(
-    morphology: Option<UdModelSource>,
-    dependencies: Option<UdModelSource>,
+    morphology: &MorphologyOptions,
+    dependencies: &DependencyParsingOptions,
+    sentence_presets: &[Option<UdModelPreset>],
     _sentences: &[Sentence],
     _tokens: &[Token],
 ) -> Result<UdLayers> {
-    match morphology.or(dependencies) {
-        Some(source) => Err(DetectError::InvalidArgument(format!(
-            "UD model `{}` requires the `candle` and `model-bundles` features",
-            source.preset.as_str()
-        ))),
-        None => Ok((None, None)),
+    for preset in distinct_presets(sentence_presets) {
+        if let Some(source) = morphology
+            .ud_model_source(preset)
+            .or_else(|| dependencies.ud_model_source(preset))
+        {
+            return Err(DetectError::InvalidArgument(format!(
+                "UD model `{}` requires the `candle` and `model-bundles` features",
+                source.preset.as_str()
+            )));
+        }
     }
+    Ok(UdLayers::default())
 }
 
 /// One sentence's tokens as the syntactic words the UD model analyzed.
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
 struct UdSentence {
-    /// Index into the document's sentences; `None` for tokens outside every sentence.
-    sentence_index: Option<usize>,
+    /// Index into the document's sentences.
+    sentence_index: usize,
     tokens: Vec<usize>,
     /// Index of each token's first syntactic word.
     first_word: Vec<usize>,
@@ -1018,50 +1450,64 @@ struct UdSentence {
     words: Vec<crate::ud_model::UdWordAnalysis>,
 }
 
-/// Runs the UD model once per sentence for the layers that select it, sharing the
-/// run when both select the same model.
+/// Runs each language's UD model once per sentence routed to it, for the layers
+/// that select a UD model, sharing the run when both layers select the same model.
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn ud_model_layers(
-    morphology: Option<UdModelSource>,
-    dependencies: Option<UdModelSource>,
+    morphology: &MorphologyOptions,
+    dependencies: &DependencyParsingOptions,
+    sentence_presets: &[Option<UdModelPreset>],
     sentences: &[Sentence],
     tokens: &[Token],
 ) -> Result<UdLayers> {
-    let morphology_run = morphology
-        .as_ref()
-        .map(|source| run_ud_model(source, sentences, tokens))
-        .transpose()?;
-    let dependency_run = match &dependencies {
-        Some(source) if morphology.as_ref() != Some(source) => {
-            Some(run_ud_model(source, sentences, tokens)?)
+    let mut layers = UdLayers::default();
+    for preset in distinct_presets(sentence_presets) {
+        let morphology_source = morphology.ud_model_source(preset);
+        let dependency_source = dependencies.ud_model_source(preset);
+        if morphology_source.is_none() && dependency_source.is_none() {
+            continue;
         }
-        _ => None,
-    };
-    let trees = dependencies.map(|_| {
-        ud_dependency_trees(
-            dependency_run
-                .as_deref()
-                .or(morphology_run.as_deref())
-                .unwrap_or_default(),
-        )
-    });
-    let layers = morphology
-        .map(|source| {
-            ud_morphology_layers(
+        let routed = (0..sentences.len())
+            .filter(|&index| sentence_presets[index] == Some(preset))
+            .collect::<Vec<_>>();
+        let morphology_run = morphology_source
+            .as_ref()
+            .map(|source| run_ud_model(source, &routed, sentences, tokens))
+            .transpose()?;
+        let dependency_run = match &dependency_source {
+            Some(source) if morphology_source.as_ref() != Some(source) => {
+                Some(run_ud_model(source, &routed, sentences, tokens)?)
+            }
+            _ => None,
+        };
+        if dependency_source.is_some() {
+            layers.dependencies.extend(ud_dependency_trees(
+                dependency_run
+                    .as_deref()
+                    .or(morphology_run.as_deref())
+                    .unwrap_or_default(),
+            ));
+        }
+        if let Some(source) = morphology_source {
+            let (lemmas, pos, morphology) = ud_morphology_layers(
                 source.preset,
                 morphology_run.as_deref().unwrap_or_default(),
                 tokens,
-            )
-        })
-        .transpose()?;
-    Ok((layers, trees))
+            )?;
+            layers.lemmas.extend(lemmas.lemmas);
+            layers.pos.extend(pos);
+            layers.morphology.extend(morphology);
+        }
+    }
+    Ok(layers)
 }
 
-/// Analyzes every sentence with the UD model. Contractions (`zum`, `del`) become
-/// their two syntactic words.
+/// Analyzes the `routed` sentences with the UD model. Contractions (`zum`, `del`)
+/// become their two syntactic words.
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn run_ud_model(
     source: &UdModelSource,
+    routed: &[usize],
     sentences: &[Sentence],
     tokens: &[Token],
 ) -> Result<Vec<UdSentence>> {
@@ -1069,31 +1515,18 @@ fn run_ud_model(
 
     let model = cached_ud_model(source)?;
     let language = source.preset.language();
-    let mut groups = sentences
-        .iter()
-        .enumerate()
-        .map(|(sentence_index, sentence)| {
-            let members = (0..tokens.len())
-                .filter(|&index| {
-                    let start = tokens[index].span.byte_start;
-                    start >= sentence.span.byte_start && start < sentence.span.byte_end
-                })
-                .collect::<Vec<_>>();
-            (Some(sentence_index), members)
-        })
-        .collect::<Vec<_>>();
-    let grouped = groups
-        .iter()
-        .flat_map(|(_, members)| members)
-        .copied()
-        .collect::<BTreeSet<_>>();
-    let rest = (0..tokens.len())
-        .filter(|index| !grouped.contains(index))
-        .collect::<Vec<_>>();
-    groups.push((None, rest));
+    let groups = routed.iter().map(|&sentence_index| {
+        let sentence = &sentences[sentence_index];
+        let members = (0..tokens.len())
+            .filter(|&index| {
+                let start = tokens[index].span.byte_start;
+                start >= sentence.span.byte_start && start < sentence.span.byte_end
+            })
+            .collect::<Vec<_>>();
+        (sentence_index, members)
+    });
 
     groups
-        .into_iter()
         .map(|(sentence_index, group)| {
             let mut words = Vec::new();
             let mut first_word = Vec::new();
@@ -1129,9 +1562,7 @@ fn ud_dependency_trees(run: &[UdSentence]) -> Vec<DependencyTree> {
 
     let mut trees = Vec::new();
     for sentence in run {
-        let Some(sentence_index) = sentence.sentence_index else {
-            continue;
-        };
+        let sentence_index = sentence.sentence_index;
         let words = &sentence.words;
         let mut word_token = vec![0; words.len()];
         let spans = (0..sentence.tokens.len())
