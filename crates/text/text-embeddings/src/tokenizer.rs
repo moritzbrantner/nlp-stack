@@ -79,7 +79,7 @@ impl TokenizerBundle {
         Ok(self.loaded.get_or_init(|| tokenizer))
     }
 
-    #[cfg(feature = "candle")]
+    #[cfg(all(feature = "candle", feature = "model-bundles"))]
     pub(crate) fn max_length(mut self, max_length: usize) -> Self {
         self.max_length = Some(max_length);
         self

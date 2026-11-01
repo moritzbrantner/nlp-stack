@@ -14,11 +14,11 @@ use std::sync::{Mutex, OnceLock};
 #[cfg(feature = "onnx")]
 use std::time::Instant;
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 use candle_core::{DType as CandleDType, Device as CandleDevice, Tensor as CandleTensor};
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 use candle_nn::VarBuilder as CandleVarBuilder;
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 use candle_transformers::models::{bert as candle_bert, distilbert as candle_distilbert};
 use math_sparse_data::SparseVector;
 #[cfg(feature = "model-bundles")]
@@ -480,18 +480,18 @@ pub fn validate_onnx_bundle(bundle: &ModelBundle) -> Result<OnnxBundleInfo> {
     })
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CandleEmbeddingArchitecture {
     Bert,
     DistilBert,
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 /// Sequences per forward pass in the batched [`CandleTextEmbedder`] path.
 pub const CANDLE_EMBEDDING_BATCH_SIZE: usize = 16;
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 #[derive(Clone)]
 /// Candle sentence-embedding session.
 ///
@@ -507,7 +507,7 @@ pub struct CandleTextEmbedder {
     model: std::sync::Arc<CandleEmbeddingModel>,
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 impl std::fmt::Debug for CandleTextEmbedder {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
@@ -524,20 +524,20 @@ impl std::fmt::Debug for CandleTextEmbedder {
     }
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 enum CandleEmbeddingEncoder {
     Bert(candle_bert::BertModel),
     DistilBert(candle_distilbert::DistilBertModel),
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 struct CandleEmbeddingModel {
     architecture: CandleEmbeddingArchitecture,
     encoder: CandleEmbeddingEncoder,
     device: CandleDevice,
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 impl CandleTextEmbedder {
     /// Loads the model from a bundle onto the default device (CUDA when this build and
     /// machine support it, otherwise the CPU).
@@ -618,7 +618,7 @@ impl CandleTextEmbedder {
     }
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 impl TextEmbeddingBackend for CandleTextEmbedder {
     fn embed_text(&self, text: &str) -> Result<DenseVector> {
         let tokens = self.tokenizer.tokenize(text)?;
@@ -655,7 +655,7 @@ impl TextEmbeddingBackend for CandleTextEmbedder {
     }
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 impl SentenceEmbedder for CandleTextEmbedder {}
 
 impl HashedTextEmbedder {
@@ -1308,7 +1308,7 @@ fn first_bundle_file_with_extension(bundle: &ModelBundle, extension: &str) -> Op
         .and_then(|path| bundle.file_path(path))
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn bundle_files_with_extension(bundle: &ModelBundle, extension: &str) -> Vec<PathBuf> {
     bundle
         .manifest
@@ -1321,7 +1321,7 @@ fn bundle_files_with_extension(bundle: &ModelBundle, extension: &str) -> Vec<Pat
         .collect::<Vec<_>>()
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn embedding_architecture_from_config(config: &Value) -> Result<CandleEmbeddingArchitecture> {
     let architectures = architectures_from_config(config);
     if architectures.contains(&"DistilBertModel") {
@@ -1343,7 +1343,7 @@ fn embedding_architecture_from_config(config: &Value) -> Result<CandleEmbeddingA
     )))
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn architectures_from_config(config: &Value) -> Vec<&str> {
     config
         .get("architectures")
@@ -1382,7 +1382,7 @@ fn model_max_tokens_from_config(config: &Value) -> Option<usize> {
         .and_then(|value| usize::try_from(value).ok())
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn tokenizer_with_model_limit(tokenizer: TokenizerBundle, config: &Value) -> TokenizerBundle {
     match model_max_tokens_from_config(config) {
         Some(max_tokens) => tokenizer.max_length(max_tokens),
@@ -1398,7 +1398,7 @@ fn read_json(path: &Path) -> Result<Value> {
     })
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn load_candle_embedder(
     config: &Value,
     model_paths: &[PathBuf],
@@ -1434,7 +1434,7 @@ fn load_candle_embedder(
     })
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 impl CandleEmbeddingModel {
     /// Runs one padded batch; returns row-major hidden states `[batch, sequence, hidden]`
     /// plus the padded sequence length and hidden size.
@@ -1471,7 +1471,7 @@ impl CandleEmbeddingModel {
     }
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn candle_var_builder<'a>(
     model_paths: &'a [PathBuf],
     device: &CandleDevice,
@@ -1484,7 +1484,7 @@ fn candle_var_builder<'a>(
         .map_err(candle_error)
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn load_candle_bert_model(
     vb: &CandleVarBuilder<'_>,
     config: &candle_bert::Config,
@@ -1509,7 +1509,7 @@ fn load_candle_bert_model(
     )))
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn load_candle_distilbert_model(
     vb: &CandleVarBuilder<'_>,
     config: &candle_distilbert::Config,
@@ -1534,7 +1534,7 @@ fn load_candle_distilbert_model(
     )))
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn model_prefix_candidates(config: &Value) -> Vec<String> {
     let mut prefixes = Vec::new();
     push_unique_string(&mut prefixes, String::new());
@@ -1549,7 +1549,7 @@ fn model_prefix_candidates(config: &Value) -> Vec<String> {
     prefixes
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn push_unique_string(values: &mut Vec<String>, value: String) {
     if !values.iter().any(|existing| existing == &value) {
         values.push(value);
@@ -1557,7 +1557,7 @@ fn push_unique_string(values: &mut Vec<String>, value: String) {
 }
 
 /// Stacks one row per sequence into `[batch, sequence]`, padding each row with `pad`.
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn padded_rows<T: Copy>(
     batch: &[&TokenizedText],
     sequence: usize,
@@ -1573,7 +1573,7 @@ fn padded_rows<T: Copy>(
     Ok(values)
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn u32_ids(values: &[i64], what: &str) -> Result<Vec<u32>> {
     values
         .iter()
@@ -1587,7 +1587,7 @@ fn u32_ids(values: &[i64], what: &str) -> Result<Vec<u32>> {
         .collect()
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn candle_input_ids(
     batch: &[&TokenizedText],
     sequence: usize,
@@ -1599,7 +1599,7 @@ fn candle_input_ids(
     CandleTensor::from_vec(values, (batch.len(), sequence), device).map_err(candle_error)
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn candle_token_type_ids(
     batch: &[&TokenizedText],
     sequence: usize,
@@ -1615,7 +1615,7 @@ fn candle_token_type_ids(
 }
 
 /// BERT mask: 1 attends, 0 (padding included) is masked.
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn candle_attention_mask_keep(
     batch: &[&TokenizedText],
     sequence: usize,
@@ -1633,7 +1633,7 @@ fn candle_attention_mask_keep(
 
 /// DistilBERT mask: 1 is masked (padding included), shaped `[batch, 1, 1, sequence]` so it
 /// broadcasts over heads and query positions.
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn candle_attention_mask_distil(
     batch: &[&TokenizedText],
     sequence: usize,
@@ -1690,7 +1690,7 @@ fn log_onnx_stage_event(stage: &str, model_path: &Path, event: &str) {
     );
 }
 
-#[cfg(feature = "candle")]
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
 fn candle_error(error: candle_core::Error) -> DetectError {
     DetectError::Source(format!("Candle runtime error: {error}"))
 }
@@ -1710,7 +1710,7 @@ fn validate_stream_id(stream_id: &str) -> Result<()> {
 mod tests {
     use super::*;
 
-    #[cfg(feature = "candle")]
+    #[cfg(all(feature = "candle", feature = "model-bundles"))]
     #[test]
     fn candle_embedder_session_is_send_and_sync() {
         fn assert_send_sync<T: Send + Sync>() {}
