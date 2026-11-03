@@ -1,15 +1,16 @@
 //! These tests can be transplanted unchanged onto aa425fc to reproduce the bugs.
 use super::*;
-use crate::{IndexDocument, MemoryTextIndex};
+use crate::IndexDocument;
 
 fn indexes(documents: &[IndexDocument]) -> Vec<SurfaceIndex> {
-    let mut memory = MemoryTextIndex::lexical_memory();
+    let mut memory = crate::TextIndex::from_parts(None, crate::MemoryIndexStore::new());
     memory.upsert_documents(documents).expect("index documents");
     #[cfg(not(feature = "sqlite"))]
     let sqlite: Option<SurfaceIndex> = None;
     #[cfg(feature = "sqlite")]
     let sqlite = {
-        let mut index = crate::TextIndex::lexical_only(
+        let mut index = crate::TextIndex::from_parts(
+            None,
             crate::SqliteIndexStore::in_memory().expect("SQLite store"),
         );
         index.upsert_documents(documents).expect("SQLite documents");

@@ -12,9 +12,10 @@ use std::path::PathBuf;
 
 use crate::{
     IndexBuildOptions, IndexDocument, IndexInspectReport, IndexMutationReport, IndexQuery,
-    IndexSearchMode, IndexSearchResult, IndexSnapshotPlan, MemoryIndexStore, NoEmbedder, TextIndex,
+    IndexSearchMode, IndexSearchResult, IndexSnapshotPlan, MemoryIndexStore, TextIndex,
     TextIndexStore,
 };
+use text_embeddings::{ImportedEmbedder, ImportedEmbedding, ImportedEmbeddingModel};
 
 pub fn package_surface() -> PackageSurface {
     PackageSurface {
@@ -22,12 +23,12 @@ pub fn package_surface() -> PackageSurface {
         version: env!("CARGO_PKG_VERSION").to_string(),
         capabilities: RuntimeCapabilities::pure_rust(),
         operations: vec![
-            operation("describe", "Inspect package metadata", "Durable local text indexing with lexical search. Semantic and hybrid search need a configured embedding model.", serde_json::json!({"includeOperations": true})),
+            operation("describe", "Inspect package metadata", "Durable local text indexing with lexical search. Semantic and hybrid search need an embedding model; this surface takes caller-computed `importedEmbeddings`.", serde_json::json!({"includeOperations": true})),
             operation("index.build", "Build index", "Builds a transient in-memory text index unless an explicit committed SQLite backend is requested.", serde_json::json!({"backend": "memory", "documents": [{"id": "doc-1", "body": "Rust text index"}]})),
             operation("index.open", "Open index", "Opens or describes an index backend.", serde_json::json!({"backend": "memory"})),
             operation("index.addDocuments", "Add documents", "Adds documents to a transient memory index or an explicit committed SQLite backend.", serde_json::json!({"backend": "memory", "documents": [{"id": "doc-1", "body": "Rust text index"}]})),
             operation("index.removeDocuments", "Remove documents", "Removes documents only from an explicit committed SQLite backend; memory execution returns a side-effect-free plan.", serde_json::json!({"backend": "memory", "documentIds": ["doc-1"]})),
-            operation("index.search", "Search index", "Builds or opens a requested backend and searches it lexically, with optional bounded typo-tolerant expansion. Semantic and hybrid modes fail with `missing_dependency`: the surface has no embedding model.", serde_json::json!({"backend": "memory", "documents": [{"id": "doc-1", "body": "Rust text index supports required phrases and fuzzy retrieval"}], "query": {"text": "retrieavl required phrases", "mode": "lexical", "requiredPhrases": ["required phrases"], "fuzzy": {"maxEditDistance": 1, "minTermLength": 4, "maxExpansionsPerTerm": 3, "maxQueryVariants": 16, "maxVocabularyTerms": 20000, "fuzzyWeight": 0.8}}})),
+            operation("index.search", "Search index", "Builds or opens a requested backend and searches it. Lexical mode (BM25, with optional bounded typo-tolerant expansion) needs no model. The surface cannot load an embedding model, so semantic and hybrid modes need caller-computed vectors in `importedEmbeddings`: a `passage` vector for every chunk text and a `query` vector for the query text, plus `embeddingModel` provenance (id, revision, pooling). Without them they fail with `missing_dependency`. Lexical mode ignores imported vectors.", serde_json::json!({"backend": "memory", "documents": [{"id": "doc-1", "body": "Rust text index supports required phrases and fuzzy retrieval"}], "query": {"text": "retrieavl required phrases", "mode": "lexical", "requiredPhrases": ["required phrases"], "fuzzy": {"maxEditDistance": 1, "minTermLength": 4, "maxExpansionsPerTerm": 3, "maxQueryVariants": 16, "maxVocabularyTerms": 20000, "fuzzyWeight": 0.8}}, "embeddingModel": {"name": "intfloat/multilingual-e5-base", "revision": "d128750597153bb5987e10b1c3493a34e5a4502a", "pooling": "mean", "dimensions": 3}, "importedEmbeddings": [{"text": "Rust text index supports required phrases and fuzzy retrieval", "kind": "passage", "vector": [0.9, 0.1, 0.0]}, {"text": "retrieavl required phrases", "kind": "query", "vector": [0.8, 0.2, 0.0]}]})),
             operation("index.inspect", "Inspect index", "Builds or opens a requested backend and returns counts.", serde_json::json!({"backend": "memory", "documents": [{"id": "doc-1", "body": "Rust text index"}]})),
             operation("index.snapshotPlan", "Plan snapshot", "Builds or opens a requested backend and returns a snapshot plan.", serde_json::json!({"backend": "memory", "documents": [{"id": "doc-1", "body": "Rust text index"}]})),
         ],
@@ -69,12 +70,14 @@ pub fn run_surface_operation_with_context(
         "index.search" => {
             let input: SearchRequest = parse_input(request.input)?;
             validate_search_request(&input)?;
-            let (index, _) = build_index(
+            let embedder = search_embedder(&input)?;
+            let (index, _) = build_index_with(
                 BuildRequest {
                     documents: input.documents,
                     options: input.options,
                     backend: input.backend,
                 },
+                embedder,
                 context,
             )?;
             let results = if let Some(options) = input.query.fuzzy.as_ref() {
@@ -112,9 +115,9 @@ pub fn run_surface_operation_with_context(
 }
 
 enum SurfaceIndex {
-    Memory(TextIndex<NoEmbedder, MemoryIndexStore>),
+    Memory(TextIndex<ImportedEmbedder, MemoryIndexStore>),
     #[cfg(feature = "sqlite")]
-    Sqlite(TextIndex<NoEmbedder, crate::SqliteIndexStore>),
+    Sqlite(TextIndex<ImportedEmbedder, crate::SqliteIndexStore>),
 }
 
 impl SurfaceIndex {
@@ -182,9 +185,18 @@ fn build_index(
     input: BuildRequest,
     context: &SurfaceRuntimeContext,
 ) -> Result<(SurfaceIndex, IndexMutationReport), String> {
+    build_index_with(input, None, context)
+}
+
+/// `embedder` is `None` for a lexical-only index, which stores no vectors.
+fn build_index_with(
+    input: BuildRequest,
+    embedder: Option<ImportedEmbedder>,
+    context: &SurfaceRuntimeContext,
+) -> Result<(SurfaceIndex, IndexMutationReport), String> {
     let documents = input.documents;
     runtime_core::validate_max_items("index.search", "documents", documents.len(), 1024)?;
-    let mut index = open_configured_index(input.backend, input.options, context)?;
+    let mut index = open_configured_index(input.backend, input.options, embedder, context)?;
     let report = index.upsert_documents(&documents)?;
     Ok((index, report))
 }
@@ -193,19 +205,20 @@ fn open_index(
     backend: BackendRequest,
     context: &SurfaceRuntimeContext,
 ) -> Result<SurfaceIndex, String> {
-    open_configured_index(backend, IndexBuildOptions::default(), context)
+    open_configured_index(backend, IndexBuildOptions::default(), None, context)
 }
 
 fn open_configured_index(
     backend: BackendRequest,
     mut options: IndexBuildOptions,
+    embedder: Option<ImportedEmbedder>,
     context: &SurfaceRuntimeContext,
 ) -> Result<SurfaceIndex, String> {
     let backend_kind = backend.kind();
     options.commit = backend.commit.unwrap_or(options.commit);
     match backend_kind.as_str() {
         "memory" => Ok(SurfaceIndex::Memory(
-            TextIndex::lexical_only(MemoryIndexStore::new()).with_options(options),
+            TextIndex::from_parts(embedder, MemoryIndexStore::new()).with_options(options),
         )),
         "sqlite" => {
             if !context.side_effects.allow_writes {
@@ -216,7 +229,7 @@ fn open_configured_index(
                 )
                 .to_error_string());
             }
-            open_sqlite_index(backend, options)
+            open_sqlite_index(backend, options, embedder)
         }
         other => Err(SurfaceError::unsupported_value(
             Some("index.search"),
@@ -232,6 +245,7 @@ fn open_configured_index(
 fn open_sqlite_index(
     backend: BackendRequest,
     options: IndexBuildOptions,
+    embedder: Option<ImportedEmbedder>,
 ) -> Result<SurfaceIndex, String> {
     let path = backend.path.ok_or_else(|| {
         SurfaceError::invalid_request(
@@ -249,7 +263,7 @@ fn open_sqlite_index(
     }
     let store = crate::SqliteIndexStore::open(path, true).map_err(|error| error.to_string())?;
     Ok(SurfaceIndex::Sqlite(
-        TextIndex::lexical_only(store).with_options(options),
+        TextIndex::from_parts(embedder, store).with_options(options),
     ))
 }
 
@@ -257,6 +271,7 @@ fn open_sqlite_index(
 fn open_sqlite_index(
     backend: BackendRequest,
     _options: IndexBuildOptions,
+    _embedder: Option<ImportedEmbedder>,
 ) -> Result<SurfaceIndex, String> {
     if backend.path.is_none() || backend.commit != Some(true) {
         return Err(SurfaceError::invalid_request(
@@ -349,7 +364,7 @@ fn annotated_value(operation: &OperationId, value: serde_json::Value) -> serde_j
         ),
         "index.search" => (
             "Index search result",
-            "Built a transient in-memory text index and searched it lexically.",
+            "Built a transient in-memory text index and searched it.",
             serde_json::json!({
                 "status": "ok",
                 "resultCount": value["results"].as_array().map(Vec::len).unwrap_or(0)
@@ -444,6 +459,12 @@ struct SearchRequest {
     options: IndexBuildOptions,
     #[serde(flatten)]
     backend: BackendRequest,
+    /// Provenance of `imported_embeddings`.
+    #[serde(default)]
+    embedding_model: Option<ImportedEmbeddingModel>,
+    /// Caller-computed vectors for semantic and hybrid search.
+    #[serde(default)]
+    imported_embeddings: Vec<ImportedEmbedding>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -500,14 +521,41 @@ fn validate_search_request(input: &SearchRequest) -> Result<(), String> {
         .to_error_string());
     }
     if input.query.query.mode != IndexSearchMode::Lexical {
-        return Err(SurfaceError::missing_dependency(
-            Some("index.search"),
-            "embedding model",
-            "semantic and hybrid index.search need a configured embedding model, which this surface cannot load; use `\"mode\": \"lexical\"` or the typed text-index API with a real embedder",
-        )
-        .to_error_string());
+        if input.imported_embeddings.is_empty() {
+            return Err(SurfaceError::missing_dependency(
+                Some("index.search"),
+                "embedding model",
+                "semantic and hybrid index.search need an embedding model, which this surface cannot load; supply `importedEmbeddings` (a `passage` vector per chunk text and a `query` vector for the query) computed with a real model, use `\"mode\": \"lexical\"`, or use the typed text-index API with a real embedder",
+            )
+            .to_error_string());
+        }
+        if input.query.fuzzy.is_some() {
+            return Err(SurfaceError::invalid_request(
+                Some("index.search"),
+                "fuzzy expansion is lexical-only; use `\"mode\": \"lexical\"` with `fuzzy`",
+            )
+            .to_error_string());
+        }
     }
-    runtime_core::validate_max_items("index.search", "documents", input.documents.len(), 1024)
+    runtime_core::validate_max_items("index.search", "documents", input.documents.len(), 1024)?;
+    runtime_core::validate_max_items(
+        "index.search",
+        "importedEmbeddings",
+        input.imported_embeddings.len(),
+        16_384,
+    )
+}
+
+/// The caller's vectors for semantic and hybrid search; lexical search ignores them.
+fn search_embedder(input: &SearchRequest) -> Result<Option<ImportedEmbedder>, String> {
+    if input.query.query.mode == IndexSearchMode::Lexical {
+        return Ok(None);
+    }
+    ImportedEmbedder::new(&input.imported_embeddings, input.embedding_model.as_ref())
+        .map(Some)
+        .map_err(|error| {
+            SurfaceError::invalid_request(Some("index.search"), error.to_string()).to_error_string()
+        })
 }
 
 fn default_backend() -> String {
@@ -619,6 +667,54 @@ mod tests {
             assert_eq!(parsed.code, "missing_dependency");
             assert_eq!(parsed.details["dependency"], "embedding model");
         }
+    }
+
+    #[test]
+    fn semantic_search_uses_imported_query_and_passage_vectors() {
+        let response = run_surface_operation(request(
+            "index.search",
+            serde_json::json!({
+                "documents": [
+                    {"id": "en", "body": "The capital of Germany is Berlin."},
+                    {"id": "food", "body": "Tomatoes grow in garden soil."}
+                ],
+                "query": {"text": "Was ist die Hauptstadt von Deutschland?", "mode": "semantic", "topK": 2},
+                "options": {"chunkingStrategy": "paragraph", "chunkTokens": 256, "chunkOverlapTokens": 32, "storeRawText": true},
+                "embeddingModel": {"name": "intfloat/multilingual-e5-base", "revision": "d128750", "pooling": "mean", "dimensions": 2},
+                "importedEmbeddings": [
+                    {"text": "The capital of Germany is Berlin.", "kind": "passage", "vector": [0.9, 0.1]},
+                    {"text": "Tomatoes grow in garden soil.", "kind": "passage", "vector": [0.1, 0.9]},
+                    {"text": "Was ist die Hauptstadt von Deutschland?", "kind": "query", "vector": [0.8, 0.2]}
+                ]
+            }),
+        ))
+        .expect("semantic search with imported vectors");
+        let results = &response.value["result"]["results"];
+        assert_eq!(results[0]["documentId"], "en");
+        assert!(
+            results[0]["scoreBreakdown"]["semanticScore"]
+                .as_f64()
+                .unwrap()
+                > 0.9
+        );
+    }
+
+    #[test]
+    fn semantic_search_rejects_missing_passage_vectors_and_fuzzy() {
+        let base = serde_json::json!({
+            "documents": [{"id": "en", "body": "The capital of Germany is Berlin."}],
+            "query": {"text": "Hauptstadt", "mode": "hybrid", "topK": 1},
+            "importedEmbeddings": [{"text": "Hauptstadt", "kind": "query", "vector": [1.0, 0.0]}]
+        });
+        let error = run_surface_operation(request("index.search", base.clone()))
+            .expect_err("the chunk has no passage vector");
+        assert!(error.contains("(as a passage)"), "{error}");
+
+        let mut fuzzy = base;
+        fuzzy["query"]["fuzzy"] = serde_json::json!({"maxEditDistance": 1});
+        let error = run_surface_operation(request("index.search", fuzzy)).expect_err("fuzzy");
+        let parsed = runtime_core::parse_surface_error(&error).expect("typed error");
+        assert_eq!(parsed.code, "invalid_request");
     }
 
     #[test]

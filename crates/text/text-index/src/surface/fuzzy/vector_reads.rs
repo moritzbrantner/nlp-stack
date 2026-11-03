@@ -204,7 +204,7 @@ fn fuzzy_sqlite_variants_do_not_read_corrupt_vector_payloads() {
         TextIndex::with_store(embedder(128), crate::SqliteIndexStore::in_memory().unwrap());
     index.upsert_documents(&documents(8)).unwrap();
     // Vectors written by an embedding-backed index; the surface reads the store lexical-only.
-    let surface = SurfaceIndex::Sqlite(TextIndex::lexical_only(index.into_store()));
+    let surface = SurfaceIndex::Sqlite(TextIndex::from_parts(None, index.into_store()));
     let options = FuzzySearchOptions::default();
     let query = IndexQuery::lexical("stratgey retrieavl", 3);
     let vocabulary = build_vocabulary(&index_chunks(&surface).unwrap(), &options).unwrap();
@@ -244,7 +244,7 @@ fn query_only_benchmark() {
     for count in [32, 256] {
         for dimensions in [128, 1024] {
             let observed = observed_index(count, dimensions);
-            let index = TextIndex::lexical_only(observed.store().inner.clone());
+            let index = TextIndex::from_parts(None, observed.store().inner.clone());
             let surface = SurfaceIndex::Memory(index);
             let options = FuzzySearchOptions::default();
             for (kind, text) in [

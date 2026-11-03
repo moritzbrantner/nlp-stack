@@ -260,7 +260,7 @@ fn embedding_model_required(operation: &str) -> String {
     runtime_core::SurfaceError::missing_dependency(
         Some(operation),
         "embedding model",
-        "build a RetrievalIndex with a real embedding backend through the typed text-retrieval API, or use text-index `index.search` with `mode: lexical`; no heuristic embedding fallback exists",
+        "build a RetrievalIndex with a real embedding backend (for example `text_embeddings::load_embedding_preset`) through the typed text-retrieval API, or use text-index `index.search` (lexical, or semantic/hybrid with caller-computed `importedEmbeddings`); no heuristic embedding fallback exists",
     )
     .to_error_string()
 }
