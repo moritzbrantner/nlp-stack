@@ -880,6 +880,7 @@ fn ensure_non_empty(value: &str, name: &str) -> Result<()> {
     Ok(())
 }
 
+#[cfg(any(not(feature = "candle"), not(feature = "onnx")))]
 fn unsupported_runtime<T>(message: &str) -> Result<T> {
     Err(DetectError::InvalidArgument(format!(
         "unsupported_runtime: {message}"

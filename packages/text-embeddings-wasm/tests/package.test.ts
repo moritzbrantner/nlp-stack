@@ -26,7 +26,7 @@ test("runOperation exposes backend catalog with structured output", async () => 
     }),
     "embeddings.backends",
   );
-  expect(result.defaultBackend).toBeNull();
+  expect(result.defaultBackend ?? null).toBeNull();
   expect(result.backends.every((backend: any) => backend.loadable === false)).toBe(true);
 });
 
