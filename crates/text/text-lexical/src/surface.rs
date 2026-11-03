@@ -9,9 +9,8 @@ use text_core::TextDocument;
 
 use crate::{
     diverse_extractive_summary, english_stop_words, extractive_summary, keywords, phrase_keywords,
-    readability_summary, rule_entities, sentiment, stop_words_for_language, Bm25Corpus,
-    Bm25Options, EntityRuleSet, ExtractiveSummaryOptions, KeywordOptions, PhraseKeywordOptions,
-    SentimentLexicon, TfIdfCorpus,
+    readability_summary, stop_words_for_language, Bm25Corpus, Bm25Options,
+    ExtractiveSummaryOptions, KeywordOptions, PhraseKeywordOptions, TfIdfCorpus,
 };
 
 /// Returns the package surface exposed by every transport wrapper.
@@ -22,7 +21,7 @@ pub fn package_surface() -> PackageSurface {
         capabilities: RuntimeCapabilities::pure_rust(),
         operations: vec![
             operation("describe", "Inspect package metadata", "Lexical text features, corpus statistics, TF-IDF, and BM25 for video-analysis.", serde_json::json!({"includeOperations": true})),
-            operation("lexical.analyze", "Analyze lexical features", "Returns deterministic keywords, summaries, readability, sentiment, and rule entities.", serde_json::json!({"text": "Rust crates make text analysis reliable.", "maxTerms": 5})),
+            operation("lexical.analyze", "Analyze lexical features", "Returns deterministic keywords, summaries and readability.", serde_json::json!({"text": "Rust crates make text analysis reliable.", "maxTerms": 5})),
             operation("lexical.keywords", "Extract keywords", "Ranks deterministic lexical keywords.", serde_json::json!({"text": "Rust text crates analyze text text.", "limit": 3})),
             operation("lexical.corpusSearch", "Search corpus", "Searches a transient TF-IDF or BM25 corpus.", serde_json::json!({"documents": [{"id": "doc-1", "text": "rust text analysis"}, {"id": "doc-2", "text": "video scene analysis"}], "query": "text", "mode": "bm25"})),
             operation("lexical.corpusStats", "Corpus statistics", "Builds a transient TF-IDF corpus and reports corpus, term, document, and sparse-matrix statistics.", serde_json::json!({
@@ -94,12 +93,11 @@ fn annotated_value(operation: &OperationId, value: serde_json::Value) -> serde_j
         ),
         "lexical.analyze" => (
             "Lexical analysis result",
-            "Computed deterministic keywords, summaries, readability, sentiment, and rule entities.",
+            "Computed deterministic keywords, summaries and readability.",
             serde_json::json!({
                 "status": "ok",
                 "keywordCount": value["keywords"].as_array().map(Vec::len).unwrap_or(0),
-                "phraseKeywordCount": value["phraseKeywords"].as_array().map(Vec::len).unwrap_or(0),
-                "entityCount": value["ruleEntities"].as_array().map(Vec::len).unwrap_or(0)
+                "phraseKeywordCount": value["phraseKeywords"].as_array().map(Vec::len).unwrap_or(0)
             }),
         ),
         "lexical.keywords" => (
@@ -220,10 +218,8 @@ fn lexical_analyze(request: LexicalAnalyzeRequest) -> Result<serde_json::Value, 
         "keywords": keywords(&request.text, &keyword_options),
         "phraseKeywords": phrase_keywords(&request.text, &phrase_options),
         "readability": readability_summary(&request.text, &Default::default()),
-        "sentiment": sentiment(&request.text, &SentimentLexicon::default()),
         "extractiveSummary": extractive,
-        "diverseExtractiveSummary": diverse,
-        "ruleEntities": rule_entities(&request.text, &EntityRuleSet::default())
+        "diverseExtractiveSummary": diverse
     }))
 }
 

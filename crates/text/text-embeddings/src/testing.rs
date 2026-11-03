@@ -144,7 +144,7 @@ impl TextEmbeddingBackend for HashedFixtureEmbedder {
     fn metadata(&self) -> TextEmbeddingMetadata {
         TextEmbeddingMetadata {
             backend: TextEmbeddingBackendKind::HashedFixture,
-            provenance: AnnotationProvenance::Heuristic,
+            provenance: AnnotationProvenance::RuleBased,
             model_name: Some("hashed-fixture-embedder".to_string()),
             dimensions: Some(self.config.dimensions),
         }

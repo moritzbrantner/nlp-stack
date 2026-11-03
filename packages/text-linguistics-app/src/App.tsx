@@ -118,8 +118,8 @@ const packageAppConfig: PackageAppConfig = {
       "linguistics.analyze": {
         title: "Linguistic analysis",
         summaryFields: ["profile", "language", "tokenCount", "entityCount", "relationCount", "eventCount"],
-        listFields: ["tokens", "sentenceAnalyses", "lemmas", "posTags", "entities", "relations", "events", "topics"],
-        objectFields: ["language", "style", "syntax", "model"],
+        listFields: ["tokens", "sentenceAnalyses", "lemmas", "posTags", "entities"],
+        objectFields: ["language", "syntax", "model"],
         explanation: () => "The WASM path runs the deterministic linguistic pipeline; the overview server can also expose model catalog metadata without forcing optional native model execution.",
       },
       "linguistics.entities": {

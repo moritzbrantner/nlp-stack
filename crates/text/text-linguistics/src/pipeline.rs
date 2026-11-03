@@ -1,9 +1,6 @@
 use std::path::PathBuf;
 
-use crate::discourse::{
-    build_style_profile, build_topic_model, DiscourseSegment, DocumentOutline, SectionClassifier,
-    StyleProfile, TopicModel,
-};
+use crate::discourse::{DiscourseSegment, DocumentOutline, StyleProfile, TopicModel};
 use crate::entities::{
     canonicalize_entities, extract_named_entities_with_labeler, CanonicalEntity, CorefCluster,
     EntityLinkingOptions, ExtractedEvent, NamedEntity, RelationTriple,
@@ -381,11 +378,11 @@ pub struct LinguisticAnalysisOptions {
     /// Requests event and relation extraction. No model backend exists yet, so
     /// `true` fails the analysis instead of running heuristic extraction.
     pub enable_events: bool,
-    /// The enable discourse value.
+    /// Requests discourse segmentation. No model backend exists; `true` fails.
     pub enable_discourse: bool,
-    /// The enable topics value.
+    /// Requests topic modelling. No model backend exists; `true` fails.
     pub enable_topics: bool,
-    /// The enable style value.
+    /// Requests a style profile. No model backend exists; `true` fails.
     pub enable_style: bool,
 }
 
@@ -405,16 +402,16 @@ impl Default for LinguisticAnalysisOptions {
             enable_alignment: false,
             enable_coreference: false,
             enable_events: false,
-            enable_discourse: true,
-            enable_topics: true,
-            enable_style: true,
+            enable_discourse: false,
+            enable_topics: false,
+            enable_style: false,
         }
     }
 }
 
 impl LinguisticAnalysisOptions {
-    /// Only the model-free operations: language detection, sentence segmentation,
-    /// tokenization and the count/lexicon layers (discourse, topics, style). Named
+    /// Only the model-free operations: language detection, sentence segmentation and
+    /// tokenization. Named
     /// entities, morphology, POS and dependency syntax are disabled and reported as
     /// unsupported for every sentence.
     pub fn without_models() -> Self {
@@ -691,9 +688,6 @@ fn options_for_profile(profile: AnalysisProfile) -> LinguisticAnalysisOptions {
         AnalysisProfile::Balanced => {}
         AnalysisProfile::Rich => {
             options.enable_alignment = true;
-            options.enable_discourse = true;
-            options.enable_topics = true;
-            options.enable_style = true;
         }
     }
     options
@@ -803,6 +797,27 @@ fn analyze_text_with_config_and_labeler(
             "event and relation extraction",
             "set `enable_events: false`",
         ));
+    }
+    for (requested, capability, opt_out) in [
+        (
+            options.enable_discourse,
+            "discourse segmentation",
+            "set `enable_discourse: false`",
+        ),
+        (
+            options.enable_topics,
+            "topic modelling",
+            "set `enable_topics: false`",
+        ),
+        (
+            options.enable_style,
+            "style profiling",
+            "set `enable_style: false`",
+        ),
+    ] {
+        if requested {
+            return Err(model_required(capability, opt_out));
+        }
     }
     let sentences = split_sentence_spans(text, &options.processing);
     let language_detector = LanguageDetector {
@@ -928,33 +943,16 @@ fn analyze_text_with_config_and_labeler(
     // Requests for these layers fail above; no backend fills them yet.
     let coreference = Vec::<CorefCluster>::new();
     let (events, relations) = (Vec::<ExtractedEvent>::new(), Vec::<RelationTriple>::new());
-    let outline = if options.enable_discourse {
-        SectionClassifier.classify(&sentences)
-    } else {
-        DocumentOutline {
-            segments: Vec::new(),
-        }
+    // Requests for these layers fail above; no backend fills them yet.
+    let outline = DocumentOutline {
+        segments: Vec::new(),
     };
     let discourse = outline.segments.clone();
-    let topics = if options.enable_topics {
-        build_topic_model(
-            &sentences,
-            &tokens,
-            &lemmas,
-            &chunks,
-            language.primary.as_ref(),
-        )
-    } else {
-        TopicModel {
-            descriptors: Vec::new(),
-            clusters: Vec::new(),
-        }
+    let topics = TopicModel {
+        descriptors: Vec::new(),
+        clusters: Vec::new(),
     };
-    let style = if options.enable_style {
-        build_style_profile(text, &sentences, &tokens, &lemmas.lemmas, &dependencies)
-    } else {
-        StyleProfile::default()
-    };
+    let style = StyleProfile::default();
     let graph =
         build_annotation_graph_from_parts(text, &tokens, &sentences, &split_paragraphs(text));
     let confidence = summarize_analysis_confidence(
@@ -1807,6 +1805,6 @@ fn analysis_provenance(
     {
         AnnotationProvenance::Model
     } else {
-        AnnotationProvenance::Heuristic
+        AnnotationProvenance::RuleBased
     }
 }

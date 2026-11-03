@@ -103,8 +103,9 @@ diagnostics describing the correction that produced the winning score.
 ## Package surface
 
 - Primary workflow: `index.search` builds or opens the requested backend and
-  searches it lexically; `mode` must be `lexical` (the default `hybrid` mode
-  fails with `missing_dependency` because no embedding model is configured).
+  searches it lexically. `query.mode` is required (there is no default);
+  `hybrid` and `semantic` fail with `missing_dependency` because no embedding
+  model is configured.
 - `index.search` optionally accepts bounded fuzzy settings inside its query
   object when `mode` is `lexical`.
 - Workflow operations: `index.build`, `index.addDocuments`, `index.search`, and

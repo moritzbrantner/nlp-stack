@@ -1724,7 +1724,7 @@ mod tests {
 
         let hashed = HashedFixtureEmbedder::default().metadata();
         assert_eq!(hashed.backend, TextEmbeddingBackendKind::HashedFixture);
-        assert_eq!(hashed.provenance, AnnotationProvenance::Heuristic);
+        assert_eq!(hashed.provenance, AnnotationProvenance::RuleBased);
         assert_eq!(
             hashed.dimensions,
             Some(TextEmbeddingConfig::default().dimensions)

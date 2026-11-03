@@ -31,7 +31,6 @@ pub use routing::*;
 pub use scope::*;
 pub use syntax::*;
 pub use temporal::*;
-pub use text_lexical::{rule_entities, EntityMention, EntityRuleSet};
 pub use tokenization::*;
 pub use ud_model::*;
 

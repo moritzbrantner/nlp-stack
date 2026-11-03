@@ -18,9 +18,11 @@ live in `text-transcripts`.
 
 ## Quality and limits
 
-Readability, sentiment, stemming, keyword extraction, and summaries are
-classical local heuristics. Their API shape is stable, but output quality should
-be treated as best-effort outside covered languages and fixtures.
+Readability, stemming, keyword extraction, and summaries are rule-based
+statistics over terms. Their API shape is stable, but output quality should be
+treated as best-effort outside covered languages and fixtures. Lexicon
+sentiment and rule-based entity extraction were removed (#186): they stood in
+for model-grade semantics.
 
 ## Example
 
@@ -91,7 +93,7 @@ let _ = (segment, tfidf.search("cargo", 5)?, bm25.search("cargo", 5)?, snapshot_
 ## Package surface
 
 - Primary workflow: `lexical.analyze` computes deterministic lexical features,
-  summaries, readability, sentiment, and rule entities.
+  summaries and readability.
 - Workflow operations: `lexical.analyze`, `lexical.keywords`,
   `lexical.corpusSearch`, and `lexical.corpusStats`.
 - Debug operations: `describe` inspects package metadata and operation support.

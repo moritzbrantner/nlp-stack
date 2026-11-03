@@ -31,9 +31,9 @@ pub enum QuestionAnsweringRuntime {
     Onnx,
     /// Browser-safe WASM postprocessing.
     WasmPostprocess,
-    /// No QA model ran (for example, retrieval found no chunks, so there was nothing
-    /// to answer from). Never labels heuristic answers: none are produced.
-    Heuristic,
+    /// No QA model ran because retrieval found nothing to answer from; the response
+    /// has no answers. Serialized `not_run`.
+    NotRun,
     /// Caller-supplied model predictions.
     ImportedPredictions,
 }
@@ -581,7 +581,7 @@ pub fn answer_question_with_retrieval_index<B: TextEmbedderBackend>(
             accepted: true,
             operation: "retrieval-question-answer".to_string(),
             question: request.question,
-            runtime: QuestionAnsweringRuntime::Heuristic,
+            runtime: QuestionAnsweringRuntime::NotRun,
             retrieved_chunks,
             answers: Vec::new(),
         });
@@ -685,7 +685,7 @@ pub fn answer_question_with_text_index_context(
             accepted: true,
             operation: "text-index-question-answer".to_string(),
             question: request.question,
-            runtime: QuestionAnsweringRuntime::Heuristic,
+            runtime: QuestionAnsweringRuntime::NotRun,
             retrieved_chunks,
             answers: Vec::new(),
         });

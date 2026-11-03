@@ -604,11 +604,8 @@ mod tests {
 
     #[test]
     fn semantic_and_hybrid_search_require_an_embedding_model() {
-        for mode in [None, Some("hybrid"), Some("semantic")] {
-            let mut query = serde_json::json!({"text": "transient memory", "topK": 1});
-            if let Some(mode) = mode {
-                query["mode"] = serde_json::json!(mode);
-            }
+        for mode in ["hybrid", "semantic"] {
+            let query = serde_json::json!({"text": "transient memory", "mode": mode, "topK": 1});
             let error = run_surface_operation(request(
                 "index.search",
                 serde_json::json!({
@@ -622,6 +619,21 @@ mod tests {
             assert_eq!(parsed.code, "missing_dependency");
             assert_eq!(parsed.details["dependency"], "embedding model");
         }
+    }
+
+    #[test]
+    fn search_requires_an_explicit_mode() {
+        let error = run_surface_operation(request(
+            "index.search",
+            serde_json::json!({
+                "documents": [{"id": "doc-1", "body": "transient memory index"}],
+                "query": {"text": "transient memory", "topK": 1}
+            }),
+        ))
+        .expect_err("mode is required");
+        let parsed = runtime_core::parse_surface_error(&error).expect("typed error");
+        assert_eq!(parsed.code, "invalid_request");
+        assert!(parsed.message.contains("mode"), "{}", parsed.message);
     }
 
     #[test]
@@ -677,7 +689,7 @@ mod tests {
             serde_json::json!({
                 "backend": "memory",
                 "documents": [{"id": "doc-1", "body": "Body"}],
-                "query": {"text": ""}
+                "query": {"text": "", "mode": "lexical"}
             }),
         ))
         .expect_err("invalid query");

@@ -49,8 +49,11 @@ in-memory indexes and do not write files.
 
 ## Package surface
 
-- Primary workflow: `retrieval.search` builds a transient in-memory retrieval
-  index and searches it.
+- Primary workflow: `retrieval.search`, which needs an embedding model and fails
+  with `missing_dependency` at the surface (`RetrievalIndex` embeds every
+  chunk; it has no lexical-only mode).
+- `retrieval.rerank` without imported scores uses the rule-based lexical-overlap
+  scorer; results carry `runtime: "rule_based"`.
 - Workflow operations: `retrieval.chunk`, `retrieval.search`,
   `retrieval.rerank`, and `retrieval.snapshotPlan`.
 - Debug operations: `describe` inspects package metadata and operation support.

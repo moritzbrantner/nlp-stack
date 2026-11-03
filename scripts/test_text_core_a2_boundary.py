@@ -77,7 +77,7 @@ class TextCoreA2BoundaryTests(unittest.TestCase):
         "pub enum AnnotationProvenance {\n"
         "    /// Directly observed.\n"
         "    Observed,\n"
-        "    Heuristic,\n"
+        "    RuleBased,\n"
         "    Model,\n"
         "    Derived,\n"
         "    Imported,\n"
@@ -172,7 +172,7 @@ class TextCoreA2BoundaryTests(unittest.TestCase):
 
         self.assertIn(
             "text-core AnnotationProvenance must have exactly the semantic variants "
-            "Derived, Heuristic, Imported, Model, Observed; unexpected Guessed; "
+            "Derived, Imported, Model, Observed, RuleBased; unexpected Guessed; "
             "missing Imported",
             check_contract(root),
         )

@@ -15,7 +15,7 @@ use text_embeddings::{
 #[test]
 fn hashed_fixture_reports_heuristic_provenance_with_backend_fact_in_metadata() {
     let metadata = HashedFixtureEmbedder::default().metadata();
-    assert_eq!(metadata.provenance, AnnotationProvenance::Heuristic);
+    assert_eq!(metadata.provenance, AnnotationProvenance::RuleBased);
     assert_eq!(metadata.backend, TextEmbeddingBackendKind::HashedFixture);
 }
 

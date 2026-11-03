@@ -182,8 +182,6 @@ pub struct LexiconStore {
     pub gazetteers: BTreeMap<String, Vec<LexiconEntry>>,
     /// The valency hints value.
     pub valency_hints: BTreeMap<String, Vec<LexiconEntry>>,
-    /// The sentiment terms value.
-    pub sentiment_terms: BTreeMap<String, Vec<LexiconEntry>>,
 }
 
 impl Default for LexiconStore {
@@ -325,23 +323,12 @@ impl LexiconStore {
             ],
         )]);
 
-        let sentiment_terms = BTreeMap::from([(
-            "en".to_string(),
-            vec![
-                LexiconEntry::new("excellent", "positive").weight(1.5),
-                LexiconEntry::new("reliable", "positive").weight(1.0),
-                LexiconEntry::new("terrible", "negative").weight(2.0),
-                LexiconEntry::new("broken", "negative").weight(1.5),
-            ],
-        )]);
-
         Self {
             stop_words,
             abbreviations,
             lexical_classes,
             gazetteers,
             valency_hints,
-            sentiment_terms,
         }
     }
 

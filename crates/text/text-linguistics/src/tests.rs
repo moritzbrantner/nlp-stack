@@ -685,23 +685,36 @@ fn analyzes_transcription_contracts_directly() {
 }
 
 #[test]
-fn rule_entities_live_in_linguistics() {
-    let entities = crate::rule_entities(
-        "Email hi@example.com and tag #Rust.",
-        &crate::EntityRuleSet::default(),
-    );
-    assert!(entities.iter().any(|entity| entity.kind == "email"));
-    assert!(entities.iter().any(|entity| entity.kind == "hashtag"));
-}
-
-#[test]
-fn classifies_discourse_and_style_without_models() {
-    let text = "First, we introduce the API. However, the migration is tricky. Finally, the rollout is stable.";
-    let analysis = analyze_text(text, &LinguisticAnalysisOptions::without_models()).unwrap();
-    assert!(!analysis.discourse.is_empty());
-    // Topics rank model lemmas; without a morphology model there are none.
-    assert!(analysis.topics.descriptors.is_empty());
-    assert!(analysis.style.complexity.average_sentence_tokens > 0.0);
+fn discourse_topic_and_style_requests_fail_without_a_model_backend() {
+    for (options, capability) in [
+        (
+            LinguisticAnalysisOptions {
+                enable_discourse: true,
+                ..LinguisticAnalysisOptions::without_models()
+            },
+            "discourse segmentation",
+        ),
+        (
+            LinguisticAnalysisOptions {
+                enable_topics: true,
+                ..LinguisticAnalysisOptions::without_models()
+            },
+            "topic modelling",
+        ),
+        (
+            LinguisticAnalysisOptions {
+                enable_style: true,
+                ..LinguisticAnalysisOptions::without_models()
+            },
+            "style profiling",
+        ),
+    ] {
+        let error = analyze_text("First, we introduce the API.", &options)
+            .expect_err("no model backend exists");
+        let message = error.to_string();
+        assert!(message.contains("model required"), "{message}");
+        assert!(message.contains(capability), "{message}");
+    }
 }
 
 #[test]
@@ -713,7 +726,7 @@ fn text_nlp_pipeline_exposes_rich_graph_and_profile_metadata() {
 
     assert_eq!(analysis.profile, AnalysisProfile::Rich);
     assert_eq!(analysis.graph.tokens.len(), analysis.tokens.len());
-    assert_eq!(analysis.provenance, AnnotationProvenance::Heuristic);
+    assert_eq!(analysis.provenance, AnnotationProvenance::RuleBased);
     assert!(analysis.confidence.get() > 0.0);
     assert_eq!(analysis.token_ref(0).unwrap().text, "Alice");
 }

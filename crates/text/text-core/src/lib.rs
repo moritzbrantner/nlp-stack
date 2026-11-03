@@ -306,8 +306,11 @@ impl From<f32> for AnnotationConfidence {
 pub enum AnnotationProvenance {
     /// Directly observed in the source data without interpretation.
     Observed,
-    /// Produced by deterministic rules or heuristics.
-    Heuristic,
+    /// Produced by fixed, deterministic rules (tokenization, segmentation, exact
+    /// pattern matching), not a learned model. Serialized `RuleBased`; the pre-#186
+    /// name `Heuristic` still deserializes.
+    #[serde(alias = "Heuristic")]
+    RuleBased,
     /// Produced by a learned model (including model tokenizers).
     Model,
     /// Computed from other annotations or values.
@@ -1046,7 +1049,7 @@ pub fn build_annotation_graph_from_parts(
 
     TextAnnotationGraph {
         text: text.to_string(),
-        provenance: AnnotationProvenance::Heuristic,
+        provenance: AnnotationProvenance::RuleBased,
         confidence: AnnotationConfidence::default(),
         tokens: annotated_tokens,
         sentences: annotated_sentences,
@@ -1583,7 +1586,7 @@ mod tests {
         assert_eq!(graph.tokens.len(), 8);
         assert_eq!(graph.sentences.len(), 2);
         assert_eq!(graph.paragraphs.len(), 2);
-        assert_eq!(graph.provenance, AnnotationProvenance::Heuristic);
+        assert_eq!(graph.provenance, AnnotationProvenance::RuleBased);
         assert!(graph.confidence.get() > 0.0);
 
         let first_sentence = &graph.sentences[0];

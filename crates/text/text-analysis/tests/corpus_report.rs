@@ -26,9 +26,25 @@ fn corpus_report_includes_tfidf_bm25_duplicates_and_semantic_neighbors() {
     assert_eq!(report.tfidf_search.as_ref().unwrap()[0].id, "doc-1");
     assert_eq!(report.bm25_search.as_ref().unwrap()[0].id, "doc-1");
     assert!(!report.near_duplicates.is_empty());
-    // No embedding model is configured, so semantic neighbors are reported as
-    // unavailable rather than computed from hashed vectors.
+    // Semantic neighbors are not requested by default (they need a model).
     assert!(report.semantic_neighbors.is_empty());
+    assert!(!report
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.code == "semantic_neighbors_unavailable"));
+
+    let requested = CorpusAnalysisOptions {
+        include_semantic_neighbors: true,
+        ..options
+    };
+    let report = analyze_corpus(
+        [
+            TextDocument::new("doc-1", "rust cargo crates text analysis"),
+            TextDocument::new("doc-2", "rust cargo crates text analysis pipeline"),
+        ],
+        &requested,
+    )
+    .unwrap();
     assert!(report
         .diagnostics
         .iter()

@@ -138,7 +138,7 @@ fn lexical_survives_unavailable_vector_storage() {
 fn semantic_and_hybrid_read_and_use_vectors_once() {
     for query in [
         IndexQuery::semantic("strategy retrieval", 3),
-        IndexQuery::new("strategy retrieval", 3),
+        IndexQuery::hybrid("strategy retrieval", 3),
     ] {
         let index = observed_index(8, 128);
         let results = index.search(&query).unwrap();
@@ -155,7 +155,7 @@ fn semantic_and_hybrid_read_and_use_vectors_once() {
 fn semantic_and_hybrid_propagate_vector_storage_errors() {
     for query in [
         IndexQuery::semantic("strategy", 3),
-        IndexQuery::new("strategy", 3),
+        IndexQuery::hybrid("strategy", 3),
     ] {
         let mut index = observed_index(8, 128);
         index.store_mut().unavailable = true;
@@ -230,7 +230,7 @@ fn fuzzy_sqlite_variants_do_not_read_corrupt_vector_payloads() {
     assert!(surface
         .search(&IndexQuery::semantic("strategy", 3))
         .is_err());
-    assert!(surface.search(&IndexQuery::new("strategy", 3)).is_err());
+    assert!(surface.search(&IndexQuery::hybrid("strategy", 3)).is_err());
 }
 
 #[test]

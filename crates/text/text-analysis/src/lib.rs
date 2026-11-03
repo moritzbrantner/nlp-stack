@@ -35,9 +35,8 @@ use text_core::{
 };
 use text_embeddings::{EmbeddingModelInfo, PoolingStrategy};
 use text_lexical::{
-    Bm25SearchResult, CorpusStats, CorpusTermStats, DocumentSearchResult, EntityMention, Keyword,
-    ReadabilitySummary, SentimentSummary, SummarySentence, TermFrequency, TextFeatureSummary,
-    TfIdfTerm,
+    Bm25SearchResult, CorpusStats, CorpusTermStats, DocumentSearchResult, Keyword,
+    ReadabilitySummary, SummarySentence, TermFrequency, TextFeatureSummary, TfIdfTerm,
 };
 pub use workspace::{
     TextWorkspace, TextWorkspaceOptions, WorkspaceDocument, WorkspaceIndexOptions,
@@ -203,7 +202,8 @@ impl Default for CorpusAnalysisOptions {
             top_k: 10,
             tfidf_terms_per_document: 10,
             include_near_duplicates: true,
-            include_semantic_neighbors: true,
+            // Semantic neighbors need an embedding model; never implicit.
+            include_semantic_neighbors: false,
             near_duplicate_shingle_size: 5,
             near_duplicate_threshold: 0.6,
         }
@@ -301,10 +301,8 @@ pub struct LexicalAnalysisSection {
     pub keywords: Vec<Keyword>,
     pub phrase_keywords: Vec<Keyword>,
     pub readability: ReadabilitySummary,
-    pub sentiment: SentimentSummary,
     pub extractive_summary: Vec<SummarySentence>,
     pub diverse_extractive_summary: Vec<SummarySentence>,
-    pub rule_entities: Vec<EntityMention>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

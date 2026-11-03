@@ -300,7 +300,8 @@ pub enum IndexSearchMode {
 #[serde(rename_all = "camelCase")]
 pub struct IndexQuery {
     pub text: String,
-    #[serde(default = "default_mode")]
+    /// Required: there is no default mode, so a caller never gets semantic work
+    /// (and an embedding-model requirement) without asking for it.
     pub mode: IndexSearchMode,
     #[serde(default = "default_top_k")]
     pub top_k: usize,
@@ -319,46 +320,37 @@ pub struct IndexQuery {
 }
 
 impl IndexQuery {
-    pub fn new(text: impl Into<String>, top_k: usize) -> Self {
+    /// A query in `mode` with the default top-k independent options. There is no
+    /// mode-less constructor.
+    pub fn with_mode(text: impl Into<String>, top_k: usize, mode: IndexSearchMode) -> Self {
+        let (semantic_weight, lexical_weight) = match mode {
+            IndexSearchMode::Lexical => (0.0, 1.0),
+            IndexSearchMode::Semantic => (1.0, 0.0),
+            IndexSearchMode::Hybrid => (default_semantic_weight(), default_lexical_weight()),
+        };
         Self {
             text: text.into(),
+            mode,
             top_k,
-            ..Self::default()
+            candidate_limit: default_candidate_limit(),
+            filter: IndexFilter::default(),
+            semantic_weight,
+            lexical_weight,
+            required_phrases: Vec::new(),
+            explain: false,
         }
     }
 
     pub fn lexical(text: impl Into<String>, top_k: usize) -> Self {
-        Self {
-            mode: IndexSearchMode::Lexical,
-            semantic_weight: 0.0,
-            lexical_weight: 1.0,
-            ..Self::new(text, top_k)
-        }
+        Self::with_mode(text, top_k, IndexSearchMode::Lexical)
     }
 
     pub fn semantic(text: impl Into<String>, top_k: usize) -> Self {
-        Self {
-            mode: IndexSearchMode::Semantic,
-            semantic_weight: 1.0,
-            lexical_weight: 0.0,
-            ..Self::new(text, top_k)
-        }
+        Self::with_mode(text, top_k, IndexSearchMode::Semantic)
     }
-}
 
-impl Default for IndexQuery {
-    fn default() -> Self {
-        Self {
-            text: String::new(),
-            mode: default_mode(),
-            top_k: default_top_k(),
-            candidate_limit: default_candidate_limit(),
-            filter: IndexFilter::default(),
-            semantic_weight: default_semantic_weight(),
-            lexical_weight: default_lexical_weight(),
-            required_phrases: Vec::new(),
-            explain: false,
-        }
+    pub fn hybrid(text: impl Into<String>, top_k: usize) -> Self {
+        Self::with_mode(text, top_k, IndexSearchMode::Hybrid)
     }
 }
 
@@ -1647,10 +1639,6 @@ fn remove_document_state(
     }
 }
 
-fn default_mode() -> IndexSearchMode {
-    IndexSearchMode::Hybrid
-}
-
 fn default_top_k() -> usize {
     10
 }
@@ -1909,7 +1897,7 @@ mod tests {
             .search(&IndexQuery {
                 text: "durable text index".to_string(),
                 explain: true,
-                ..IndexQuery::default()
+                ..IndexQuery::hybrid("", 10)
             })
             .unwrap();
         assert_eq!(results[0].document_id, "doc-1");
@@ -1937,7 +1925,7 @@ mod tests {
             .search(&IndexQuery {
                 text: "climate policy public funding".to_string(),
                 required_phrases: vec!["public funding".to_string()],
-                ..IndexQuery::default()
+                ..IndexQuery::hybrid("", 10)
             })
             .unwrap();
         assert_eq!(results.len(), 1);
@@ -1961,7 +1949,7 @@ mod tests {
                 top_k: 2,
                 candidate_limit: 1,
                 required_phrases: vec!["public funding".to_string()],
-                ..IndexQuery::default()
+                ..IndexQuery::hybrid("", 10)
             })
             .unwrap();
         assert_eq!(results.len(), 2);
@@ -1984,7 +1972,7 @@ mod tests {
                 text: "neural ranking".to_string(),
                 semantic_weight: 0.5,
                 lexical_weight: 0.5,
-                ..IndexQuery::default()
+                ..IndexQuery::hybrid("", 10)
             })
             .unwrap();
         assert_eq!(results[0].document_id, "doc-1");
@@ -2005,7 +1993,7 @@ mod tests {
                 text: "shared passage".to_string(),
                 mode: IndexSearchMode::Lexical,
                 top_k: 2,
-                ..IndexQuery::default()
+                ..IndexQuery::hybrid("", 10)
             })
             .unwrap();
         assert_eq!(
@@ -2042,7 +2030,7 @@ mod tests {
         let inspect = index.inspect().unwrap();
         assert_eq!(inspect.document_count, 1);
         assert_eq!(inspect.facet_count, 1);
-        let results = index.search(&IndexQuery::new("new", 1)).unwrap();
+        let results = index.search(&IndexQuery::hybrid("new", 1)).unwrap();
         assert_eq!(results[0].chunk.semantic_facets[0].value, "new");
     }
 
@@ -2096,7 +2084,7 @@ mod tests {
                     provenance_operations: BTreeSet::from(["analysis.document".to_string()]),
                     ..IndexFilter::default()
                 },
-                ..IndexQuery::default()
+                ..IndexQuery::hybrid("", 10)
             })
             .unwrap();
         assert_eq!(results.len(), 1);

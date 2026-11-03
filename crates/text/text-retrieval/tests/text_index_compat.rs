@@ -44,7 +44,7 @@ fn legacy_documents_build_memory_text_index() {
     assert_eq!(report.documents_received, 1);
     assert_eq!(
         index
-            .search(&text_index::IndexQuery::new("durable index", 1))
+            .search(&text_index::IndexQuery::hybrid("durable index", 1))
             .unwrap()
             .len(),
         1
@@ -77,7 +77,7 @@ fn persisted_search_index_imports_into_sqlite_text_index() {
     let store = text_index::SqliteIndexStore::open(&sqlite_path, true).unwrap();
     let index = text_index::TextIndex::with_store(embedder(), store);
     let results = index
-        .search(&text_index::IndexQuery::new("sqlite text index", 1))
+        .search(&text_index::IndexQuery::hybrid("sqlite text index", 1))
         .unwrap();
     assert_eq!(results[0].document_id, "doc-1");
 }

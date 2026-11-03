@@ -1,7 +1,8 @@
 # text-embeddings
 
 Text embedding backends (ONNX, Candle), embedding search helpers and
-co-occurrence statistics.
+rule-based co-occurrence term statistics (`embeddings.relatedTerms`: counts of
+terms within a window, not semantic similarity).
 
 There is no default embedding backend: callers supply a real
 `TextEmbeddingBackend`. Native model execution and tokenizer-backed model support

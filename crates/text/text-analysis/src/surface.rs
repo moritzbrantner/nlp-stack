@@ -238,7 +238,6 @@ fn annotated_value(operation: &OperationId, value: serde_json::Value) -> serde_j
                 "tokenCount": value["core"]["tokens"].as_array().map(Vec::len).unwrap_or(0),
                 "sentenceCount": value["core"]["sentences"].as_array().map(Vec::len).unwrap_or(0),
                 "keywordCount": value["lexical"]["keywords"].as_array().map(Vec::len).unwrap_or(0),
-                "entityCount": value["lexical"]["ruleEntities"].as_array().map(Vec::len).unwrap_or(0),
                 "embeddingDimensions": value["embedding"]["dimensions"],
                 "diagnosticCount": value["diagnostics"].as_array().map(Vec::len).unwrap_or(0)
             }),

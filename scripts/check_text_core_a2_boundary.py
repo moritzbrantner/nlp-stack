@@ -44,7 +44,7 @@ FORBIDDEN_KERNEL_FRAMEWORK_TYPES = {
 # Core provenance is semantic (docs/ARCHITECTURE.md). Concrete execution
 # facts (runtime, backend, device, tokenizer, model id) belong to the producing
 # capability's execution metadata, never to `AnnotationProvenance`.
-SEMANTIC_PROVENANCE_VARIANTS = {"Observed", "Heuristic", "Model", "Derived", "Imported"}
+SEMANTIC_PROVENANCE_VARIANTS = {"Observed", "RuleBased", "Model", "Derived", "Imported"}
 RUNTIME_PROVENANCE_PATTERN = re.compile(
     r"onnx|candle|cuda|tokenizer|wgpu|metal|external|tensorrt|openvino|coreml"
     r"|vulkan|gpu|torch|ggml|llama|mlx|directml|rocm",

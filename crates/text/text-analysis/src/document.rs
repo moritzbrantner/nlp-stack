@@ -13,9 +13,8 @@ use text_embeddings::{TextEmbeddingBackend, TextEmbeddingMetadata};
 use text_lexical::{
     character_ngram_frequencies, character_shingles, diverse_extractive_summary,
     english_stop_words, extractive_summary, keywords, phrase_keywords, readability_summary,
-    rule_entities, sentiment, summarize_text, term_frequencies, token_ngram_frequencies,
-    token_shingles, EntityRuleSet, ExtractiveSummaryOptions, KeywordOptions, PhraseKeywordOptions,
-    SentimentLexicon,
+    summarize_text, term_frequencies, token_ngram_frequencies, token_shingles,
+    ExtractiveSummaryOptions, KeywordOptions, PhraseKeywordOptions,
 };
 use text_linguistics::{
     DependencyParsingOptions, EntityRecognitionOptions, LinguisticAnalysisOptions,
@@ -223,10 +222,8 @@ fn lexical_section(
         keywords: keywords(text, &keyword_options),
         phrase_keywords: phrase_keywords(text, &phrase_options),
         readability: readability_summary(text, &options.processing),
-        sentiment: sentiment(text, &SentimentLexicon::default()),
         extractive_summary: extractive_summary(text, &summary_options)?,
         diverse_extractive_summary: diverse_extractive_summary(text, &summary_options, 0.35)?,
-        rule_entities: rule_entities(text, &EntityRuleSet::default()),
     })
 }
 

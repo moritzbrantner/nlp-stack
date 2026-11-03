@@ -11,9 +11,8 @@ fallbacks: an operation without a model fails or reports itself unsupported
 - Surface-to-subword alignment
 - Lemmatization, morphology, POS tagging and dependency parsing from the UD models; phrase chunks from their POS tags
 - Local model-backed named entities through `CandleTokenClassifier`, returned exactly as the model labels them
-- Discourse, topic, and style signals over the analysis
-- Coreference, events and relations have result types but no producer yet: requesting them (`enable_coreference`, `enable_events`) fails with a "model required" error
-- Deterministic historical temporal normalization (`normalize_temporal_expressions`): typed dates, ranges, decades and centuries with byte spans, English and German
+- Coreference, events, relations, discourse segments, topics and style have result types but no producer: requesting them (`enable_coreference`, `enable_events`, `enable_discourse`, `enable_topics`, `enable_style`) fails with a "model required" error
+- Rule-based (exact) historical temporal normalization (`normalize_temporal_expressions`): typed dates, ranges, decades and centuries with byte spans, English and German
 
 ## Stable contract
 
@@ -28,9 +27,11 @@ every disabled layer reports `Unsupported` per sentence.
 ## Quality and limits
 
 Entity, lemma, POS, morphology and dependency outputs come only from the scored
-models below. Discourse, topic, and style signals are best-effort counts and
-cue lists over the analysis; topics rank model lemmas and are empty without a
-morphology model.
+models below. Reporting and scope evidence are **rule-based**: fixed per-language
+cue lists applied over the UD model's dependency trees (producers
+`text-linguistics:reporting-ud-rules` and `text-linguistics:scope-ud-rules`).
+Temporal normalization is rule-based exact pattern matching. Phrase chunks are
+rule-based groupings of model POS tags.
 
 ## Example
 
@@ -69,7 +70,7 @@ in the last float bit.
 ## Package surface
 
 - Primary workflow: `linguistics.analyze` runs the model-backed linguistic
-  pipeline and returns tokens, language, entities, topics, and style signals.
+  pipeline and returns tokens, language, morphology, syntax and entities.
   Builds without `candle,model-bundles` (including WASM) fail with a
   `missing_dependency` error; there is no heuristic result.
 - Workflow operations: `linguistics.analyze`, `linguistics.entities`, and
@@ -315,8 +316,7 @@ support level, the producer that ran and the reason:
 German sentences go to the German UD model and Spanish sentences to the Spanish
 one within the same document, and no relation is drawn across sentences. Lemmas,
 morphology, POS, dependency trees and entities are omitted for sentences whose
-report does not keep them. Chunks, topics and style still see every sentence's
-model layers. `TextProcessingOptions::language` pins one language for every sentence
+report does not keep them. Chunks still see every sentence's model POS tags. `TextProcessingOptions::language` pins one language for every sentence
 and skips detection.
 
 Accuracy, measured 2026-11-01 (`never_misroutes_a_gold_fixture_sentence` in

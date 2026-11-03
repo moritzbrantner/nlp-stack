@@ -83,7 +83,7 @@ fn annotated_value(operation: &OperationId, value: serde_json::Value) -> serde_j
         ),
         "linguistics.analyze" => (
             "Linguistic analysis result",
-            "Ran the model-backed linguistic pipeline and returned tokens, language, entities, topics, and style signals.",
+            "Ran the model-backed linguistic pipeline and returned tokens, language, morphology, syntax and entities.",
             serde_json::json!({
                 "status": "ok",
                 "tokenCount": value["tokens"].as_array().map(Vec::len).unwrap_or(0),
@@ -248,20 +248,7 @@ fn analysis_projection(analysis: LinguisticAnalysis) -> serde_json::Value {
             "tokenEnd": chunk.token_end,
             "span": chunk.span
         })).collect::<Vec<_>>(),
-        "entities": entity_values(&analysis),
-        "topics": {
-            "descriptors": analysis.topics.descriptors.iter().map(|descriptor| serde_json::json!({
-                "label": descriptor.label,
-                "terms": descriptor.terms,
-                "score": descriptor.score
-            })).collect::<Vec<_>>()
-        },
-        "style": {
-            "register": format!("{:?}", analysis.style.register),
-            "questionCount": analysis.style.question_count,
-            "exclamationCount": analysis.style.exclamation_count,
-            "formalityScore": analysis.style.formality_score
-        }
+        "entities": entity_values(&analysis)
     })
 }
 

@@ -1,4 +1,8 @@
-//! Query/document reranking contracts and the deterministic fallback scorer.
+//! Query/document reranking contracts and the rule-based lexical-overlap scorer.
+//!
+//! Without imported scores or a caller backend, documents are scored by the share of
+//! query terms they contain. That scorer is rule-based term matching, labelled
+//! `rule_based` in results; it makes no semantic-relevance claim.
 
 use std::collections::BTreeSet;
 
@@ -70,8 +74,8 @@ pub enum RerankerRuntime {
     Onnx,
     /// Caller-supplied external backend.
     External,
-    /// Deterministic heuristic backend.
-    Heuristic,
+    /// Rule-based lexical-overlap scoring (no model).
+    RuleBased,
 }
 
 impl RerankerRuntime {
@@ -81,7 +85,7 @@ impl RerankerRuntime {
             Self::Candle => "candle",
             Self::Onnx => "onnx",
             Self::External => "external",
-            Self::Heuristic => "heuristic",
+            Self::RuleBased => "rule_based",
         }
     }
 }
@@ -104,7 +108,7 @@ pub struct RerankExecutionContext<'a> {
     pub model_id: Option<String>,
 }
 
-/// Reranks documents from imported scores or deterministic lexical overlap.
+/// Reranks documents from imported scores or rule-based lexical overlap.
 pub fn rerank_documents(request: RerankRequest) -> CoreResult<RerankResponse> {
     rerank_documents_with_context(request, &mut RerankExecutionContext::default())
 }
@@ -144,14 +148,13 @@ pub fn rerank_documents_with_context(
                     Some(runtime.clone()),
                 )
             } else {
-                (
-                    request
-                        .imported_scores
-                        .get(index)
-                        .copied()
-                        .unwrap_or_else(|| lexical_overlap_score(&request.query, document)),
-                    None,
-                )
+                match request.imported_scores.get(index).copied() {
+                    Some(score) => (score, None),
+                    None => (
+                        lexical_overlap_score(&request.query, document),
+                        Some(RerankerRuntime::RuleBased.as_str().to_string()),
+                    ),
+                }
             };
             RerankResult {
                 index,

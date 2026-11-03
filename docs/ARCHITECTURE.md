@@ -83,7 +83,7 @@ Classification results, entities, embeddings, retrieval results, and similar out
 
 UTF-8 half-open byte offsets are the canonical span coordinate system. When a boundary requires another coordinate system, use explicitly typed conversion helpers such as `Utf16Span` or `GraphemeSpan`; do not store multiple synchronized offset systems in the core span.
 
-Core provenance is semantic rather than implementation-specific. Values such as observed, heuristic, model-derived, derived, or imported may be universal. Concrete execution facts such as ONNX, Candle, a device, or a model identifier belong to the producing capability's execution metadata.
+Core provenance is semantic rather than implementation-specific. Values such as observed, rule-based, model-derived, derived, or imported may be universal. Concrete execution facts such as ONNX, Candle, a device, or a model identifier belong to the producing capability's execution metadata.
 
 Errors are capability-local and typed. `text-core` must not re-export a media-wide error enum, and higher capabilities should compose lower-level errors explicitly rather than share one universal NLP error dumping ground.
 
@@ -96,6 +96,8 @@ Capabilities use generic foundation facilities such as `model-runtime` and `runt
 Semantic requests are backend-neutral. Model/backend/device/download/cache/retry credentials and resource policy live in a separate execution configuration or context. The same semantic request contract should work with local models, ONNX, Candle, imported predictions, or future remote execution.
 
 **No heuristic fallbacks (owner decision 2026-11-03, #186: "no heuristic fallbacks at all, fail if no model"):** no capability substitutes heuristic output for model-grade semantics (NER, POS, morphology, syntax, coreference, events/relations, semantic embeddings, QA answers). Without a model the operation fails with a typed error or reports an explicit unsupported state that names the missing model. Deterministic test fixtures (`text_embeddings::testing::HashedFixtureEmbedder`) are explicitly named and never a production default. Exact rule-based operations (tokenization, sentence segmentation, lexical/BM25 search, exact and fuzzy matching) are not heuristic stand-ins and remain.
+
+**Rule-based layers (owner answers on #192, 2026-11-03):** removed as fake semantics: lexicon sentiment, `rule_entities`, the transcript heuristic analyzer, and the cue-word discourse, lemma-count topic and count-based style layers (requesting them fails with "model required"). Kept, explicitly labelled rule-based in docs and provenance (`AnnotationProvenance::RuleBased`, `*-ud-rules` producers, `rule_based` reranker runtime): the reporting/negation cue lists over UD model trees, exact temporal normalisation, the lexical-overlap reranker, and co-occurrence term statistics. Search mode is always explicit (`IndexQuery` has no default mode) and semantic work is never implicit.
 
 Backend packaging is hybrid. Lightweight/default implementations may live with the semantic capability. Heavy backends may become separate implementation crates when dependency weight, compile time, platform constraints, or independent release lifecycle creates actual pressure. Do not pre-split every backend.
 

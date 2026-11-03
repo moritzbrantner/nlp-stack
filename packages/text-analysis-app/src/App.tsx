@@ -64,7 +64,7 @@ const packageAppConfig: PackageAppConfig = {
       id: "document-deterministic",
       label: "Document: deterministic report",
       operation: "analysis.document",
-      description: "Report analysis with keywords, rule-based entity hints, sentence counts and model-free linguistics. Model-backed layers show as unsupported; no embedding is requested.",
+      description: "Report analysis with keywords, sentence counts and model-free linguistics. Model-backed layers show as unsupported; no embedding is requested.",
       input: {
         id: "release-report-berlin",
         text: sampleText,
@@ -181,7 +181,7 @@ const packageAppConfig: PackageAppConfig = {
         "analysis.document": {
           title: "Document analysis",
           summaryFields: ["tokenCount", "sentenceCount", "keywordCount", "entityCount", "embeddingDimensions", "diagnosticCount"],
-          listFields: ["lexical.keywords", "lexical.ruleEntities", "diagnostics"],
+          listFields: ["lexical.keywords", "diagnostics"],
           objectFields: ["core", "lexical", "linguistic", "embedding", "classification"],
           explanation: () => "The orchestrator ran core statistics, lexical keyword extraction, linguistic projections, deterministic embeddings, and retrieval-oriented diagnostics for one document.",
         },

@@ -29,7 +29,7 @@ test("runOperation rejects hybrid search without an embedding model", async () =
       operation: "index.search",
       input: {
         documents: [{ id: "doc-1", body: "rust text index search" }],
-        query: { text: "text index", topK: 2 },
+        query: { text: "text index", mode: "hybrid", topK: 2 },
       },
     }),
   ).rejects.toThrow(/missing_dependency/);

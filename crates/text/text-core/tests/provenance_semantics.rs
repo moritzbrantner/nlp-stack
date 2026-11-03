@@ -7,7 +7,7 @@ use text_core::{build_annotation_graph, AnnotationProvenance, TextProcessingOpti
 
 const SEMANTIC_VARIANTS: &[(AnnotationProvenance, &str)] = &[
     (AnnotationProvenance::Observed, "Observed"),
-    (AnnotationProvenance::Heuristic, "Heuristic"),
+    (AnnotationProvenance::RuleBased, "RuleBased"),
     (AnnotationProvenance::Model, "Model"),
     (AnnotationProvenance::Derived, "Derived"),
     (AnnotationProvenance::Imported, "Imported"),
@@ -21,7 +21,7 @@ const REMOVED_RUNTIME_VARIANTS: &[&str] = &["Onnx", "Candle", "CudaOxide", "Toke
 fn semantic_name(provenance: AnnotationProvenance) -> &'static str {
     match provenance {
         AnnotationProvenance::Observed => "Observed",
-        AnnotationProvenance::Heuristic => "Heuristic",
+        AnnotationProvenance::RuleBased => "RuleBased",
         AnnotationProvenance::Model => "Model",
         AnnotationProvenance::Derived => "Derived",
         AnnotationProvenance::Imported => "Imported",
