@@ -6,12 +6,10 @@ use runtime_core::{
 };
 use serde::Deserialize;
 use text_core::TextProcessingOptions;
-use text_embeddings::{HashedTextEmbedder, TextEmbeddingConfig};
 
 use crate::{
-    chunk_search_document, rerank_documents, ChunkingOptions, IngestReport, IngestionOptions,
-    PersistedSearchIndex, RerankRequest, RetrievalIndex, RetrievalMode, SearchDocument,
-    SearchFilter, SearchQuery,
+    chunk_search_document, rerank_documents, ChunkingOptions, IngestReport, RerankRequest,
+    SearchDocument, SearchFilter,
 };
 
 /// Returns the package surface exposed by every transport wrapper.
@@ -24,7 +22,7 @@ pub fn package_surface() -> PackageSurface {
             operation(
                 "describe",
                 "Inspect package metadata",
-                "Library-first semantic and hybrid retrieval for video-analysis.",
+                "Library-first retrieval. Index-backed operations need a caller-supplied embedding model; the surface has none and reports `missing_dependency`.",
                 serde_json::json!({"includeOperations": true}),
             ),
             operation(
@@ -36,7 +34,7 @@ pub fn package_surface() -> PackageSurface {
             operation(
                 "retrieval.search",
                 "Search documents",
-                "Builds a transient in-memory retrieval index and searches it.",
+                "Searches an embedding-backed retrieval index. The surface cannot load an embedding model, so this fails with `missing_dependency`; use text-index `index.search` in lexical mode for model-free search.",
                 serde_json::json!({"documents": [{"id": "doc-1", "body": "Rust text retrieval"}, {"id": "doc-2", "body": "Video scene reports"}], "query": "text", "mode": "hybrid"}),
             ),
             operation(
@@ -48,8 +46,8 @@ pub fn package_surface() -> PackageSurface {
             operation(
                 "retrieval.snapshotPlan",
                 "Plan persisted snapshot",
-                "Builds a transient retrieval index and returns persistence manifest and preview records without writing files.",
-                serde_json::json!({"documents": [{"id": "doc-1", "body": "Rust text retrieval"}, {"id": "doc-2", "body": "Video scene reports"}], "dimensions": 128, "previewLimit": 3}),
+                "Plans an embedding-backed retrieval snapshot. The surface cannot load an embedding model, so this fails with `missing_dependency`.",
+                serde_json::json!({"documents": [{"id": "doc-1", "body": "Rust text retrieval"}, {"id": "doc-2", "body": "Video scene reports"}], "previewLimit": 3}),
             ),
         ],
     }
@@ -213,8 +211,6 @@ struct RetrievalSearchRequest {
     top_k: usize,
     #[serde(default)]
     filters: Vec<SearchFilter>,
-    #[serde(default = "default_dimensions")]
-    dimensions: usize,
 }
 
 #[derive(Debug, Deserialize)]
@@ -223,8 +219,6 @@ struct SnapshotPlanRequest {
     documents: Vec<SearchDocument>,
     #[serde(default)]
     options: ChunkingOptions,
-    #[serde(default = "default_dimensions")]
-    dimensions: usize,
     #[serde(default = "default_preview_limit")]
     preview_limit: usize,
 }
@@ -254,26 +248,21 @@ fn chunk_value(request: ChunkRequest) -> Result<serde_json::Value, String> {
 
 fn search_value(request: RetrievalSearchRequest) -> Result<serde_json::Value, String> {
     runtime_core::require_non_empty("retrieval.search", "documents", &request.documents)?;
-    let mut index = RetrievalIndex::new(HashedTextEmbedder {
-        config: TextEmbeddingConfig {
-            dimensions: request.dimensions.max(1),
-            use_idf: false,
-        },
-        ..HashedTextEmbedder::default()
-    });
-    let report = index
-        .ingest_documents(&request.documents, &IngestionOptions::default())
-        .map_err(|error| error.to_string())?;
-    let mut query = SearchQuery::new(request.query, request.top_k).mode(parse_mode(&request.mode)?);
-    if let Some(filter) = request.filters.into_iter().next() {
-        query = query.filter(filter);
-    }
-    let results = index.search(&query).map_err(|error| error.to_string())?;
-    Ok(serde_json::json!({
-        "mode": format!("{:?}", query.retrieval_mode()),
-        "report": report,
-        "results": results
-    }))
+    let _ = (request.query, request.top_k, request.filters);
+    parse_mode(&request.mode)?;
+    Err(embedding_model_required("retrieval.search"))
+}
+
+/// The retrieval index embeds every chunk, and the surface has no way to configure
+/// an embedding model, so index-backed operations fail instead of falling back to
+/// a non-semantic stand-in.
+fn embedding_model_required(operation: &str) -> String {
+    runtime_core::SurfaceError::missing_dependency(
+        Some(operation),
+        "embedding model",
+        "build a RetrievalIndex with a real embedding backend through the typed text-retrieval API, or use text-index `index.search` with `mode: lexical`; no heuristic embedding fallback exists",
+    )
+    .to_error_string()
 }
 
 fn rerank_value(request: RerankRequest) -> Result<crate::RerankResponse, String> {
@@ -283,50 +272,13 @@ fn rerank_value(request: RerankRequest) -> Result<crate::RerankResponse, String>
 
 fn snapshot_plan_value(request: SnapshotPlanRequest) -> Result<serde_json::Value, String> {
     runtime_core::require_non_empty("retrieval.snapshotPlan", "documents", &request.documents)?;
-    let _options = request.options;
-    let mut index = RetrievalIndex::new(HashedTextEmbedder {
-        config: TextEmbeddingConfig {
-            dimensions: request.dimensions.max(1),
-            use_idf: false,
-        },
-        ..HashedTextEmbedder::default()
-    });
-    let report = index
-        .ingest_documents(&request.documents, &IngestionOptions::default())
-        .map_err(|error| error.to_string())?;
-    let persisted = PersistedSearchIndex::from_index(&index);
-    let preview_limit = request.preview_limit.clamp(1, 25);
-    let files = serde_json::json!([
-        {"path": "manifest.json", "records": 1, "kind": "json"},
-        {"path": persisted.manifest.corpus_file.clone(), "records": 1, "kind": "json"},
-        {"path": persisted.manifest.chunks_file.path.clone(), "records": persisted.manifest.chunks_file.records, "kind": "jsonl"},
-        {"path": persisted.manifest.vectors_file.path.clone(), "records": persisted.manifest.vectors_file.records, "kind": "jsonl"}
-    ]);
-    let manifest = serde_json::json!({
-        "schemaVersion": persisted.manifest.schema_version,
-        "chunkCount": persisted.manifest.chunk_count,
-        "vectorCount": persisted.manifest.vector_count,
-        "dimensions": persisted.manifest.dimensions,
-        "embedder": persisted.manifest.embedder,
-        "chunksFile": persisted.manifest.chunks_file,
-        "vectorsFile": persisted.manifest.vectors_file,
-        "corpusFile": persisted.manifest.corpus_file
-    });
-    Ok(serde_json::json!({
-        "manifest": manifest,
-        "corpus": persisted.corpus,
-        "files": files,
-        "chunksPreview": persisted.chunks.into_iter().take(preview_limit).collect::<Vec<_>>(),
-        "vectorsPreview": persisted.vectors.into_iter().take(preview_limit).collect::<Vec<_>>(),
-        "report": report
-    }))
+    let _ = (request.options, request.preview_limit);
+    Err(embedding_model_required("retrieval.snapshotPlan"))
 }
 
-fn parse_mode(mode: &str) -> Result<RetrievalMode, String> {
+fn parse_mode(mode: &str) -> Result<(), String> {
     match mode {
-        "full_text" | "fullText" | "full-text" => Ok(RetrievalMode::FullText),
-        "semantic" => Ok(RetrievalMode::Semantic),
-        "hybrid" => Ok(RetrievalMode::Hybrid),
+        "full_text" | "fullText" | "full-text" | "semantic" | "hybrid" => Ok(()),
         other => Err(format!("unsupported retrieval mode `{other}`")),
     }
 }
@@ -340,9 +292,6 @@ fn default_mode() -> String {
 }
 fn default_top_k() -> usize {
     10
-}
-fn default_dimensions() -> usize {
-    128
 }
 fn default_preview_limit() -> usize {
     5
@@ -366,20 +315,30 @@ mod tests {
     }
 
     #[test]
-    fn search_operation_returns_ranked_results() {
-        let response = run_surface_operation(SurfaceRequest {
-            operation: OperationId::new("retrieval.search"),
-            input: serde_json::json!({
-                "documents": [
-                    {"id": "doc-1", "body": "rust text retrieval"},
-                    {"id": "doc-2", "body": "video scene reports"}
-                ],
-                "query": "text",
-                "mode": "full_text"
-            }),
-        })
-        .expect("search");
-        assert_eq!(response.value["results"][0]["document_id"], "doc-1");
+    fn index_backed_operations_require_an_embedding_model() {
+        for (operation, input) in [
+            (
+                "retrieval.search",
+                serde_json::json!({
+                    "documents": [{"id": "doc-1", "body": "rust text retrieval"}],
+                    "query": "text",
+                    "mode": "full_text"
+                }),
+            ),
+            (
+                "retrieval.snapshotPlan",
+                serde_json::json!({"documents": [{"id": "doc-1", "body": "Rust text retrieval"}]}),
+            ),
+        ] {
+            let error = run_surface_operation(SurfaceRequest {
+                operation: OperationId::new(operation),
+                input,
+            })
+            .expect_err("no embedding model is configured");
+            let error = runtime_core::parse_surface_error(&error).expect("typed error");
+            assert_eq!(error.code, "missing_dependency");
+            assert_eq!(error.details["dependency"], "embedding model");
+        }
     }
 
     #[test]
@@ -390,37 +349,6 @@ mod tests {
         })
         .expect_err("invalid request");
         assert!(error.contains("invalid request"));
-    }
-
-    #[test]
-    fn snapshot_plan_returns_manifest_and_file_previews() {
-        let response = run_surface_operation(SurfaceRequest {
-            operation: OperationId::new("retrieval.snapshotPlan"),
-            input: serde_json::json!({
-                "documents": [
-                    {"id": "doc-1", "body": "Rust text retrieval"},
-                    {"id": "doc-2", "body": "Video scene reports"}
-                ],
-                "dimensions": 16,
-                "previewLimit": 2
-            }),
-        })
-        .expect("snapshot plan");
-        assert!(
-            response.value["result"]["manifest"]["chunkCount"]
-                .as_u64()
-                .unwrap()
-                > 0
-        );
-        let paths = response.value["result"]["files"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|file| file["path"].as_str().unwrap())
-            .collect::<Vec<_>>();
-        assert!(paths.contains(&"manifest.json"));
-        assert!(paths.contains(&"chunks.jsonl"));
-        assert!(paths.contains(&"vectors.jsonl"));
     }
 
     #[test]

@@ -46,10 +46,11 @@ pub enum OperationSupport {
     /// Ran with a producer evaluated for the sentence's language, or with
     /// language-neutral rules.
     Supported,
-    /// Ran, but the producer is unscored for this language (English heuristics,
-    /// capitalization NER, a caller-supplied labeler). Results are kept and labelled.
+    /// Ran, but the producer is unscored for this language (a caller-supplied
+    /// labeler). Results are kept and labelled.
     Partial,
-    /// The sentence's language is known but no configured producer supports it.
+    /// No configured producer covers the sentence: the operation was not requested,
+    /// or no model supports the sentence's language. Never filled heuristically.
     /// The analysis omits this operation's results for the sentence.
     Unsupported,
     /// The sentence's language is undecided, so no language-specific producer ran.

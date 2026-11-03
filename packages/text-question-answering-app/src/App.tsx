@@ -86,15 +86,14 @@ const packageAppConfig: PackageAppConfig = {
         },
         topKChunks: 2,
         topKAnswers: 1,
-        localModel: { autoDownload: false },
-        fallbackPolicy: "heuristicIfUnavailable",
+        importedPredictions: [{ text: "Rust", score: 0.9 }],
       },
     },
     {
       id: "compatibility-retrieval-answer",
       label: "Compatibility retrieval answer",
       operation: "qa.answerWithRetrieval",
-      description: "Use the deprecated compatibility retrieval path and return cited answers.",
+      description: "Use the deprecated compatibility retrieval path; it needs an embedding model, so the browser build reports model required.",
       input: {
         question: "What language has ownership?",
         documents: [
@@ -103,8 +102,7 @@ const packageAppConfig: PackageAppConfig = {
         ],
         topKChunks: 2,
         topKAnswers: 1,
-        localModel: { autoDownload: false },
-        fallbackPolicy: "heuristicIfUnavailable",
+        importedPredictions: [{ text: "Rust", score: 0.9 }],
       },
     },
     {
@@ -152,8 +150,7 @@ const packageAppConfig: PackageAppConfig = {
         },
         topKChunks: 2,
         topKAnswers: 1,
-        localModel: { autoDownload: false },
-        fallbackPolicy: "heuristicIfUnavailable",
+        importedPredictions: [{ text: "Rust", score: 0.9 }],
       },
       iterations: 80,
       warmupIterations: 5,

@@ -1,6 +1,5 @@
 use text_analysis::{
-    analyze_corpus, ClassificationDepth, CorpusAnalysisOptions, DocumentAnalysisOptions,
-    EmbeddingDepth,
+    analyze_corpus, CorpusAnalysisOptions, DocumentAnalysisOptions, EmbeddingDepth,
 };
 use text_core::TextDocument;
 
@@ -27,7 +26,13 @@ fn corpus_report_includes_tfidf_bm25_duplicates_and_semantic_neighbors() {
     assert_eq!(report.tfidf_search.as_ref().unwrap()[0].id, "doc-1");
     assert_eq!(report.bm25_search.as_ref().unwrap()[0].id, "doc-1");
     assert!(!report.near_duplicates.is_empty());
-    assert!(!report.semantic_neighbors.is_empty());
+    // No embedding model is configured, so semantic neighbors are reported as
+    // unavailable rather than computed from hashed vectors.
+    assert!(report.semantic_neighbors.is_empty());
+    assert!(report
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.code == "semantic_neighbors_unavailable"));
 }
 
 #[test]
@@ -57,35 +62,6 @@ fn corpus_options_can_disable_optional_pair_reports() {
         .documents
         .iter()
         .all(|document| document.embedding_preview.is_none()));
-}
-
-#[test]
-fn corpus_report_aggregates_classification_labels_when_enabled() {
-    let documents = [
-        TextDocument::new("doc-1", "rust cargo crates"),
-        TextDocument::new("doc-2", "rust ownership workflows"),
-    ];
-    let options = CorpusAnalysisOptions {
-        document: DocumentAnalysisOptions {
-            classification_depth: ClassificationDepth::LexicalFallback,
-            classification_labels: vec!["rust".to_string(), "travel".to_string()],
-            zero_shot_labels: vec!["code".to_string(), "holiday".to_string()],
-            ..DocumentAnalysisOptions::default()
-        },
-        ..CorpusAnalysisOptions::default()
-    };
-
-    let report = analyze_corpus(documents, &options).unwrap();
-
-    assert!(report
-        .documents
-        .iter()
-        .all(|document| document.classification.is_some()));
-    let classification = report.classification.expect("corpus classification");
-    assert!(classification
-        .label_distribution
-        .iter()
-        .any(|distribution| distribution.label == "rust" && distribution.count > 0));
 }
 
 #[test]

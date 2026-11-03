@@ -6,8 +6,12 @@ This crate owns the long-term text index boundary: deterministic chunking,
 generic ingestion from text contracts and `TextCorpus`, in-memory indexing,
 SQLite-backed persistence behind the `sqlite` feature, lexical/semantic/hybrid
 search, metadata filters, semantic facets, and analysis attachment persistence.
-The default build is deterministic and no-network; hashed embeddings are the
-default semantic backend.
+The default build is deterministic and no-network. There is no default
+embedding backend: semantic and hybrid search need an index built with a real
+embedder (`TextIndex::with_store`). A lexical-only index
+(`TextIndex::lexical_only`, `MemoryTextIndex::lexical_memory`) stores no vectors
+and rejects semantic and hybrid queries with
+`TextIndexError::EmbeddingModelRequired`.
 
 Default package-surface operations stay memory-backed and side-effect free.
 CLI/server callers may request SQLite explicitly with a path and `commit: true`;
@@ -20,7 +24,8 @@ persist.
 - Deterministic chunking and ingestion from text contracts and `TextCorpus`.
 - Memory-backed default package-surface operations that do not write artifacts.
 - Optional SQLite persistence behind the `sqlite` feature.
-- Hybrid lexical and semantic search with hashed embeddings by default.
+- Lexical (BM25) search without any model; semantic and hybrid search with a
+  caller-supplied embedding model.
 - Opt-in bounded fuzzy lexical search for typo-tolerant package-surface queries.
 
 ## Stable contract
@@ -41,8 +46,9 @@ ranking behavior is evaluated by browser consumers.
 Default package-surface operations are memory-backed and side-effect free.
 SQLite writes require an explicit `backend: "sqlite"`, `path`, and
 `commit: true`. WASM and default builds report SQLite as unsupported instead of
-pretending persistence is available. Hashed embeddings are deterministic and
-local-first; they are not model-quality semantic embeddings.
+pretending persistence is available. Package-surface indexes are lexical-only:
+the surface cannot load an embedding model, so semantic and hybrid
+`index.search` requests fail with a `missing_dependency` error.
 
 Fuzzy search currently applies only to lexical mode. It uses Unicode-aware
 bounded Damerau-Levenshtein expansion and caps query terms, vocabulary size,
@@ -56,32 +62,32 @@ result tie-breaking are deterministic for the same corpus, query, and options.
 ```rust,no_run
 use text_index::{IndexDocument, IndexQuery, MemoryTextIndex};
 
-let mut index = MemoryTextIndex::new_memory()?;
+let mut index = MemoryTextIndex::lexical_memory();
 let documents = vec![
     IndexDocument::new("doc-1", "Rust package surfaces expose stable adapters."),
     IndexDocument::new("doc-2", "Durable text indexes support hybrid search."),
 ];
 
 index.upsert_documents(&documents)?;
-let results = index.search(&IndexQuery::new("hybrid search", 5))?;
+let results = index.search(&IndexQuery::lexical("hybrid search", 5))?;
 
 assert_eq!(results[0].document_id, "doc-2");
 # Ok::<(), text_index::TextIndexError>(())
 ```
 
 Required phrases can be attached to a query when the caller needs exact passage
-constraints after hybrid scoring:
+constraints after scoring:
 
 ```rust,no_run
 use text_index::{IndexDocument, IndexQuery, MemoryTextIndex};
 
-let mut index = MemoryTextIndex::new_memory()?;
+let mut index = MemoryTextIndex::lexical_memory();
 index.upsert_documents(&[
     IndexDocument::new("doc-1", "Climate policy needs public funding."),
     IndexDocument::new("doc-2", "Climate policy mentions funding separately."),
 ])?;
 
-let mut query = IndexQuery::new("climate policy public funding", 5);
+let mut query = IndexQuery::lexical("climate policy public funding", 5);
 query.required_phrases = vec!["public funding".to_string()];
 
 let results = index.search(&query)?;
@@ -97,7 +103,8 @@ diagnostics describing the correction that produced the winning score.
 ## Package surface
 
 - Primary workflow: `index.search` builds or opens the requested backend and
-  searches it.
+  searches it lexically; `mode` must be `lexical` (the default `hybrid` mode
+  fails with `missing_dependency` because no embedding model is configured).
 - `index.search` optionally accepts bounded fuzzy settings inside its query
   object when `mode` is `lexical`.
 - Workflow operations: `index.build`, `index.addDocuments`, `index.search`, and

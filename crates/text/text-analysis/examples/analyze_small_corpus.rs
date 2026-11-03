@@ -35,11 +35,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let document_options = DocumentAnalysisOptions {
         keyword_limit: 5,
         summary_sentences: 2,
-        linguistic_depth: LinguisticDepth::HeuristicFast,
-        embedding_depth: EmbeddingDepth::Hashed {
-            dimensions: 64,
-            use_idf: false,
-        },
+        linguistic_depth: LinguisticDepth::ModelFree,
+        embedding_depth: EmbeddingDepth::Off,
         ..DocumentAnalysisOptions::default()
     };
     let document_report = analyze_text(documents[0].id, documents[0].text, &document_options)?;

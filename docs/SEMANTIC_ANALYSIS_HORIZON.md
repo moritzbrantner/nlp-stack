@@ -40,7 +40,7 @@ Represent meaning-bearing units at multiple levels:
 
 Each unit retains stable identity, source identity, hierarchy, sequence order, UTF-8 span, optional speaker/timing provenance, text, and an embedding vector.
 
-The library provides a deterministic hashed baseline and accepts any existing `TextEmbeddingBackend` for real model-backed embeddings.
+The library takes any existing `TextEmbeddingBackend` for model-backed embeddings and has no default embedder. `text_embeddings::testing::HashedFixtureEmbedder` is a deterministic test fixture only (#186).
 
 ### S2: semantic neighborhood graph
 

@@ -19,12 +19,12 @@ pub fn package_surface() -> PackageSurface {
         version: env!("CARGO_PKG_VERSION").to_string(),
         capabilities: RuntimeCapabilities::pure_rust(),
         operations: vec![
-            operation("describe", "Inspect package metadata", "Text classification, sentiment, and zero-shot classification contracts with imported prediction handling and deterministic fallbacks.", serde_json::json!({"includeOperations": true})),
+            operation("describe", "Inspect package metadata", "Text classification, sentiment, and zero-shot classification contracts with imported prediction handling and local models. There is no heuristic fallback.", serde_json::json!({"includeOperations": true})),
             operation("classification.models", "Inspect classification model catalog", "Lists registered text classification presets.", serde_json::json!({})),
             operation("classification.schema", "Inspect classification schema", "Returns task schemas, registered presets, and model catalog metadata without executing classification.", serde_json::json!({})),
-            operation("classification.classify", "Classify text", "Runs imported-prediction or explicit fallback text classification.", serde_json::json!({"text": "rust is reliable", "labels": ["positive", "negative"], "model": {"fallbackPolicy": "lexical_fallback"}})),
-            operation("classification.sentiment", "Analyze sentiment", "Runs imported-prediction or explicit fallback sentiment analysis.", serde_json::json!({"text": "rust is reliable", "model": {"fallbackPolicy": "lexical_fallback"}})),
-            operation("classification.zeroShot", "Zero-shot classify", "Runs imported-prediction or explicit fallback zero-shot classification.", serde_json::json!({"text": "rust text", "labels": ["code", "music"], "model": {"fallbackPolicy": "lexical_fallback"}})),
+            operation("classification.classify", "Classify text", "Runs imported-prediction or local-model text classification; fails without a model.", serde_json::json!({"text": "rust is reliable", "labels": ["positive", "negative"], "importedPredictions": [{"label": "positive", "score": 0.9}, {"label": "negative", "score": 0.1}]})),
+            operation("classification.sentiment", "Analyze sentiment", "Runs imported-prediction or local-model sentiment analysis; fails without a model.", serde_json::json!({"text": "rust is reliable", "importedPredictions": [{"label": "positive", "score": 0.9}, {"label": "negative", "score": 0.1}]})),
+            operation("classification.zeroShot", "Zero-shot classify", "Runs imported-prediction or local-model zero-shot classification; fails without a model.", serde_json::json!({"text": "rust text", "labels": ["code", "music"], "importedPredictions": [{"label": "code", "score": 0.9}, {"label": "music", "score": 0.1}]})),
         ],
     }
 }

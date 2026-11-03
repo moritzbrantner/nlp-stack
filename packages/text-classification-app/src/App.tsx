@@ -36,21 +36,21 @@ const packageAppConfig: PackageAppConfig = {
       id: "classify",
       label: "Classify reliability feedback",
       operation: "classification.classify",
-      description: "Classify text with lexical fallback behavior.",
+      description: "Postprocess imported classifier predictions; without predictions or a local model the operation fails.",
       input: {
         text: "The Rust transcript workflow is reliable, fast, and clear enough for editorial review.",
         labels: ["positive", "negative", "technical feedback"],
-        model: { fallbackPolicy: "lexical_fallback" },
+        importedPredictions: [{ label: "positive", score: 0.9 }, { label: "negative", score: 0.1 }],
       },
     },
     {
       id: "sentiment",
       label: "Analyze support sentiment",
       operation: "classification.sentiment",
-      description: "Score positive and negative sentiment with deterministic lexical fallback.",
+      description: "Postprocess imported sentiment predictions; there is no lexicon fallback.",
       input: {
         text: "The caption search results were accurate and the reviewer felt confident approving the cut.",
-        model: { fallbackPolicy: "lexical_fallback" },
+        importedPredictions: [{ label: "positive", score: 0.9 }, { label: "negative", score: 0.1 }],
       },
     },
     {
@@ -61,7 +61,7 @@ const packageAppConfig: PackageAppConfig = {
       input: {
         text: "A Rust package ranks transcript passages for semantic search and editorial evidence review.",
         labels: ["software engineering", "sports recap", "music metadata", "legal transcript"],
-        model: { fallbackPolicy: "lexical_fallback" },
+        importedPredictions: [{ label: "software engineering", score: 0.9 }, { label: "sports recap", score: 0.1 }],
       },
     },
     {
@@ -75,9 +75,9 @@ const packageAppConfig: PackageAppConfig = {
   benchmarkScenarios: [
     {
       id: "lexical-classify",
-      label: "Lexical Classify",
+      label: "Imported Classify",
       operation: "classification.classify",
-      input: { text: "rust text analysis is reliable and fast", labels: ["positive", "negative"], model: { fallbackPolicy: "lexical_fallback" } },
+      input: { text: "rust text analysis is reliable and fast", labels: ["positive", "negative"], importedPredictions: [{ label: "positive", score: 0.9 }, { label: "negative", score: 0.1 }] },
       iterations: 100,
       warmupIterations: 5,
       outputCountPath: ["predictions"],
@@ -86,7 +86,7 @@ const packageAppConfig: PackageAppConfig = {
       id: "sentiment",
       label: "Sentiment",
       operation: "classification.sentiment",
-      input: { text: "the transcript workflow is reliable", model: { fallbackPolicy: "lexical_fallback" } },
+      input: { text: "the transcript workflow is reliable", importedPredictions: [{ label: "positive", score: 0.9 }, { label: "negative", score: 0.1 }] },
       iterations: 100,
       warmupIterations: 5,
       outputCountPath: ["predictions"],
@@ -95,7 +95,7 @@ const packageAppConfig: PackageAppConfig = {
       id: "zero-shot",
       label: "Zero-shot",
       operation: "classification.zeroShot",
-      input: { text: "rust text retrieval", labels: ["code", "sports", "music"], model: { fallbackPolicy: "lexical_fallback" } },
+      input: { text: "rust text retrieval", labels: ["code", "sports", "music"], importedPredictions: [{ label: "code", score: 0.9 }, { label: "music", score: 0.1 }] },
       iterations: 80,
       warmupIterations: 5,
       outputCountPath: ["predictions"],

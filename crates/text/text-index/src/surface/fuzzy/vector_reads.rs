@@ -1,12 +1,13 @@
 //! Query-only vector-read regressions and opt-in cross-revision measurements.
 use super::*;
 use crate::{
-    HashedTextEmbedder, IndexBuildOptions, IndexDocument, IndexInspectReport, IndexMutationReport,
-    MemoryIndexStore, StoredVector, TextIndex, TextIndexError,
+    IndexBuildOptions, IndexDocument, IndexInspectReport, IndexMutationReport, MemoryIndexStore,
+    StoredVector, TextIndex, TextIndexError,
 };
 use std::cell::Cell;
 use std::hint::black_box;
 use std::time::Instant;
+use text_embeddings::testing::HashedFixtureEmbedder;
 
 #[derive(Default)]
 struct ObservedStore {
@@ -70,13 +71,13 @@ impl TextIndexStore for ObservedStore {
     }
 }
 
-fn embedder(dimensions: usize) -> HashedTextEmbedder {
-    HashedTextEmbedder::new(
-        crate::TextEmbeddingConfig {
+fn embedder(dimensions: usize) -> HashedFixtureEmbedder {
+    HashedFixtureEmbedder::new(
+        text_embeddings::TextEmbeddingConfig {
             dimensions,
             use_idf: false,
         },
-        crate::CorpusOptions::default(),
+        text_lexical::CorpusOptions::default(),
     )
     .expect("embedder")
 }
@@ -97,7 +98,10 @@ fn documents(count: usize) -> Vec<IndexDocument> {
         .collect()
 }
 
-fn observed_index(count: usize, dimensions: usize) -> TextIndex<HashedTextEmbedder, ObservedStore> {
+fn observed_index(
+    count: usize,
+    dimensions: usize,
+) -> TextIndex<HashedFixtureEmbedder, ObservedStore> {
     let mut index = TextIndex::with_store(embedder(dimensions), ObservedStore::default());
     index
         .upsert_documents(&documents(count))
@@ -199,7 +203,8 @@ fn fuzzy_sqlite_variants_do_not_read_corrupt_vector_payloads() {
     let mut index =
         TextIndex::with_store(embedder(128), crate::SqliteIndexStore::in_memory().unwrap());
     index.upsert_documents(&documents(8)).unwrap();
-    let surface = SurfaceIndex::Sqlite(index);
+    // Vectors written by an embedding-backed index; the surface reads the store lexical-only.
+    let surface = SurfaceIndex::Sqlite(TextIndex::lexical_only(index.into_store()));
     let options = FuzzySearchOptions::default();
     let query = IndexQuery::lexical("stratgey retrieavl", 3);
     let vocabulary = build_vocabulary(&index_chunks(&surface).unwrap(), &options).unwrap();
@@ -239,7 +244,7 @@ fn query_only_benchmark() {
     for count in [32, 256] {
         for dimensions in [128, 1024] {
             let observed = observed_index(count, dimensions);
-            let index = TextIndex::with_store(embedder(dimensions), observed.store().inner.clone());
+            let index = TextIndex::lexical_only(observed.store().inner.clone());
             let surface = SurfaceIndex::Memory(index);
             let options = FuzzySearchOptions::default();
             for (kind, text) in [

@@ -1,6 +1,18 @@
 use text_analysis::semantic::{
-    analyze_conversation_semantics, ConversationTurn, SemanticAnalysisOptions,
+    analyze_conversation_semantics_with, ConversationTurn, SemanticAnalysisOptions,
 };
+
+/// The hashed fixture stands in for an embedding model so the test is deterministic.
+fn analyze_conversation_semantics(
+    turns: &[ConversationTurn<'_>],
+    options: &SemanticAnalysisOptions,
+) -> text_core::Result<text_analysis::semantic::SemanticAnalysisReport> {
+    analyze_conversation_semantics_with(
+        turns,
+        options,
+        &text_embeddings::testing::HashedFixtureEmbedder::default(),
+    )
+}
 
 fn strict_options() -> SemanticAnalysisOptions {
     SemanticAnalysisOptions {

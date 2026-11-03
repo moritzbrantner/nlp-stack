@@ -104,8 +104,12 @@ const languageNames: Record<string, string> = {
   nl: "Dutch",
 };
 
-/** Languages whose lemma/POS/dependency models exist only in the native Rust library. */
-const rustOnlyModelLanguages = new Set(["de", "es"]);
+/**
+ * Languages whose lemma/POS/dependency models exist only in the native Rust library.
+ * The browser runs no heuristic stand-in for them (#186), so these layers show the
+ * model they need instead.
+ */
+const rustOnlyModelLanguages = new Set(["en", "de", "es"]);
 
 export function languageName(language: string | null): string {
   if (!language) return "Undecided";

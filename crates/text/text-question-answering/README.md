@@ -50,6 +50,7 @@ is an `ONNX Runtime unavailable: … set ORT_DYLIB_PATH …` error, not a hang.
   operation-specific answer, citation, batch-result, indexed chunk, and
   compatibility retrieval fields.
 - Model-backed calls declare filesystem reads, filesystem writes, and network
-  access in their execution plan. Use `fallbackPolicy:
-  "heuristicIfUnavailable"` only when deterministic heuristic fallback is
-  explicitly acceptable.
+  access in their execution plan. A missing QA model is an error; the former
+  `heuristicIfUnavailable` fallback policy was removed (#186).
+- `qa.answerWithIndex` retrieves with a lexical (BM25) text index;
+  `qa.answerWithRetrieval` needs an embedding model and fails at the surface.

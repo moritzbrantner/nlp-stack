@@ -43,6 +43,12 @@ pub fn chunk_phrases(
     tokens: &[Token],
     pos: &[PosAnnotation],
 ) -> Vec<PhraseChunk> {
+    // `pos` covers only the tokens a model tagged, so look tags up by token index.
+    let tags = pos
+        .iter()
+        .map(|annotation| (annotation.token_index, annotation.tag))
+        .collect::<std::collections::BTreeMap<_, _>>();
+    let tag_of = |index: usize| tags.get(&index).copied().unwrap_or(PosTag::X);
     let sentence_ranges = sentence_token_ranges(sentences, tokens);
     let mut chunks = Vec::new();
     for (sentence_index, token_range) in sentence_ranges.into_iter().enumerate() {
@@ -50,10 +56,7 @@ pub fn chunk_phrases(
         let mut cursor = 0;
         while cursor < indices.len() {
             let token_index = indices[cursor];
-            let tag = pos
-                .get(token_index)
-                .map(|annotation| annotation.tag)
-                .unwrap_or(PosTag::X);
+            let tag = tag_of(token_index);
 
             let maybe_chunk = if matches!(
                 tag,
@@ -61,10 +64,7 @@ pub fn chunk_phrases(
             ) {
                 let mut end = cursor;
                 while end + 1 < indices.len() {
-                    let next_tag = pos
-                        .get(indices[end + 1])
-                        .map(|annotation| annotation.tag)
-                        .unwrap_or(PosTag::X);
+                    let next_tag = tag_of(indices[end + 1]);
                     if matches!(
                         next_tag,
                         PosTag::Adj | PosTag::Noun | PosTag::Propn | PosTag::Pron
@@ -80,10 +80,7 @@ pub fn chunk_phrases(
             } else if matches!(tag, PosTag::Aux | PosTag::Verb | PosTag::Adv) {
                 let mut end = cursor;
                 while end + 1 < indices.len() {
-                    let next_tag = pos
-                        .get(indices[end + 1])
-                        .map(|annotation| annotation.tag)
-                        .unwrap_or(PosTag::X);
+                    let next_tag = tag_of(indices[end + 1]);
                     if matches!(
                         next_tag,
                         PosTag::Aux | PosTag::Verb | PosTag::Adv | PosTag::Part
@@ -98,17 +95,14 @@ pub fn chunk_phrases(
                 let head = indices[cursor..=end]
                     .iter()
                     .copied()
-                    .find(|index| matches!(pos[*index].tag, PosTag::Verb | PosTag::Aux))
+                    .find(|index| matches!(tag_of(*index), PosTag::Verb | PosTag::Aux))
                     .unwrap_or(start_index);
                 Some((ChunkKind::VerbPhrase, start_index, end_index, head))
             } else if tag == PosTag::Adp {
                 let start_index = token_index;
                 let mut end = cursor;
                 while end + 1 < indices.len() {
-                    let next_tag = pos
-                        .get(indices[end + 1])
-                        .map(|annotation| annotation.tag)
-                        .unwrap_or(PosTag::X);
+                    let next_tag = tag_of(indices[end + 1]);
                     if matches!(
                         next_tag,
                         PosTag::Det | PosTag::Adj | PosTag::Noun | PosTag::Propn | PosTag::Pron
@@ -284,120 +278,6 @@ pub struct DependencyTree {
     pub edges: Vec<DependencyEdge>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-/// Data type for dependency parser.
-pub struct DependencyParser;
-
-impl DependencyParser {
-    /// Parses parse document.
-    pub fn parse_document(
-        &self,
-        sentences: &[Sentence],
-        tokens: &[Token],
-        pos: &[PosAnnotation],
-    ) -> Vec<DependencyTree> {
-        sentence_token_ranges(sentences, tokens)
-            .into_iter()
-            .enumerate()
-            .map(|(sentence_index, (start, end))| {
-                self.parse_sentence(sentence_index, tokens, pos, start, end)
-            })
-            .collect()
-    }
-
-    fn parse_sentence(
-        &self,
-        sentence_index: usize,
-        tokens: &[Token],
-        pos: &[PosAnnotation],
-        start: usize,
-        end: usize,
-    ) -> DependencyTree {
-        let indices = (start..end).collect::<Vec<_>>();
-        let root_token_index = indices
-            .iter()
-            .copied()
-            .find(|index| matches!(pos[*index].tag, PosTag::Verb | PosTag::Aux))
-            .or_else(|| {
-                indices
-                    .iter()
-                    .copied()
-                    .find(|index| matches!(pos[*index].tag, PosTag::Noun | PosTag::Propn))
-            })
-            .or_else(|| indices.first().copied());
-
-        let mut nodes = Vec::new();
-        let mut edges = Vec::new();
-        for token_index in indices.iter().copied() {
-            let tag = pos
-                .get(token_index)
-                .map(|annotation| annotation.tag)
-                .unwrap_or(PosTag::X);
-            let (head, relation, confidence) = if Some(token_index) == root_token_index {
-                (None, DependencyRelation::Root, 1.0)
-            } else if matches!(tag, PosTag::Det) {
-                let head = nearest_following(tokens, pos, token_index, end, |tag| {
-                    matches!(tag, PosTag::Noun | PosTag::Propn | PosTag::Pron)
-                })
-                .or(root_token_index);
-                (head, DependencyRelation::Det, 0.8)
-            } else if matches!(tag, PosTag::Adj) {
-                let head = nearest_following(tokens, pos, token_index, end, |tag| {
-                    matches!(tag, PosTag::Noun | PosTag::Propn)
-                })
-                .or(root_token_index);
-                (head, DependencyRelation::Amod, 0.7)
-            } else if matches!(tag, PosTag::Adp) {
-                let head = nearest_following(tokens, pos, token_index, end, |tag| {
-                    matches!(tag, PosTag::Noun | PosTag::Propn | PosTag::Pron)
-                })
-                .or(root_token_index);
-                (head, DependencyRelation::Case, 0.7)
-            } else if matches!(tag, PosTag::Aux) {
-                (root_token_index, DependencyRelation::Aux, 0.85)
-            } else if matches!(tag, PosTag::Adv) {
-                (root_token_index, DependencyRelation::Advmod, 0.7)
-            } else if matches!(tag, PosTag::Cconj | PosTag::Sconj) {
-                (root_token_index, DependencyRelation::Cc, 0.6)
-            } else if matches!(tag, PosTag::Noun | PosTag::Propn | PosTag::Pron) {
-                if let Some(root) = root_token_index {
-                    if token_index < root {
-                        (Some(root), DependencyRelation::Nsubj, 0.75)
-                    } else {
-                        (Some(root), DependencyRelation::Obj, 0.7)
-                    }
-                } else {
-                    (None, DependencyRelation::Dep, 0.4)
-                }
-            } else {
-                (root_token_index, DependencyRelation::Dep, 0.4)
-            };
-            nodes.push(DependencyNode {
-                token_index,
-                head_token_index: head,
-                relation,
-                subtype: None,
-            });
-            if let Some(head) = head {
-                edges.push(DependencyEdge {
-                    head_token_index: head,
-                    dependent_token_index: token_index,
-                    relation,
-                    subtype: None,
-                    confidence,
-                });
-            }
-        }
-
-        DependencyTree {
-            sentence_index,
-            root_token_index,
-            nodes,
-            edges,
-        }
-    }
-}
-
 pub(crate) fn sentence_token_ranges(
     sentences: &[Sentence],
     tokens: &[Token],
@@ -417,18 +297,4 @@ pub(crate) fn sentence_token_ranges(
             (start, end.max(start))
         })
         .collect()
-}
-
-fn nearest_following(
-    _tokens: &[Token],
-    pos: &[PosAnnotation],
-    token_index: usize,
-    sentence_end: usize,
-    matcher: impl Fn(PosTag) -> bool,
-) -> Option<usize> {
-    ((token_index + 1)..sentence_end).find(|index| {
-        pos.get(*index)
-            .map(|annotation| matcher(annotation.tag))
-            .unwrap_or(false)
-    })
 }

@@ -4,7 +4,7 @@ use text_analysis::{
 };
 
 #[test]
-fn deterministic_document_analysis_returns_all_default_sections() {
+fn default_document_analysis_has_no_heuristic_sections() {
     let report = analyze_text(
         "doc-1",
         "Alice presented the tokenizer roadmap in Berlin. Rust crates analyze text.",
@@ -16,18 +16,34 @@ fn deterministic_document_analysis_returns_all_default_sections() {
     assert!(report.core.stats.basic.words > 0);
     assert!(!report.lexical.keywords.is_empty());
     assert!(!report.similarity.token_shingle_counts.is_empty());
-    assert!(report.linguistic.is_some());
-    assert!(report.embedding.is_some());
+    // The default asks for the local linguistic models; without them the section is
+    // missing with a diagnostic instead of heuristic output. No embedding is
+    // requested by default.
+    if report.linguistic.is_none() {
+        assert!(report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "linguistics_unavailable"));
+    }
+    assert!(report.embedding.is_none());
 }
 
 #[test]
-fn empty_text_reports_embedding_diagnostic_without_panic() {
-    let report = analyze_text("empty", "   ", &DocumentAnalysisOptions::default()).unwrap();
-    assert!(report.embedding.is_none());
-    assert!(report
-        .diagnostics
+fn model_free_linguistics_reports_model_layers_as_unsupported() {
+    let options = DocumentAnalysisOptions {
+        linguistic_depth: LinguisticDepth::ModelFree,
+        ..DocumentAnalysisOptions::default()
+    };
+    let report = analyze_text("doc", "Alice presented the roadmap in Berlin.", &options).unwrap();
+    let linguistic = report.linguistic.expect("model-free section");
+    assert_eq!(linguistic.entities["count"], 0);
+    assert_eq!(linguistic.pos["count"], 0);
+    let operations = linguistic.sentences[0]["operations"].as_array().unwrap();
+    let ner = operations
         .iter()
-        .any(|diagnostic| diagnostic.code == "embedding_unavailable"));
+        .find(|operation| operation["operation"] == "namedEntities")
+        .unwrap();
+    assert_eq!(ner["support"], "unsupported");
 }
 
 #[test]
@@ -53,11 +69,9 @@ fn optional_sections_can_be_disabled() {
 }
 
 #[test]
-fn lexical_fallback_classification_is_included_when_requested() {
+fn backend_classification_without_a_model_reports_unavailable() {
     let options = DocumentAnalysisOptions {
-        classification_depth: ClassificationDepth::LexicalFallback,
-        classification_labels: vec!["rust".to_string(), "travel".to_string()],
-        zero_shot_labels: vec!["code".to_string(), "holiday".to_string()],
+        classification_depth: ClassificationDepth::Backend,
         ..DocumentAnalysisOptions::default()
     };
 
@@ -67,18 +81,12 @@ fn lexical_fallback_classification_is_included_when_requested() {
         &options,
     )
     .unwrap();
-    let classification = report.classification.expect("classification section");
 
-    assert_eq!(
-        classification.sentiment.runtime,
-        text_classification::TextClassificationRuntime::Lexical
-    );
-    assert!(classification
-        .classification
-        .predictions
+    assert!(report.classification.is_none());
+    assert!(report
+        .diagnostics
         .iter()
-        .any(|prediction| prediction.label == "rust"));
-    assert!(!classification.zero_shot.predictions.is_empty());
+        .any(|diagnostic| diagnostic.code == "classification_unavailable"));
 }
 
 #[test]
@@ -91,11 +99,7 @@ fn document_options_control_report_shape_and_embedding_detail() {
         shingle_sizes: vec![2],
         include_annotation_graph: false,
         linguistic_depth: LinguisticDepth::Off,
-        embedding_depth: EmbeddingDepth::Hashed {
-            dimensions: 16,
-            use_idf: false,
-        },
-        include_sparse_embedding: true,
+        embedding_depth: EmbeddingDepth::Off,
         ..DocumentAnalysisOptions::default()
     };
     let report = analyze_text(
@@ -117,14 +121,7 @@ fn document_options_control_report_shape_and_embedding_detail() {
     assert_eq!(report.enriched_stats.hashtag_count, 1);
     assert!(report.enriched_stats.uppercase_token_ratio > 0.0);
 
-    let embedding = report.embedding.expect("hashed embedding");
-    assert_eq!(embedding.dimensions, 16);
-    assert_eq!(embedding.vector.len(), 16);
-    assert!(embedding.preview.len() <= 16);
-    let sparse = embedding.sparse.expect("sparse embedding preview");
-    assert_eq!(sparse.dimensions, 16);
-    assert_eq!(sparse.indices.len(), sparse.values.len());
-    assert!(!sparse.indices.is_empty());
+    assert!(report.embedding.is_none());
 }
 
 #[test]
@@ -201,10 +198,14 @@ fn model_backed_with_downloads_is_explicit_download_opt_in() {
 }
 
 #[test]
-fn model_backed_profile_upgrade_does_not_auto_download() {
+fn model_backed_profile_does_not_auto_download() {
     let options = DocumentAnalysisOptions {
         profile: AnalysisProfile::ModelBacked,
-        linguistic_depth: LinguisticDepth::HeuristicBalanced,
+        linguistic_depth: LinguisticDepth::LocalModel {
+            bundle_dir: std::env::temp_dir().join("text-analysis-no-linguistic-models"),
+            auto_download: false,
+            download_progress: false,
+        },
         ..DocumentAnalysisOptions::default()
     };
 

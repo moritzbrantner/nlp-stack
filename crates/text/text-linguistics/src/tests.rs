@@ -1,10 +1,7 @@
 use super::*;
 
 use text_core::Result;
-use text_core::{
-    split_sentence_spans, tokenize, AnnotationProvenance, Sentence, TextProcessingOptions,
-    TextSpan, Token, TokenKind,
-};
+use text_core::{split_sentence_spans, tokenize, AnnotationProvenance, TextProcessingOptions};
 #[cfg(feature = "transcripts")]
 use text_transcripts::{
     parse_srt, parse_webvtt, TranscriptSegment, TranscriptSegmentContract, TranscriptionContract,
@@ -18,12 +15,21 @@ fn detects_english_text() {
 }
 
 #[test]
-fn default_options_use_heuristic_entity_recognition_without_downloads() {
+fn default_options_require_local_models_without_downloads() {
     let options = LinguisticAnalysisOptions::default();
     assert_eq!(
         options.entity_recognition.mode,
-        EntityRecognitionMode::Heuristic
+        EntityRecognitionMode::LocalModel
     );
+    assert_eq!(options.morphology.mode, MorphologyMode::LocalModel);
+    assert_eq!(
+        options.dependency_parsing.mode,
+        DependencyParsingMode::LocalModel
+    );
+    assert!(!options.morphology.auto_download);
+    assert!(!options.dependency_parsing.auto_download);
+    assert!(!options.enable_coreference);
+    assert!(!options.enable_events);
     assert_eq!(
         options.entity_recognition.preset,
         ModelPreset::DistilbertMultilingualNerHrl
@@ -90,14 +96,87 @@ fn default_analysis_does_not_create_model_runtime_state() {
 
     let mut config = TextNlpConfig::default();
     config.options.entity_recognition.bundle_dir = bundle_dir.clone();
-    TextNlpPipeline::new(config)
+    config.options.morphology.bundle_dir = bundle_dir.clone();
+    config.options.dependency_parsing.bundle_dir = bundle_dir.clone();
+    // No bundle exists and downloads are off, so the default analysis fails rather
+    // than falling back to heuristics.
+    assert!(TextNlpPipeline::new(config)
         .analyze_text("Alice visited Berlin.")
-        .unwrap();
+        .is_err());
 
     assert!(
         !bundle_dir.exists(),
         "default linguistic analysis must not materialize model-runtime state"
     );
+}
+
+/// `config` with every model-backed layer disabled.
+fn without_models(mut config: TextNlpConfig) -> TextNlpConfig {
+    let models = LinguisticAnalysisOptions::without_models();
+    config.options.entity_recognition = models.entity_recognition;
+    config.options.morphology = models.morphology;
+    config.options.dependency_parsing = models.dependency_parsing;
+    config
+}
+
+#[test]
+fn coreference_and_event_requests_fail_without_a_model_backend() {
+    for (options, capability) in [
+        (
+            LinguisticAnalysisOptions {
+                enable_coreference: true,
+                ..LinguisticAnalysisOptions::without_models()
+            },
+            "coreference resolution",
+        ),
+        (
+            LinguisticAnalysisOptions {
+                enable_events: true,
+                ..LinguisticAnalysisOptions::without_models()
+            },
+            "event and relation extraction",
+        ),
+    ] {
+        let error = analyze_text("Alice visited Berlin. She presented it.", &options)
+            .expect_err("no model backend exists");
+        let message = error.to_string();
+        assert!(message.contains("model required"), "{message}");
+        assert!(message.contains(capability), "{message}");
+    }
+}
+
+#[test]
+fn disabled_model_layers_report_unsupported_and_produce_nothing() {
+    let analysis = analyze_text(
+        "Alice visited Berlin. She presented the roadmap.",
+        &LinguisticAnalysisOptions::without_models(),
+    )
+    .unwrap();
+    assert!(analysis.entities.is_empty());
+    assert!(analysis.lemmas.is_empty());
+    assert!(analysis.pos.is_empty());
+    assert!(analysis.morphology.is_empty());
+    assert!(analysis.dependencies.is_empty());
+    assert!(analysis.coreference.is_empty());
+    assert!(analysis.events.is_empty());
+    assert!(analysis.relations.is_empty());
+    for sentence in &analysis.sentence_analyses {
+        for operation in [
+            LinguisticOperation::NamedEntities,
+            LinguisticOperation::Morphology,
+            LinguisticOperation::PartOfSpeech,
+            LinguisticOperation::DependencySyntax,
+        ] {
+            let report = sentence.operation(operation).unwrap();
+            assert_eq!(
+                report.support,
+                OperationSupport::Unsupported,
+                "{operation:?}"
+            );
+            assert_eq!(report.producer, None);
+            assert!(report.reason.contains("not requested"), "{}", report.reason);
+        }
+    }
 }
 
 #[cfg(feature = "external-tests")]
@@ -303,45 +382,20 @@ fn vocab_tokenizer_honors_cased_tokenizer_config() {
     assert_eq!(tokenized.input_ids, vec![2, 5, 3]);
 }
 
-#[test]
-fn lemmatizes_plural_and_inflected_tokens() {
-    let tokens = tokenize(
-        "Cars were running",
-        &TextProcessingOptions {
-            include_punctuation: false,
-            ..TextProcessingOptions::default()
-        },
-    );
-    let lemmas = lemmatize_tokens(&tokens, Some("en"), &LemmaOptions::default());
-    assert_eq!(lemmas.lemmas[0].value, "car");
-    assert_eq!(lemmas.lemmas[1].value, "be");
+/// Caller-supplied POS annotations, as a model would produce them.
+fn fixture_pos(tags: &[(usize, PosTag)]) -> Vec<PosAnnotation> {
+    tags.iter()
+        .map(|&(token_index, tag)| PosAnnotation {
+            token_index,
+            tag,
+            confidence: 1.0,
+            reason: "fixture".to_string(),
+        })
+        .collect()
 }
 
 #[test]
-fn morphology_annotation_tolerates_missing_lemma_and_pos_entries() {
-    let tokens = tokenize(
-        "They were testing robots",
-        &TextProcessingOptions {
-            include_punctuation: false,
-            ..TextProcessingOptions::default()
-        },
-    );
-    let lemmas = lemmatize_tokens(&tokens, Some("en"), &LemmaOptions::default());
-    let mut partial_lemmas = lemmas.clone();
-    partial_lemmas.lemmas.truncate(3);
-    let pos = PosTagger::default().tag_tokens(&tokens, &lemmas);
-    let annotations = annotate_morphology(&tokens, &partial_lemmas, &pos[..3]);
-
-    assert_eq!(annotations.len(), 4);
-    assert!(annotations[0].tags.has("Person", "3"));
-    assert!(annotations[0].tags.has("Number", "Plur"));
-    assert!(annotations[1].tags.has("Tense", "Past"));
-    assert_eq!(annotations[3].lemma, None);
-    assert!(annotations[3].tags.is_empty());
-}
-
-#[test]
-fn tags_pos_and_chunks_simple_sentence() {
+fn chunks_phrases_from_supplied_pos_tags() {
     let text = "The new product launches today";
     let tokens = tokenize(
         text,
@@ -350,61 +404,33 @@ fn tags_pos_and_chunks_simple_sentence() {
             ..TextProcessingOptions::default()
         },
     );
-    let lemmas = lemmatize_tokens(&tokens, Some("en"), &LemmaOptions::default());
-    let tagger = PosTagger::default();
-    let pos = tagger.tag_tokens(&tokens, &lemmas);
-    assert!(pos.iter().any(|annotation| annotation.tag == PosTag::Verb));
+    let pos = fixture_pos(&[
+        (0, PosTag::Det),
+        (1, PosTag::Adj),
+        (2, PosTag::Noun),
+        (3, PosTag::Verb),
+        (4, PosTag::Noun),
+    ]);
     let sentences = split_sentence_spans(text, &TextProcessingOptions::default());
     let chunks = chunk_phrases(text, &sentences, &tokens, &pos);
     assert!(chunks
         .iter()
-        .any(|chunk| chunk.kind == ChunkKind::NounPhrase));
+        .any(|chunk| chunk.kind == ChunkKind::NounPhrase && chunk.text == "The new product"));
     assert!(chunks
         .iter()
         .any(|chunk| chunk.kind == ChunkKind::VerbPhrase));
+
+    // Tags are looked up by token index, so a partial tagging (a sentence without a
+    // model) never shifts tags onto the wrong tokens.
+    let partial = fixture_pos(&[(3, PosTag::Verb)]);
+    let chunks = chunk_phrases(text, &sentences, &tokens, &partial);
+    assert_eq!(chunks.len(), 1);
+    assert_eq!(chunks[0].kind, ChunkKind::VerbPhrase);
+    assert_eq!(chunks[0].text, "launches");
 }
 
 #[test]
-fn builds_dependency_tree_with_subject_and_object_like_relations() {
-    let text = "Alice launched product";
-    let tokens = tokenize(
-        text,
-        &TextProcessingOptions {
-            include_punctuation: true,
-            ..TextProcessingOptions::default()
-        },
-    );
-    let lemmas = lemmatize_tokens(&tokens, Some("en"), &LemmaOptions::default());
-    let mut pos = PosTagger::default().tag_tokens(&tokens, &lemmas);
-    pos[0].tag = PosTag::Propn;
-    pos[1].tag = PosTag::Verb;
-    pos[2].tag = PosTag::Noun;
-    let trees = DependencyParser.parse_document(
-        &split_sentence_spans(text, &TextProcessingOptions::default()),
-        &tokens,
-        &pos,
-    );
-    assert_eq!(trees.len(), 1);
-    assert!(trees[0]
-        .edges
-        .iter()
-        .any(|edge| edge.relation == DependencyRelation::Nsubj));
-}
-
-#[test]
-fn extracts_entities_coreference_and_events() {
-    let text = "Alice visited Berlin. She presented the roadmap.";
-    let analysis = analyze_text(text, &LinguisticAnalysisOptions::heuristic()).unwrap();
-    assert!(analysis
-        .entities
-        .iter()
-        .any(|entity| entity.entity_type == EntityType::Person));
-    assert!(!analysis.coreference.is_empty());
-    assert!(!analysis.events.is_empty());
-}
-
-#[test]
-fn model_labeler_entities_replace_capitalization_guesses() {
+fn model_labeler_entities_are_returned_unmerged() {
     struct FakeNer;
 
     impl SequenceLabeler for FakeNer {
@@ -421,22 +447,25 @@ fn model_labeler_entities_replace_capitalization_guesses() {
     let mut labeler = FakeNer;
     let analysis = analyze_text_with_entity_labeler(
         text,
-        &LinguisticAnalysisOptions::heuristic(),
+        &LinguisticAnalysisOptions::without_models(),
         &mut labeler,
     )
     .unwrap();
 
-    assert!(analysis.entities.iter().any(|entity| {
-        entity.entity_type == EntityType::Organization && entity.mention.text == "OpenAI"
-    }));
-    assert!(analysis.entities.iter().any(|entity| {
-        entity.entity_type == EntityType::Location && entity.mention.text == "New York"
-    }));
-    assert!(analysis
+    // Exactly the model's entities: no rule-based date added for "January 2024".
+    let entities = analysis
         .entities
         .iter()
-        .any(|entity| entity.entity_type == EntityType::Date));
-    // Model-labeled entities make the analysis model-derived even with heuristic options.
+        .map(|entity| (entity.entity_type, entity.mention.text.as_str()))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        entities,
+        [
+            (EntityType::Organization, "OpenAI"),
+            (EntityType::Location, "New York")
+        ]
+    );
+    // Model-labeled entities make the analysis model-derived.
     assert_eq!(analysis.provenance, AnnotationProvenance::Model);
 }
 
@@ -451,7 +480,7 @@ impl SequenceLabeler for FixedNer {
 fn model_entities(text: &str, predictions: Vec<RawPrediction>) -> Vec<(EntityType, String)> {
     analyze_text_with_entity_labeler(
         text,
-        &LinguisticAnalysisOptions::heuristic(),
+        &LinguisticAnalysisOptions::without_models(),
         &mut FixedNer(predictions),
     )
     .unwrap()
@@ -566,7 +595,7 @@ fn analyzes_subtitle_segments_per_cue_and_in_aggregate() {
     ];
 
     let analysis =
-        analyze_subtitle_segments(&cues, &LinguisticAnalysisOptions::heuristic()).unwrap();
+        analyze_subtitle_segments(&cues, &LinguisticAnalysisOptions::without_models()).unwrap();
 
     assert_eq!(analysis.cues.len(), 2);
     assert_eq!(analysis.cues[0].cue, cues[0]);
@@ -585,10 +614,10 @@ fn analyzes_transcription_using_explicit_transcript_text_when_present() {
     .unwrap();
 
     let analysis =
-        analyze_transcription(&transcription, &LinguisticAnalysisOptions::heuristic()).unwrap();
+        analyze_transcription(&transcription, &LinguisticAnalysisOptions::without_models())
+            .unwrap();
 
     assert_eq!(analysis.cues.len(), 2);
-    assert!(!analysis.aggregate.entities.is_empty());
     assert!(analysis
         .aggregate
         .tokens
@@ -606,7 +635,8 @@ fn analyzes_transcription_falling_back_to_joined_cue_text() {
     transcription.text = Some("   ".to_string());
 
     let analysis =
-        analyze_transcription(&transcription, &LinguisticAnalysisOptions::heuristic()).unwrap();
+        analyze_transcription(&transcription, &LinguisticAnalysisOptions::without_models())
+            .unwrap();
 
     assert_eq!(analysis.cues.len(), 2);
     assert!(analysis
@@ -641,7 +671,8 @@ fn analyzes_transcription_contracts_directly() {
     contract.text = Some("Alice visited Berlin. Roadmap review.".to_string());
 
     let analysis =
-        analyze_transcription_contract(&contract, &LinguisticAnalysisOptions::heuristic()).unwrap();
+        analyze_transcription_contract(&contract, &LinguisticAnalysisOptions::without_models())
+            .unwrap();
 
     assert_eq!(analysis.cues.len(), 2);
     assert_eq!(analysis.cues[0].cue.speaker.as_deref(), Some("speaker_a"));
@@ -664,80 +695,18 @@ fn rule_entities_live_in_linguistics() {
 }
 
 #[test]
-fn classifies_discourse_topics_and_style() {
+fn classifies_discourse_and_style_without_models() {
     let text = "First, we introduce the API. However, the migration is tricky. Finally, the rollout is stable.";
-    let analysis = analyze_text(text, &LinguisticAnalysisOptions::heuristic()).unwrap();
+    let analysis = analyze_text(text, &LinguisticAnalysisOptions::without_models()).unwrap();
     assert!(!analysis.discourse.is_empty());
-    assert!(!analysis.topics.descriptors.is_empty());
+    // Topics rank model lemmas; without a morphology model there are none.
+    assert!(analysis.topics.descriptors.is_empty());
     assert!(analysis.style.complexity.average_sentence_tokens > 0.0);
 }
 
 #[test]
-fn extracts_dates_and_amounts_without_pos_annotations() {
-    let text = "Launch on January 2024 costs $99.";
-    let sentences = vec![Sentence {
-        text: text.to_string(),
-        span: TextSpan::from_byte_range(text, 0, text.len()).unwrap(),
-        token_count: 6,
-    }];
-    let tokens = vec![
-        Token {
-            text: "Launch".to_string(),
-            normalized: "launch".to_string(),
-            span: TextSpan::from_byte_range(text, 0, 6).unwrap(),
-            kind: TokenKind::Word,
-        },
-        Token {
-            text: "on".to_string(),
-            normalized: "on".to_string(),
-            span: TextSpan::from_byte_range(text, 7, 9).unwrap(),
-            kind: TokenKind::Word,
-        },
-        Token {
-            text: "January".to_string(),
-            normalized: "january".to_string(),
-            span: TextSpan::from_byte_range(text, 10, 17).unwrap(),
-            kind: TokenKind::Word,
-        },
-        Token {
-            text: "2024".to_string(),
-            normalized: "2024".to_string(),
-            span: TextSpan::from_byte_range(text, 18, 22).unwrap(),
-            kind: TokenKind::Number,
-        },
-        Token {
-            text: "costs".to_string(),
-            normalized: "costs".to_string(),
-            span: TextSpan::from_byte_range(text, 23, 28).unwrap(),
-            kind: TokenKind::Word,
-        },
-        Token {
-            text: "$99".to_string(),
-            normalized: "$99".to_string(),
-            span: TextSpan::from_byte_range(text, 29, 32).unwrap(),
-            kind: TokenKind::Other,
-        },
-    ];
-    let entities = extract_named_entities(text, &sentences, &tokens, &[]);
-
-    assert!(entities
-        .iter()
-        .any(|entity| entity.entity_type == EntityType::Date
-            && entity.mention.text.to_lowercase().contains("january")));
-    assert!(entities.iter().any(
-        |entity| entity.entity_type == EntityType::Date && entity.mention.text.contains("2024")
-    ));
-    assert!(entities
-        .iter()
-        .any(|entity| entity.entity_type == EntityType::Amount && entity.mention.text == "$99"));
-}
-
-#[test]
 fn text_nlp_pipeline_exposes_rich_graph_and_profile_metadata() {
-    let pipeline = TextNlpPipeline::new(TextNlpConfig {
-        options: LinguisticAnalysisOptions::heuristic(),
-        ..TextNlpConfig::rich()
-    });
+    let pipeline = TextNlpPipeline::new(without_models(TextNlpConfig::rich()));
     let analysis = pipeline
         .analyze_text("Alice presented the roadmap in Berlin.")
         .unwrap();
@@ -751,7 +720,7 @@ fn text_nlp_pipeline_exposes_rich_graph_and_profile_metadata() {
 
 #[test]
 fn fast_profile_disables_heavier_annotations() {
-    let pipeline = TextNlpPipeline::new(TextNlpConfig::fast());
+    let pipeline = TextNlpPipeline::new(without_models(TextNlpConfig::fast()));
     let analysis = pipeline
         .analyze_text("Alice presented the roadmap in Berlin.")
         .unwrap();
@@ -890,19 +859,10 @@ fn report(
         .expect("every operation is reported")
 }
 
-fn sentence_token_indices(analysis: &LinguisticAnalysis, sentence: usize) -> Vec<usize> {
-    let span = analysis.sentences[sentence].span;
-    (0..analysis.tokens.len())
-        .filter(|&index| {
-            let start = analysis.tokens[index].span.byte_start;
-            start >= span.byte_start && start < span.byte_end
-        })
-        .collect()
-}
-
 #[test]
 fn routes_each_sentence_by_its_own_language() {
-    let analysis = analyze_text(MIXED_SAMPLE, &LinguisticAnalysisOptions::heuristic()).unwrap();
+    let analysis =
+        analyze_text(MIXED_SAMPLE, &LinguisticAnalysisOptions::without_models()).unwrap();
     let languages = analysis
         .sentence_analyses
         .iter()
@@ -927,13 +887,11 @@ fn routes_each_sentence_by_its_own_language() {
     );
     assert_eq!(spanish.span.byte_end, MIXED_SAMPLE.len());
 
-    // English gets the (unscored) English heuristics; German and Spanish do not get
-    // English-model results presented as their own.
-    let english = report(&analysis, 0, LinguisticOperation::PartOfSpeech);
-    assert_eq!(english.support, OperationSupport::Partial);
-    assert_eq!(english.producer.as_deref(), Some("heuristic:english-rules"));
-    for sentence in [1, 2] {
+    // No sentence gets model-free stand-ins: every model-backed layer is unsupported
+    // and empty when its model is not requested, whatever the language.
+    for sentence in 0..3 {
         for operation in [
+            LinguisticOperation::NamedEntities,
             LinguisticOperation::Morphology,
             LinguisticOperation::PartOfSpeech,
             LinguisticOperation::DependencySyntax,
@@ -944,7 +902,7 @@ fn routes_each_sentence_by_its_own_language() {
                 OperationSupport::Unsupported,
                 "{operation:?}"
             );
-            assert!(report.reason.contains("LocalModel"), "{}", report.reason);
+            assert!(report.reason.contains("not requested"), "{}", report.reason);
         }
         for operation in [
             LinguisticOperation::LanguageDetection,
@@ -957,60 +915,46 @@ fn routes_each_sentence_by_its_own_language() {
             );
         }
     }
-    let english_tokens = sentence_token_indices(&analysis, 0);
-    let german_tokens = sentence_token_indices(&analysis, 1);
-    let tagged = |index: usize| analysis.pos.iter().any(|pos| pos.token_index == index);
-    assert!(english_tokens.iter().all(|&index| tagged(index)));
-    assert!(german_tokens.iter().all(|&index| !tagged(index)));
-    assert!(analysis
-        .lemmas
-        .iter()
-        .all(|lemma| english_tokens.contains(&lemma.token_index)));
-    assert!(analysis
-        .dependencies
-        .iter()
-        .all(|tree| tree.sentence_index == 0));
-
-    // Heuristic NER is labelled partial for every language, not hidden.
-    for sentence in 0..3 {
-        assert_eq!(
-            report(&analysis, sentence, LinguisticOperation::NamedEntities).support,
-            OperationSupport::Partial
-        );
-    }
+    assert!(analysis.pos.is_empty());
+    assert!(analysis.lemmas.is_empty());
+    assert!(analysis.dependencies.is_empty());
+    assert!(analysis.entities.is_empty());
 }
 
 #[test]
 fn undecided_and_unsupported_sentences_keep_their_neighbours() {
-    let text = "Sarah says John is late. Ok. Le chat dort sur le canapé depuis ce matin. Привет, как дела у тебя сегодня?";
-    let analysis = analyze_text(text, &LinguisticAnalysisOptions::heuristic()).unwrap();
-    assert_eq!(analysis.sentences.len(), 4);
-    let [english, short, french, russian] = &analysis.sentence_analyses[..] else {
-        panic!("four sentence records");
+    // Models are requested, but no sentence routes to a UD model, so none is loaded;
+    // a caller labeler stands in for the NER model.
+    let text = "Ok. Le chat dort sur le canapé depuis ce matin. Привет, как дела у тебя сегодня?";
+    let analysis = analyze_text_with_entity_labeler(
+        text,
+        &LinguisticAnalysisOptions::default(),
+        &mut FixedNer(Vec::new()),
+    )
+    .unwrap();
+    assert_eq!(analysis.sentences.len(), 3);
+    let [short, french, russian] = &analysis.sentence_analyses[..] else {
+        panic!("three sentence records");
     };
-    assert_eq!(english.language.as_deref(), Some("en"));
-    assert!(analysis
-        .pos
-        .iter()
-        .any(|pos| sentence_token_indices(&analysis, 0).contains(&pos.token_index)));
+    assert!(analysis.pos.is_empty());
 
     assert_eq!(short.detection.decision, LanguageDecision::TooShort);
     assert_eq!(short.language, None);
     assert_eq!(
-        report(&analysis, 1, LinguisticOperation::LanguageDetection).support,
+        report(&analysis, 0, LinguisticOperation::LanguageDetection).support,
         OperationSupport::Unknown
     );
     assert_eq!(
-        report(&analysis, 1, LinguisticOperation::PartOfSpeech).support,
+        report(&analysis, 0, LinguisticOperation::PartOfSpeech).support,
         OperationSupport::Unknown
     );
     assert_eq!(
-        report(&analysis, 1, LinguisticOperation::Tokenization).support,
+        report(&analysis, 0, LinguisticOperation::Tokenization).support,
         OperationSupport::Supported
     );
 
     assert_eq!(french.language.as_deref(), Some("fr"));
-    let french_pos = report(&analysis, 2, LinguisticOperation::PartOfSpeech);
+    let french_pos = report(&analysis, 1, LinguisticOperation::PartOfSpeech);
     assert_eq!(french_pos.support, OperationSupport::Unsupported);
     assert_eq!(french_pos.reason, "no model for `fr`");
 
@@ -1055,7 +999,7 @@ fn ambiguous_sentences_report_their_candidates() {
 
 #[test]
 fn a_pinned_language_routes_every_sentence() {
-    let mut options = LinguisticAnalysisOptions::heuristic();
+    let mut options = LinguisticAnalysisOptions::without_models();
     options.processing.language = Some("en-US".to_string());
     let analysis = analyze_text(MIXED_SAMPLE, &options).unwrap();
     for sentence in &analysis.sentence_analyses {
@@ -1074,7 +1018,7 @@ fn a_pinned_language_routes_every_sentence() {
 
 #[test]
 fn routing_is_deterministic() {
-    let options = LinguisticAnalysisOptions::heuristic();
+    let options = LinguisticAnalysisOptions::without_models();
     let first = analyze_text(MIXED_SAMPLE, &options).unwrap();
     let second = analyze_text(MIXED_SAMPLE, &options).unwrap();
     assert_eq!(first.sentence_analyses, second.sentence_analyses);

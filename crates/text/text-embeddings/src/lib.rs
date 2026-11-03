@@ -1,8 +1,9 @@
 #![doc = include_str!("../README.md")]
 
 pub mod surface;
+pub mod testing;
 mod tokenizer;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 #[cfg(feature = "model-bundles")]
 use std::fs;
 #[cfg(any(feature = "onnx", feature = "model-bundles"))]
@@ -20,7 +21,6 @@ use candle_core::{DType as CandleDType, Device as CandleDevice, Tensor as Candle
 use candle_nn::VarBuilder as CandleVarBuilder;
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
 use candle_transformers::models::{bert as candle_bert, distilbert as candle_distilbert};
-use math_sparse_data::SparseVector;
 #[cfg(feature = "model-bundles")]
 use model_runtime::ModelBundle;
 use serde::{Deserialize, Serialize};
@@ -28,7 +28,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use text_core::{segment_document_id, tokenize_words, AnnotationProvenance, TextDocument};
 use text_core::{DetectError, Result, TextSegment};
-use text_lexical::{term_counts, CorpusOptions, TfIdfCorpus};
+#[cfg(test)]
+use text_lexical::{CorpusOptions, TfIdfCorpus};
 pub use tokenizer::TokenizedText;
 #[cfg(feature = "tokenizers")]
 use tokenizer::TokenizerBundle;
@@ -55,21 +56,14 @@ impl Default for TextEmbeddingConfig {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
-/// Data type for hashed text embedder.
-pub struct HashedTextEmbedder {
-    /// The config value.
-    pub config: TextEmbeddingConfig,
-    /// The corpus options value.
-    pub corpus_options: CorpusOptions,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 /// Variants describing text embedding backend kind.
 #[serde(rename_all = "snake_case")]
 pub enum TextEmbeddingBackendKind {
-    /// The hashed variant.
-    Hashed,
+    /// The deterministic hashing test fixture ([`testing::HashedFixtureEmbedder`]).
+    /// Reads the pre-#186 `hashed` name so existing persisted manifests still load.
+    #[serde(alias = "hashed")]
+    HashedFixture,
     /// The ONNX variant.
     Onnx,
     /// The candle variant.
@@ -180,6 +174,22 @@ pub trait TextEmbeddingBackend {
     /// Returns cache hooks.
     fn cache_hooks(&self) -> Option<&dyn EmbeddingCacheHooks> {
         None
+    }
+}
+
+/// The embedder type of an index or workspace without an embedding model. It has
+/// no values, so such an index provably never embeds anything (see text-index's
+/// `TextIndex::lexical_only`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NoEmbedder {}
+
+impl TextEmbeddingBackend for NoEmbedder {
+    fn embed_text(&self, _text: &str) -> Result<DenseVector> {
+        match *self {}
+    }
+
+    fn metadata(&self) -> TextEmbeddingMetadata {
+        match *self {}
     }
 }
 
@@ -658,130 +668,6 @@ impl TextEmbeddingBackend for CandleTextEmbedder {
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
 impl SentenceEmbedder for CandleTextEmbedder {}
 
-impl HashedTextEmbedder {
-    /// Creates a new value.
-    pub fn new(config: TextEmbeddingConfig, corpus_options: CorpusOptions) -> Result<Self> {
-        if config.dimensions == 0 {
-            return Err(invalid_argument(
-                "text embedding dimensions must be greater than zero",
-            ));
-        }
-        Ok(Self {
-            config,
-            corpus_options,
-        })
-    }
-
-    /// Returns embed text.
-    pub fn embed_text(&self, text: &str) -> Result<DenseVector> {
-        self.embed_text_with_corpus(text, None)
-    }
-
-    /// Returns embed document.
-    pub fn embed_document(&self, document: &TextDocument<'_>) -> Result<DenseVector> {
-        self.embed_text(document.text)
-    }
-
-    /// Returns embed text with corpus.
-    pub fn embed_text_with_corpus(
-        &self,
-        text: &str,
-        corpus: Option<&TfIdfCorpus>,
-    ) -> Result<DenseVector> {
-        let counts = term_counts(text, &self.corpus_options);
-        self.embed_counts(&counts, corpus)
-    }
-
-    /// Returns embed counts.
-    pub fn embed_counts(
-        &self,
-        counts: &BTreeMap<String, usize>,
-        corpus: Option<&TfIdfCorpus>,
-    ) -> Result<DenseVector> {
-        if counts.is_empty() {
-            return Err(invalid_argument("text must contain at least one term"));
-        }
-        let mut values = vec![0.0; self.config.dimensions];
-        for (term, count) in counts {
-            let hash = stable_hash(term.as_bytes());
-            let index = hash as usize % self.config.dimensions;
-            let sign = if hash & 1 == 0 { 1.0 } else { -1.0 };
-            let idf = if self.config.use_idf {
-                corpus
-                    .map(|corpus| corpus.inverse_document_frequency(term))
-                    .unwrap_or(1.0)
-            } else {
-                1.0
-            };
-            values[index] += sign * (*count as f32).ln_1p() * idf;
-        }
-        DenseVector::new(values)?.l2_normalized()
-    }
-
-    /// Returns embed text sparse.
-    pub fn embed_text_sparse(
-        &self,
-        text: &str,
-        corpus: Option<&TfIdfCorpus>,
-    ) -> Result<SparseVector> {
-        let counts = term_counts(text, &self.corpus_options);
-        self.embed_counts_sparse(&counts, corpus)
-    }
-
-    /// Returns embed counts sparse.
-    pub fn embed_counts_sparse(
-        &self,
-        counts: &BTreeMap<String, usize>,
-        corpus: Option<&TfIdfCorpus>,
-    ) -> Result<SparseVector> {
-        if counts.is_empty() {
-            return Err(invalid_argument("text must contain at least one term"));
-        }
-        let mut buckets = BTreeMap::<usize, f32>::new();
-        for (term, count) in counts {
-            let hash = stable_hash(term.as_bytes());
-            let index = hash as usize % self.config.dimensions;
-            let sign = if hash & 1 == 0 { 1.0 } else { -1.0 };
-            let idf = if self.config.use_idf {
-                corpus
-                    .map(|corpus| corpus.inverse_document_frequency(term))
-                    .unwrap_or(1.0)
-            } else {
-                1.0
-            };
-            *buckets.entry(index).or_insert(0.0) += sign * (*count as f32).ln_1p() * idf;
-        }
-        SparseVector::new(
-            self.config.dimensions,
-            buckets.keys().copied().collect(),
-            buckets.values().copied().collect(),
-        )?
-        .canonicalized()?
-        .normalize_l2()
-    }
-}
-
-impl TextEmbeddingBackend for HashedTextEmbedder {
-    fn embed_text(&self, text: &str) -> Result<DenseVector> {
-        HashedTextEmbedder::embed_text(self, text)
-    }
-
-    fn embed_document(&self, document: &TextDocument<'_>) -> Result<DenseVector> {
-        HashedTextEmbedder::embed_document(self, document)
-    }
-
-    fn metadata(&self) -> TextEmbeddingMetadata {
-        TextEmbeddingMetadata {
-            backend: TextEmbeddingBackendKind::Hashed,
-            provenance: AnnotationProvenance::Heuristic,
-            model_name: Some("hashed-text-embedder".to_string()),
-            dimensions: Some(self.config.dimensions),
-        }
-    }
-}
-
-impl SentenceEmbedder for HashedTextEmbedder {}
-
 #[derive(Debug, Clone, PartialEq)]
 /// Data type for semantic match.
 pub struct SemanticMatch {
@@ -888,156 +774,6 @@ impl<E: TextEmbeddingBackend> EmbeddingSearchIndex<E> {
                 metadata: metadata.clone(),
             })
             .collect())
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-/// Data type for semantic text index.
-pub struct SemanticTextIndex {
-    embedder: HashedTextEmbedder,
-    corpus: TfIdfCorpus,
-    vectors: VectorSearchIndex,
-}
-
-impl SemanticTextIndex {
-    /// Creates a new value.
-    pub fn new(embedder: HashedTextEmbedder) -> Self {
-        Self {
-            corpus: TfIdfCorpus::new(embedder.corpus_options.clone()),
-            embedder,
-            vectors: VectorSearchIndex::new(),
-        }
-    }
-
-    /// Builds this value from documents.
-    pub fn from_documents<'a, I>(embedder: HashedTextEmbedder, documents: I) -> Result<Self>
-    where
-        I: IntoIterator<Item = TextDocument<'a>>,
-    {
-        let mut index = Self::new(embedder);
-        index.add_documents(documents)?;
-        Ok(index)
-    }
-
-    /// Returns embedder.
-    pub fn embedder(&self) -> &HashedTextEmbedder {
-        &self.embedder
-    }
-
-    /// Returns corpus.
-    pub fn corpus(&self) -> &TfIdfCorpus {
-        &self.corpus
-    }
-
-    /// Returns backend metadata.
-    pub fn backend_metadata(&self) -> TextEmbeddingMetadata {
-        self.embedder.metadata()
-    }
-
-    /// Adds add document to this value.
-    pub fn add_document(&mut self, id: impl Into<String>, text: &str) -> Result<()> {
-        let id = id.into();
-        self.corpus.add_document(id.clone(), text)?;
-        if self.embedder.config.use_idf {
-            self.rebuild_vectors()
-        } else {
-            let vector = self
-                .embedder
-                .embed_text_with_corpus(text, Some(&self.corpus))?;
-            self.vectors.add(VectorRecord::new(id, vector))
-        }
-    }
-
-    /// Adds add text document to this value.
-    pub fn add_text_document(&mut self, document: &TextDocument<'_>) -> Result<()> {
-        self.add_document(document.id, document.text)
-    }
-
-    /// Adds add documents to this value.
-    pub fn add_documents<'a, I>(&mut self, documents: I) -> Result<()>
-    where
-        I: IntoIterator<Item = TextDocument<'a>>,
-    {
-        let documents = documents
-            .into_iter()
-            .map(|document| (document.id.to_string(), document.text.to_string()))
-            .collect::<Vec<_>>();
-        self.validate_new_document_ids(documents.iter().map(|(id, _)| id.as_str()))?;
-
-        for (id, text) in &documents {
-            self.corpus.add_document(id.clone(), text)?;
-        }
-        if self.embedder.config.use_idf {
-            self.rebuild_vectors()
-        } else {
-            for (id, text) in documents {
-                let vector = self
-                    .embedder
-                    .embed_text_with_corpus(&text, Some(&self.corpus))?;
-                self.vectors.add(VectorRecord::new(id, vector))?;
-            }
-            Ok(())
-        }
-    }
-
-    /// Adds add text segment to this value.
-    pub fn add_text_segment(&mut self, stream_id: &str, segment: &TextSegment<'_>) -> Result<()> {
-        validate_stream_id(stream_id)?;
-        self.add_document(
-            segment_document_id(stream_id, segment.segment_index),
-            segment.text,
-        )
-    }
-
-    /// Returns search.
-    pub fn search(&self, query: &str, limit: usize) -> Result<Vec<SemanticMatch>> {
-        let metadata = self.embedder.metadata();
-        let query = self
-            .embedder
-            .embed_text_with_corpus(query, Some(&self.corpus))?;
-        let results = self.vectors.search(
-            &query,
-            SearchConfig {
-                limit,
-                ..SearchConfig::default()
-            },
-        )?;
-        Ok(results
-            .into_iter()
-            .map(|result| SemanticMatch {
-                id: result.id,
-                score: result.score,
-                distance: result.distance,
-                metadata: metadata.clone(),
-            })
-            .collect())
-    }
-
-    fn rebuild_vectors(&mut self) -> Result<()> {
-        let mut vectors = VectorSearchIndex::new();
-        for document in self.corpus.documents() {
-            let vector = self
-                .embedder
-                .embed_counts(&document.term_counts, Some(&self.corpus))?;
-            vectors.add(VectorRecord::new(document.id.clone(), vector))?;
-        }
-        self.vectors = vectors;
-        Ok(())
-    }
-
-    fn validate_new_document_ids<'a>(&self, ids: impl IntoIterator<Item = &'a str>) -> Result<()> {
-        let mut seen = BTreeSet::new();
-        for id in ids {
-            if id.trim().is_empty() {
-                return Err(invalid_argument("document id must not be empty"));
-            }
-            if self.corpus.document(id).is_some() || !seen.insert(id.to_string()) {
-                return Err(invalid_argument(format!(
-                    "document id `{id}` already exists"
-                )));
-            }
-        }
-        Ok(())
     }
 }
 
@@ -1178,7 +914,11 @@ impl CooccurrenceGraph {
 }
 
 /// Returns text similarity.
-pub fn text_similarity(left: &str, right: &str, embedder: &HashedTextEmbedder) -> Result<f32> {
+pub fn text_similarity<E: TextEmbeddingBackend + ?Sized>(
+    left: &str,
+    right: &str,
+    embedder: &E,
+) -> Result<f32> {
     let left = embedder.embed_text(left)?;
     let right = embedder.embed_text(right)?;
     cosine_similarity(left.as_slice(), right.as_slice())
@@ -1190,15 +930,6 @@ fn ordered_pair(left: &str, right: &str) -> (String, String) {
     } else {
         (right.to_string(), left.to_string())
     }
-}
-
-fn stable_hash(bytes: &[u8]) -> u64 {
-    let mut hash = 0xcbf29ce484222325_u64;
-    for byte in bytes {
-        hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(0x100000001b3);
-    }
-    hash
 }
 
 /// Returns pool embedding output.
@@ -1695,11 +1426,11 @@ fn candle_error(error: candle_core::Error) -> DetectError {
     DetectError::Source(format!("Candle runtime error: {error}"))
 }
 
-fn invalid_argument(message: impl Into<String>) -> DetectError {
+pub(crate) fn invalid_argument(message: impl Into<String>) -> DetectError {
     DetectError::InvalidArgument(message.into())
 }
 
-fn validate_stream_id(stream_id: &str) -> Result<()> {
+pub(crate) fn validate_stream_id(stream_id: &str) -> Result<()> {
     if stream_id.trim().is_empty() {
         return Err(invalid_argument("stream id must not be empty"));
     }
@@ -1709,6 +1440,7 @@ fn validate_stream_id(stream_id: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testing::{HashedFixtureEmbedder, HashedFixtureTextIndex};
 
     #[cfg(all(feature = "candle", feature = "model-bundles"))]
     #[test]
@@ -1719,7 +1451,7 @@ mod tests {
 
     #[test]
     fn embeds_and_compares_text() {
-        let embedder = HashedTextEmbedder::default();
+        let embedder = HashedFixtureEmbedder::default();
         let same_topic =
             text_similarity("rust cargo crates", "cargo rust package", &embedder).unwrap();
         let different_topic =
@@ -1729,7 +1461,7 @@ mod tests {
 
     #[test]
     fn validates_embedding_configuration_and_input() {
-        assert!(HashedTextEmbedder::new(
+        assert!(HashedFixtureEmbedder::new(
             TextEmbeddingConfig {
                 dimensions: 0,
                 use_idf: false,
@@ -1738,7 +1470,7 @@ mod tests {
         )
         .is_err());
 
-        let embedder = HashedTextEmbedder::new(
+        let embedder = HashedFixtureEmbedder::new(
             TextEmbeddingConfig {
                 dimensions: 8,
                 use_idf: false,
@@ -1753,7 +1485,7 @@ mod tests {
 
     #[test]
     fn searches_semantic_index() {
-        let mut index = SemanticTextIndex::new(HashedTextEmbedder::default());
+        let mut index = HashedFixtureTextIndex::new(HashedFixtureEmbedder::default());
         index
             .add_document("rust", "rust cargo crates ownership")
             .unwrap();
@@ -1767,7 +1499,7 @@ mod tests {
 
     #[test]
     fn rejects_duplicate_documents_before_vector_insert() {
-        let mut index = SemanticTextIndex::new(HashedTextEmbedder::default());
+        let mut index = HashedFixtureTextIndex::new(HashedFixtureEmbedder::default());
         index.add_document("rust", "rust cargo crates").unwrap();
 
         assert!(index.add_document("rust", "new text").is_err());
@@ -1777,7 +1509,7 @@ mod tests {
 
     #[test]
     fn idf_weighted_index_rebuilds_vectors_after_insert() {
-        let embedder = HashedTextEmbedder::new(
+        let embedder = HashedFixtureEmbedder::new(
             TextEmbeddingConfig {
                 dimensions: 64,
                 use_idf: true,
@@ -1785,7 +1517,7 @@ mod tests {
             CorpusOptions::default(),
         )
         .unwrap();
-        let mut index = SemanticTextIndex::new(embedder);
+        let mut index = HashedFixtureTextIndex::new(embedder);
         index.add_document("rust", "rust cargo crates").unwrap();
         index.add_document("fruit", "orange banana apple").unwrap();
 
@@ -1795,7 +1527,7 @@ mod tests {
 
     #[test]
     fn idf_weighted_batch_ingestion_rebuilds_vectors_once_after_corpus_update() {
-        let embedder = HashedTextEmbedder::new(
+        let embedder = HashedFixtureEmbedder::new(
             TextEmbeddingConfig {
                 dimensions: 64,
                 use_idf: true,
@@ -1809,7 +1541,7 @@ mod tests {
             TextDocument::new("search", "semantic retrieval search"),
         ];
 
-        let index = SemanticTextIndex::from_documents(embedder, documents).unwrap();
+        let index = HashedFixtureTextIndex::from_documents(embedder, documents).unwrap();
 
         assert_eq!(index.corpus().len(), 3);
         assert_eq!(index.vectors.records().len(), 3);
@@ -1915,7 +1647,7 @@ mod tests {
 
     #[test]
     fn semantic_index_adds_text_segments_with_generated_ids() {
-        let mut index = SemanticTextIndex::new(HashedTextEmbedder::default());
+        let mut index = HashedFixtureTextIndex::new(HashedFixtureEmbedder::default());
         let first = TextSegment {
             segment_index: 0,
             timestamp: None,
@@ -1954,7 +1686,7 @@ mod tests {
         let document = TextDocument::from_stream_segment("subs", &segment);
         let mut corpus = TfIdfCorpus::default();
         corpus.add_text_segment("subs", &segment).unwrap();
-        let mut semantic = SemanticTextIndex::new(HashedTextEmbedder::default());
+        let mut semantic = HashedFixtureTextIndex::new(HashedFixtureEmbedder::default());
         semantic.add_text_segment("subs", &segment).unwrap();
 
         assert_eq!(document.id, "subs:9");
@@ -1968,7 +1700,7 @@ mod tests {
             backend.embed_text(text)
         }
 
-        let embedder = HashedTextEmbedder::default();
+        let embedder = HashedFixtureEmbedder::default();
         let direct = embedder.embed_text("rust cargo").unwrap();
         let via_trait = embed_with_trait(&embedder, "rust cargo").unwrap();
         assert_eq!(direct, via_trait);
@@ -1990,8 +1722,8 @@ mod tests {
         );
         assert_eq!(results[0].metadata.model_name.as_deref(), Some("tiny"));
 
-        let hashed = HashedTextEmbedder::default().metadata();
-        assert_eq!(hashed.backend, TextEmbeddingBackendKind::Hashed);
+        let hashed = HashedFixtureEmbedder::default().metadata();
+        assert_eq!(hashed.backend, TextEmbeddingBackendKind::HashedFixture);
         assert_eq!(hashed.provenance, AnnotationProvenance::Heuristic);
         assert_eq!(
             hashed.dimensions,
@@ -2001,7 +1733,7 @@ mod tests {
 
     #[test]
     fn hashed_embedder_can_emit_sparse_vectors() {
-        let embedder = HashedTextEmbedder::default();
+        let embedder = HashedFixtureEmbedder::default();
         let sparse = embedder
             .embed_text_sparse("rust cargo crates", None)
             .unwrap();
@@ -2011,7 +1743,7 @@ mod tests {
 
     #[test]
     fn hashed_embedder_is_stable_and_normalized() {
-        let embedder = HashedTextEmbedder::default();
+        let embedder = HashedFixtureEmbedder::default();
         let left = embedder.embed_text("rust cargo crates").unwrap();
         let right = embedder.embed_text("rust cargo crates").unwrap();
 

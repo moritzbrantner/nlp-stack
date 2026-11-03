@@ -10,7 +10,8 @@ generation terms, deterministic synthesis inputs, and Markov training data.
 
 ## Quality and limits
 
-This crate inherits the heuristic quality limits of `text-linguistics` and the
+This crate needs the `text-linguistics` models (the surface fails with
+`missing_dependency` without them) and inherits the
 deterministic generation limits of `text-generation`. It does not execute hosted
 or native LLM inference.
 

@@ -6,7 +6,7 @@ use runtime_core::{
 };
 use serde::Deserialize;
 use text_generation::{MarkovChain, MarkovInputMode, TextSynthesisOptions};
-use text_linguistics::{analyze_text, LinguisticAnalysisOptions};
+use text_linguistics::{analyze_text, LinguisticAnalysis, LinguisticAnalysisOptions};
 
 use crate::{
     analysis_tokens, synthesize_from_analysis, terms_from_analysis, LinguisticMarkovTraining,
@@ -170,8 +170,7 @@ struct TrainAnalysisRequest {
 }
 
 fn analysis_terms_value(request: AnalysisTextRequest) -> Result<serde_json::Value, String> {
-    let analysis = analyze_text(&request.text, &LinguisticAnalysisOptions::heuristic())
-        .map_err(|error| error.to_string())?;
+    let analysis = model_analysis("generationLinguistics.analysisTerms", &request.text)?;
     Ok(serde_json::json!({
         "terms": terms_from_analysis(&analysis),
         "language": analysis.language.primary.map(|prediction| prediction.language),
@@ -186,8 +185,7 @@ fn analysis_terms_value(request: AnalysisTextRequest) -> Result<serde_json::Valu
 }
 
 fn synthesize_value(request: SynthesizeAnalysisRequest) -> Result<serde_json::Value, String> {
-    let analysis = analyze_text(&request.text, &LinguisticAnalysisOptions::heuristic())
-        .map_err(|error| error.to_string())?;
+    let analysis = model_analysis("generationLinguistics.synthesize", &request.text)?;
     let generated = synthesize_from_analysis(
         request
             .id
@@ -213,9 +211,8 @@ fn synthesize_value(request: SynthesizeAnalysisRequest) -> Result<serde_json::Va
 }
 
 fn train_value(request: TrainAnalysisRequest) -> Result<serde_json::Value, String> {
-    let analysis = analyze_text(&request.text, &LinguisticAnalysisOptions::heuristic())
-        .map_err(|error| error.to_string())?;
     let mode = parse_mode(&request.mode)?;
+    let analysis = model_analysis("generationLinguistics.trainAnalysis", &request.text)?;
     let mut chain = MarkovChain::new(request.order).map_err(|error| error.to_string())?;
     chain.train_analysis(&analysis, mode);
     Ok(serde_json::json!({
@@ -225,6 +222,21 @@ fn train_value(request: TrainAnalysisRequest) -> Result<serde_json::Value, Strin
         "mode": request.mode,
         "tokens": analysis_tokens(&analysis, mode)
     }))
+}
+
+/// The model-backed linguistic analysis of `text`. A build without the linguistic
+/// models fails with `missing_dependency` instead of generating from heuristic
+/// annotations.
+fn model_analysis(operation: &str, text: &str) -> Result<LinguisticAnalysis, String> {
+    if !text_linguistics::local_models_compiled() {
+        return Err(runtime_core::SurfaceError::missing_dependency(
+            Some(operation),
+            "linguistic models",
+            "build text-linguistics with the `candle` and `model-bundles` features and provide the NER and UD model bundles; no heuristic fallback exists",
+        )
+        .to_error_string());
+    }
+    analyze_text(text, &LinguisticAnalysisOptions::default()).map_err(|error| error.to_string())
 }
 
 fn parse_mode(mode: &str) -> Result<MarkovInputMode, String> {
@@ -264,13 +276,17 @@ mod tests {
     }
 
     #[test]
-    fn analysis_terms_operation_returns_terms() {
-        let response = run_surface_operation(SurfaceRequest {
+    fn analysis_operations_require_linguistic_models() {
+        if text_linguistics::local_models_compiled() {
+            return;
+        }
+        let error = run_surface_operation(SurfaceRequest {
             operation: OperationId::new("generationLinguistics.analysisTerms"),
             input: serde_json::json!({"text": "Alice presented the tokenizer roadmap in Berlin."}),
         })
-        .expect("analysis terms");
-        assert!(!response.value["terms"].as_array().unwrap().is_empty());
+        .expect_err("no linguistic models in this build");
+        let error = runtime_core::parse_surface_error(&error).expect("typed error");
+        assert_eq!(error.code, "missing_dependency");
     }
 
     #[test]

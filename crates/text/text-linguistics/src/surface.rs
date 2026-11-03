@@ -19,8 +19,8 @@ pub fn package_surface() -> PackageSurface {
         capabilities: RuntimeCapabilities::pure_rust(),
         operations: vec![
             operation("describe", "Inspect package metadata", "Local model-backed linguistic analysis pipeline for video-analysis.", serde_json::json!({"includeOperations": true})),
-            operation("linguistics.analyze", "Analyze text", "Runs the deterministic linguistic pipeline and returns a serializable analysis projection.", serde_json::json!({"text": "Alice presented the tokenizer roadmap in Berlin.", "profile": "fast"})),
-            operation("linguistics.entities", "Extract linguistic entities", "Returns entities, canonical entities, relations, and events from the pipeline.", serde_json::json!({"text": "Alice presented the tokenizer roadmap in Berlin."})),
+            operation("linguistics.analyze", "Analyze text", "Runs the model-backed linguistic pipeline (NER, UD morphology and dependency models) and returns a serializable analysis projection. Fails with `missing_dependency` when the models are unavailable; there is no heuristic fallback.", serde_json::json!({"text": "Alice presented the tokenizer roadmap in Berlin.", "profile": "fast"})),
+            operation("linguistics.entities", "Extract linguistic entities", "Returns model-backed entities and canonical entities from the pipeline. Fails with `missing_dependency` when the models are unavailable.", serde_json::json!({"text": "Alice presented the tokenizer roadmap in Berlin."})),
             operation("linguistics.language", "Detect language", "Runs focused deterministic language detection without the full NLP pipeline.", serde_json::json!({"text": "This is a simple English sentence.", "sentenceLevel": true, "maxAlternatives": 3})),
         ],
     }
@@ -83,7 +83,7 @@ fn annotated_value(operation: &OperationId, value: serde_json::Value) -> serde_j
         ),
         "linguistics.analyze" => (
             "Linguistic analysis result",
-            "Ran the deterministic linguistic pipeline and returned tokens, language, entities, topics, and style signals.",
+            "Ran the model-backed linguistic pipeline and returned tokens, language, entities, topics, and style signals.",
             serde_json::json!({
                 "status": "ok",
                 "tokenCount": value["tokens"].as_array().map(Vec::len).unwrap_or(0),
@@ -93,13 +93,11 @@ fn annotated_value(operation: &OperationId, value: serde_json::Value) -> serde_j
         ),
         "linguistics.entities" => (
             "Linguistic entity extraction result",
-            "Extracted entities, canonical entity records, relations, and event arguments from the supplied text.",
+            "Extracted model-backed entities and canonical entity records from the supplied text.",
             serde_json::json!({
                 "status": "ok",
                 "entityCount": value["entities"].as_array().map(Vec::len).unwrap_or(0),
-                "canonicalEntityCount": value["canonicalEntities"].as_array().map(Vec::len).unwrap_or(0),
-                "relationCount": value["relations"].as_array().map(Vec::len).unwrap_or(0),
-                "eventCount": value["events"].as_array().map(Vec::len).unwrap_or(0)
+                "canonicalEntityCount": value["canonicalEntities"].as_array().map(Vec::len).unwrap_or(0)
             }),
         ),
         "linguistics.language" => (
@@ -177,30 +175,6 @@ fn entities_value(request: AnalyzeRequest) -> Result<serde_json::Value, String> 
             "type": format!("{:?}", entity.entity_type),
             "canonicalName": entity.canonical_name,
             "aliases": entity.aliases
-        })).collect::<Vec<_>>(),
-        "relations": analysis.relations.into_iter().map(|relation| serde_json::json!({
-            "sentenceIndex": relation.sentence_index,
-            "relation": format!("{:?}", relation.relation),
-            "relationSpan": relation.relation_span,
-            "subject": relation.subject,
-            "subjectSpan": relation.subject_span,
-            "object": relation.object,
-            "objectSpan": relation.object_span,
-            "confidence": relation.confidence
-        })).collect::<Vec<_>>(),
-        "events": analysis.events.into_iter().map(|event| serde_json::json!({
-            "sentenceIndex": event.sentence_index,
-            "predicate": event.predicate,
-            "predicateSpan": event.predicate_span,
-            "lemma": event.lemma,
-            "relationType": format!("{:?}", event.relation_type),
-            "confidence": event.confidence,
-            "arguments": event.arguments.into_iter().map(|argument| serde_json::json!({
-                "role": argument.role,
-                "text": argument.text,
-                "span": argument.span,
-                "confidence": argument.confidence
-            })).collect::<Vec<_>>()
         })).collect::<Vec<_>>()
     }))
 }
@@ -216,10 +190,24 @@ fn analyze_request(request: &AnalyzeRequest) -> Result<LinguisticAnalysis, Strin
         config.options.processing.language = Some(language.clone());
         config.options.language_detection.sentence_level = false;
     }
-    config.options.entity_recognition = crate::EntityRecognitionOptions::heuristic();
+    ensure_models_available()?;
     TextNlpPipeline::new(config)
         .analyze_text(&request.text)
         .map_err(|error| error.to_string())
+}
+
+/// Named entities, morphology and dependency syntax need the Candle models; a build
+/// without them fails up front instead of returning heuristic or empty layers.
+fn ensure_models_available() -> Result<(), String> {
+    if crate::local_models_compiled() {
+        return Ok(());
+    }
+    Err(runtime_core::SurfaceError::missing_dependency(
+        Some("linguistics.analyze"),
+        "linguistic models",
+        "named entities, morphology and dependency syntax need the NER and UD models: build text-linguistics with the `candle` and `model-bundles` features and provide the model bundles; no heuristic fallback exists",
+    )
+    .to_error_string())
 }
 
 fn analysis_projection(analysis: LinguisticAnalysis) -> serde_json::Value {
@@ -345,14 +333,19 @@ mod tests {
         assert!(ids.contains(&"linguistics.language".to_string()));
     }
 
+    #[cfg(not(all(feature = "candle", feature = "model-bundles")))]
     #[test]
-    fn analyze_operation_returns_language_and_entities() {
-        let response = run_surface_operation(SurfaceRequest {
-            operation: OperationId::new("linguistics.analyze"),
-            input: serde_json::json!({"text": "Alice presented the tokenizer roadmap in Berlin.", "profile": "fast"}),
-        }).expect("analyze");
-        assert_eq!(response.value["language"]["primary"]["language"], "en");
-        assert!(!response.value["tokens"].as_array().unwrap().is_empty());
+    fn analysis_operations_require_models() {
+        for operation in ["linguistics.analyze", "linguistics.entities"] {
+            let error = run_surface_operation(SurfaceRequest {
+                operation: OperationId::new(operation),
+                input: serde_json::json!({"text": "Alice presented the tokenizer roadmap in Berlin.", "profile": "fast"}),
+            })
+            .expect_err("no models in this build");
+            let error = runtime_core::parse_surface_error(&error).expect("typed error");
+            assert_eq!(error.code, "missing_dependency");
+            assert_eq!(error.details["dependency"], "linguistic models");
+        }
     }
 
     #[test]

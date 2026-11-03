@@ -1,7 +1,21 @@
 use text_analysis::semantic::{
-    analyze_word_senses, SemanticAnalysisOptions, SemanticCorpusItem,
+    analyze_word_senses_with, SemanticAnalysisOptions, SemanticCorpusItem,
     SemanticWordSenseAnalysisOptions,
 };
+
+/// The hashed fixture stands in for an embedding model so the test is deterministic.
+fn analyze_word_senses(
+    target: &str,
+    items: &[SemanticCorpusItem<'_>],
+    options: &SemanticWordSenseAnalysisOptions,
+) -> text_core::Result<text_analysis::semantic::SemanticWordSenseReport> {
+    analyze_word_senses_with(
+        target,
+        items,
+        options,
+        &text_embeddings::testing::HashedFixtureEmbedder::default(),
+    )
+}
 
 fn strict_options() -> SemanticWordSenseAnalysisOptions {
     SemanticWordSenseAnalysisOptions {

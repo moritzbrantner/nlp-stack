@@ -14,13 +14,12 @@ pub use corpus::analyze_corpus;
 pub use document::{analyze_document, analyze_text};
 pub use fingerprint::{shingle_hamming_distance, simhash64, DocumentSimilarityPair};
 pub use semantic::{
-    analyze_conversation_semantics, analyze_conversation_semantics_with,
-    analyze_document_semantics, analyze_document_semantics_with, compare_semantic_neighborhoods,
-    compose_linguistic_semantic_graph, interpret_semantic_report, ConceptAdoption, ConceptHandoff,
-    ConceptIntroduction, ConversationSemanticDynamics, ConversationSemanticThread,
-    ConversationSemanticThreadSegment, ConversationThreadInterleaving, ConversationTurn,
-    RecurringConcept, SemanticAnalysisOptions, SemanticAnalysisReport, SemanticCluster,
-    SemanticConceptInterpretation, SemanticConceptInterpretationContent,
+    analyze_conversation_semantics_with, analyze_document_semantics_with,
+    compare_semantic_neighborhoods, compose_linguistic_semantic_graph, interpret_semantic_report,
+    ConceptAdoption, ConceptHandoff, ConceptIntroduction, ConversationSemanticDynamics,
+    ConversationSemanticThread, ConversationSemanticThreadSegment, ConversationThreadInterleaving,
+    ConversationTurn, RecurringConcept, SemanticAnalysisOptions, SemanticAnalysisReport,
+    SemanticCluster, SemanticConceptInterpretation, SemanticConceptInterpretationContent,
     SemanticConceptInterpretationRequest, SemanticGraphEdge, SemanticGraphEdgeKind,
     SemanticGraphNode, SemanticGraphNodeKind, SemanticHotspot, SemanticInterpretationBackend,
     SemanticInterpretationMetadata, SemanticInterpretationReport, SemanticLinguisticGraph,
@@ -56,9 +55,12 @@ pub enum AnalysisProfile {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LinguisticDepth {
     Off,
-    HeuristicFast,
-    HeuristicBalanced,
-    HeuristicRich,
+    /// Only the model-free linguistic operations (language detection, sentence
+    /// segmentation, tokenization). Named entities, morphology, POS and dependency
+    /// syntax are reported as unsupported per sentence; nothing heuristic fills them.
+    ModelFree,
+    /// The local NER and UD models. Fails (as a `linguistics_unavailable`
+    /// diagnostic) when they cannot be loaded; there is no heuristic fallback.
     LocalModel {
         bundle_dir: PathBuf,
         auto_download: bool,
@@ -69,10 +71,6 @@ pub enum LinguisticDepth {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EmbeddingDepth {
     Off,
-    Hashed {
-        dimensions: usize,
-        use_idf: bool,
-    },
     CandleBundle {
         bundle_dir: PathBuf,
         pooling: PoolingStrategy,
@@ -87,7 +85,6 @@ pub enum EmbeddingDepth {
 #[serde(rename_all = "camelCase")]
 pub enum ClassificationDepth {
     Off,
-    LexicalFallback,
     Imported,
     Backend,
 }
@@ -122,11 +119,12 @@ impl Default for DocumentAnalysisOptions {
             ngram_sizes: vec![2, 3],
             shingle_sizes: vec![3, 5],
             include_annotation_graph: true,
-            linguistic_depth: LinguisticDepth::HeuristicBalanced,
-            embedding_depth: EmbeddingDepth::Hashed {
-                dimensions: 128,
-                use_idf: false,
+            linguistic_depth: LinguisticDepth::LocalModel {
+                bundle_dir: PathBuf::from(".model-runtime"),
+                auto_download: false,
+                download_progress: false,
             },
+            embedding_depth: EmbeddingDepth::Off,
             include_sparse_embedding: false,
             classification_depth: ClassificationDepth::Off,
             classification_local_model: None,
@@ -198,13 +196,7 @@ pub struct CorpusAnalysisOptions {
 
 impl Default for CorpusAnalysisOptions {
     fn default() -> Self {
-        let document = DocumentAnalysisOptions {
-            embedding_depth: EmbeddingDepth::Hashed {
-                dimensions: 128,
-                use_idf: true,
-            },
-            ..DocumentAnalysisOptions::default()
-        };
+        let document = DocumentAnalysisOptions::default();
         Self {
             document,
             query: None,
@@ -436,16 +428,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_options_enable_deterministic_sections() {
+    fn default_options_request_models_and_no_hashed_embeddings() {
         let options = DocumentAnalysisOptions::default();
         assert_eq!(options.profile, AnalysisProfile::Deterministic);
-        assert!(matches!(
-            options.embedding_depth,
-            EmbeddingDepth::Hashed { .. }
-        ));
+        assert_eq!(options.embedding_depth, EmbeddingDepth::Off);
         assert!(matches!(
             options.linguistic_depth,
-            LinguisticDepth::HeuristicBalanced
+            LinguisticDepth::LocalModel {
+                auto_download: false,
+                ..
+            }
         ));
     }
 }

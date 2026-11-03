@@ -130,8 +130,8 @@ impl ReportingEvidence {
 /// Reads nested reporting and belief constructions from `analysis`.
 ///
 /// Only sentences whose dependency trees come from a UD-trained model
-/// ([`OperationSupport::Supported`]) are read; heuristic trees do not mark clausal
-/// complements, so those sentences are reported as unsupported rather than read.
+/// ([`OperationSupport::Supported`]) are read; every other sentence reports the
+/// dependency layer's reason (no model, not requested, undecided language).
 pub fn reporting_constructions(analysis: &LinguisticAnalysis) -> ReportingEvidence {
     let mut constructions = Vec::new();
     let mut sentences = Vec::new();
@@ -144,11 +144,7 @@ pub fn reporting_constructions(analysis: &LinguisticAnalysis) -> ReportingEviden
             reason: String::new(),
             construction_count: 0,
         };
-        match ud_sentence(
-            analysis,
-            routed,
-            "does not mark clausal complements; reporting needs a UD dependency model",
-        ) {
+        match ud_sentence(analysis, routed) {
             Ok(parsed) => {
                 if lexicon(parsed.language).is_none() {
                     sentence_report.support = OperationSupport::Unsupported;
@@ -195,11 +191,9 @@ pub(crate) struct UdSentence<'a> {
 }
 
 /// The UD-model tree of `routed`, or the support level and reason why there is none.
-/// `heuristic_gap` says what a heuristic tree lacks (`does not mark clausal complements; …`).
 pub(crate) fn ud_sentence<'a>(
     analysis: &'a LinguisticAnalysis,
     routed: &'a SentenceAnalysis,
-    heuristic_gap: &str,
 ) -> Result<UdSentence<'a>, (OperationSupport, String)> {
     let index = routed.sentence_index;
     let report = routed.operation(LinguisticOperation::DependencySyntax);
@@ -218,13 +212,6 @@ pub(crate) fn ud_sentence<'a>(
                 producer: report.producer.clone().unwrap_or_default(),
             })
         }
-        (Some(report), _, _) if report.support == OperationSupport::Partial => Err((
-            OperationSupport::Unsupported,
-            format!(
-                "dependency trees come from {}, which {heuristic_gap}",
-                report.producer.as_deref().unwrap_or("heuristics")
-            ),
-        )),
         (Some(report), _, _) => Err((
             report.support,
             format!("no dependency tree: {}", report.reason),
@@ -569,7 +556,7 @@ pub(crate) mod tests {
     use crate::syntax::{DependencyEdge, DependencyNode};
     use crate::{analyze_text, LinguisticAnalysisOptions};
 
-    /// The heuristic analysis of `text` with a hand-written UD tree standing in for
+    /// The model-free analysis of `text` with a hand-written UD tree standing in for
     /// the model parse. `arcs` are `(dependent, head, deprel)` by token text (first
     /// occurrence); `head == ""` is the root. `lemmas` are `(token, lemma)`.
     pub(crate) fn fixture(
@@ -577,7 +564,8 @@ pub(crate) mod tests {
         arcs: &[(&str, &str, &str)],
         lemmas: &[(&str, &str)],
     ) -> LinguisticAnalysis {
-        let mut analysis = analyze_text(text, &LinguisticAnalysisOptions::default()).unwrap();
+        let mut analysis =
+            analyze_text(text, &LinguisticAnalysisOptions::without_models()).unwrap();
         let index = |word: &str| {
             analysis
                 .tokens
@@ -780,9 +768,9 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn heuristic_dependencies_report_unsupported_without_constructions() {
+    fn missing_dependency_model_reports_unsupported_without_constructions() {
         let text = "Sarah reports that John believes the river is polluted.";
-        let analysis = analyze_text(text, &LinguisticAnalysisOptions::default()).unwrap();
+        let analysis = analyze_text(text, &LinguisticAnalysisOptions::without_models()).unwrap();
         let evidence = reporting_constructions(&analysis);
         assert!(evidence.constructions.is_empty());
         assert_eq!(evidence.sentences.len(), 1);

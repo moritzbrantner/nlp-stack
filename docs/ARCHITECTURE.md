@@ -93,7 +93,9 @@ Errors are capability-local and typed. `text-core` must not re-export a media-wi
 
 Capabilities use generic foundation facilities such as `model-runtime` and `runtime-onnx` directly and own their task-specific tokenizer/model glue. Shared NLP runtime helpers should be extracted only after real duplication demonstrates a stable common seam.
 
-Semantic requests are backend-neutral. Model/backend/device/download/cache/retry credentials and resource policy live in a separate execution configuration or context. The same semantic request contract should work with heuristics, local models, ONNX, Candle, imported predictions, or future remote execution.
+Semantic requests are backend-neutral. Model/backend/device/download/cache/retry credentials and resource policy live in a separate execution configuration or context. The same semantic request contract should work with local models, ONNX, Candle, imported predictions, or future remote execution.
+
+**No heuristic fallbacks (owner decision 2026-11-03, #186: "no heuristic fallbacks at all, fail if no model"):** no capability substitutes heuristic output for model-grade semantics (NER, POS, morphology, syntax, coreference, events/relations, semantic embeddings, QA answers). Without a model the operation fails with a typed error or reports an explicit unsupported state that names the missing model. Deterministic test fixtures (`text_embeddings::testing::HashedFixtureEmbedder`) are explicitly named and never a production default. Exact rule-based operations (tokenization, sentence segmentation, lexical/BM25 search, exact and fuzzy matching) are not heuristic stand-ins and remain.
 
 Backend packaging is hybrid. Lightweight/default implementations may live with the semantic capability. Heavy backends may become separate implementation crates when dependency weight, compile time, platform constraints, or independent release lifecycle creates actual pressure. Do not pre-split every backend.
 

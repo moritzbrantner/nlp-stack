@@ -26,12 +26,12 @@ const sentences: {
     name: "Sentence 1: English (en)",
     text: "Sarah says John is late.",
     bytes: "0–24",
-    statuses: ["Supported", "Supported", "Supported", "Supported", "Partial", "Partial", "Partial"],
+    statuses: ["Supported", "Supported", "Supported", "Supported", "Rust only", "Rust only", "Rust only"],
     evidence: {
       "Language detection": /detected \(en 0\.\d\d/,
       Tokenization: /5 tokens/,
       "Named entities": /distilbert-base-multilingual-cased-ner-hrl@c2a4dbf5 \(browser\) · 2 entities/,
-      "Part of speech": /heuristic:english-rules · English rules; unscored/,
+      "Part of speech": /English UD model .* runs only in the native Rust library/,
     },
   },
   {
@@ -110,8 +110,9 @@ test("analyzes each en/de/es sentence in its own language and reports unsupporte
   await expect(page.getByRole("cell", { name: "Lyon", exact: true })).toHaveCount(0);
 });
 
-// Nested reporting (#113) needs a UD dependency parse. The Pages analysis only has
-// English heuristic trees, so the section says so instead of guessing a structure.
+// Nested reporting (#113) needs a UD dependency parse. The Pages analysis runs no
+// dependency model (and no heuristic stand-in), so the section says so instead of
+// guessing a structure.
 test("reports nested reporting evidence as unsupported without a UD dependency parse", async ({ page }) => {
   await page.goto("/");
   await page.getByLabel("Text to analyze").fill("Sarah reports that John believes the river is polluted.");
@@ -122,7 +123,7 @@ test("reports nested reporting evidence as unsupported without a UD dependency p
   await expect(card).toBeVisible({ timeout: 30_000 });
   const reporting = card.getByLabel("Reported speech and belief");
   await expect(reporting).toContainText("Unsupported");
-  await expect(reporting).toContainText(/heuristic:english-rules, which does not mark clausal complements/);
+  await expect(reporting).toContainText(/no dependency tree: not requested/);
   await expect(reporting.getByRole("listitem")).toHaveCount(0);
   await expect(page.getByText(/Sarah\s+—\s+believes/)).toHaveCount(0);
 });
@@ -143,7 +144,7 @@ test("reports negation, uncertainty and conditional scope as unsupported without
     await expect(card).toBeVisible({ timeout: 30_000 });
     const scope = card.getByLabel("Negation, uncertainty and conditionals");
     await expect(scope).toContainText("Unsupported");
-    await expect(scope).toContainText(/heuristic:english-rules, which does not attach negation, modal and conditional cues/);
+    await expect(scope).toContainText(/no dependency tree: not requested/);
     await expect(scope.getByRole("listitem")).toHaveCount(0);
   }
   await expect(page.getByText(/negation operator/)).toHaveCount(0);

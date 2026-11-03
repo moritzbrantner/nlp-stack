@@ -36,32 +36,30 @@ const packageAppConfig: PackageAppConfig = {
       id: "embed",
       label: "Embed transcript passages",
       operation: "embeddings.embed",
-      description: "Build deterministic hashed embeddings.",
+      description: "Embed text with a configured embedding model; without one the operation reports model required.",
       input: {
         texts: [
           "Rust text analysis extracts transcript evidence for editors.",
-          "Semantic search ranks captions by deterministic hashed embeddings.",
+          "Semantic search ranks captions by learned sentence embeddings.",
           "Scene notes and subtitles can share a reusable vector space.",
         ],
-        dimensions: 96,
       },
     },
     {
       id: "similarity",
       label: "Compare semantic similarity",
       operation: "embeddings.similarity",
-      description: "Compare two passages with deterministic hashed vectors.",
+      description: "Compare two passages with a configured embedding model; without one the operation reports model required.",
       input: {
-        left: "Rust packages rank transcript search results with hashed embeddings.",
+        left: "Rust packages rank transcript search results with sentence embeddings.",
         right: "Caption retrieval uses deterministic vectors to compare related text.",
-        dimensions: 96,
       },
     },
     {
       id: "semantic-search",
       label: "Search caption corpus",
       operation: "embeddings.semanticSearch",
-      description: "Search a transient hashed semantic index.",
+      description: "Search with a configured embedding model; without one the operation reports model required.",
       input: {
         documents: [
           { id: "doc-1", text: "Rust text analysis extracts transcript keywords and entities." },
@@ -70,7 +68,6 @@ const packageAppConfig: PackageAppConfig = {
         ],
         query: "transcript semantic search",
         topK: 3,
-        dimensions: 96,
       },
     },
     {
@@ -89,37 +86,19 @@ const packageAppConfig: PackageAppConfig = {
       id: "backends",
       label: "Inspect backend catalog",
       operation: "embeddings.backends",
-      description: "List deterministic and feature-gated embedding backends without loading models.",
-      input: {
-        dimensions: 128,
-      },
+      description: "List feature-gated embedding model backends without loading models.",
+      input: {},
     },
   ],
   benchmarkScenarios: [
     {
-      id: "hashed-embed",
-      label: "Hashed Embed",
-      operation: "embeddings.embed",
-      input: { texts: ["rust text analysis", "semantic transcript retrieval", "video scene reports"], dimensions: 128 },
+      id: "related-terms",
+      label: "Related Terms",
+      operation: "embeddings.relatedTerms",
+      input: { text: "rust text analysis supports transcript search text embeddings", term: "text" },
       iterations: 80,
       warmupIterations: 5,
-      outputCountPath: ["embeddings"],
-    },
-    {
-      id: "semantic-search",
-      label: "Semantic Search",
-      operation: "embeddings.semanticSearch",
-      input: {
-        documents: [
-          { id: "doc-1", text: "rust text analysis" },
-          { id: "doc-2", text: "semantic search over transcripts" },
-          { id: "doc-3", text: "video scene boundary reports" },
-        ],
-        query: "text search",
-      },
-      iterations: 60,
-      warmupIterations: 5,
-      outputCountPath: ["results"],
+      outputCountPath: ["relatedTerms"],
     },
   ],
   resultTabs: createTextResultTabs({
@@ -130,14 +109,14 @@ const packageAppConfig: PackageAppConfig = {
         summaryFields: ["embeddingCount", "dimensions"],
         listFields: ["embeddings"],
         objectFields: ["model"],
-        explanation: () => "The deterministic hashed embedder converted each input text into a fixed-size vector that can run in WASM or on the overview server.",
+        explanation: () => "The configured embedding model converted each input text into a fixed-size vector.",
       },
       "embeddings.backends": {
         title: "Embedding backends",
         summaryFields: ["defaultBackend", "backendCount"],
         listFields: ["backends"],
         objectFields: ["result"],
-        explanation: () => "The backend catalog shows the always-available hashed backend and feature-gated native backends without loading model bundles.",
+        explanation: () => "The backend catalog shows the feature-gated native embedding backends without loading model bundles; none is available by default.",
       },
       "embeddings.similarity": {
         title: "Embedding similarity",

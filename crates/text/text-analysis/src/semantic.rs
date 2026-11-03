@@ -12,8 +12,7 @@ mod units;
 use std::collections::BTreeSet;
 
 use text_core::{Result, TextDocument};
-use text_embeddings::{HashedTextEmbedder, TextEmbeddingBackend, TextEmbeddingConfig};
-use text_lexical::CorpusOptions;
+use text_embeddings::TextEmbeddingBackend;
 
 use crate::invalid_argument;
 
@@ -21,10 +20,9 @@ use self::derive::build_report;
 use self::units::{conversation_units, document_units};
 
 pub use self::corpus::{
-    analyze_corpus_semantics, analyze_corpus_semantics_with, SemanticCorpusAnalysisOptions,
-    SemanticCorpusAuthorProfile, SemanticCorpusConceptEvidence, SemanticCorpusItem,
-    SemanticCorpusLexicalProfile, SemanticCorpusPassage, SemanticCorpusReport,
-    SemanticCorpusSource,
+    analyze_corpus_semantics_with, SemanticCorpusAnalysisOptions, SemanticCorpusAuthorProfile,
+    SemanticCorpusConceptEvidence, SemanticCorpusItem, SemanticCorpusLexicalProfile,
+    SemanticCorpusPassage, SemanticCorpusReport, SemanticCorpusSource,
 };
 pub use self::interpretation::{
     interpret_semantic_report, SemanticConceptInterpretation, SemanticConceptInterpretationContent,
@@ -44,24 +42,9 @@ pub use self::model::{
 };
 pub use self::scaling::{compare_semantic_neighborhoods, SemanticNeighborhoodEvidence};
 pub use self::senses::{
-    analyze_word_senses, analyze_word_senses_with, SemanticWordOccurrence, SemanticWordSense,
+    analyze_word_senses_with, SemanticWordOccurrence, SemanticWordSense,
     SemanticWordSenseAnalysisOptions, SemanticWordSenseReport,
 };
-
-/// Analyzes one document with the deterministic hashed embedding baseline.
-pub fn analyze_document_semantics(
-    document: &TextDocument<'_>,
-    options: &SemanticAnalysisOptions,
-) -> Result<SemanticAnalysisReport> {
-    let embedder = HashedTextEmbedder::new(
-        TextEmbeddingConfig {
-            dimensions: 128,
-            use_idf: false,
-        },
-        CorpusOptions::default(),
-    )?;
-    analyze_document_semantics_with(document, options, &embedder)
-}
 
 /// Analyzes one document with a caller-supplied embedding backend.
 pub fn analyze_document_semantics_with<E: TextEmbeddingBackend + ?Sized>(
@@ -81,21 +64,6 @@ pub fn analyze_document_semantics_with<E: TextEmbeddingBackend + ?Sized>(
         options,
         embedder,
     )
-}
-
-/// Analyzes an ordered conversation with the deterministic hashed embedding baseline.
-pub fn analyze_conversation_semantics(
-    turns: &[ConversationTurn<'_>],
-    options: &SemanticAnalysisOptions,
-) -> Result<SemanticAnalysisReport> {
-    let embedder = HashedTextEmbedder::new(
-        TextEmbeddingConfig {
-            dimensions: 128,
-            use_idf: false,
-        },
-        CorpusOptions::default(),
-    )?;
-    analyze_conversation_semantics_with(turns, options, &embedder)
 }
 
 /// Analyzes an ordered conversation with a caller-supplied embedding backend.

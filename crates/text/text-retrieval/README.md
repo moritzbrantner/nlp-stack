@@ -10,7 +10,7 @@ closure.
 For the high-level text workflow, see
 [`docs/TEXT_WORKSPACE_GUIDE.md`](../../../docs/TEXT_WORKSPACE_GUIDE.md). For a
 lower-level walkthrough of how `RetrievalIndex` relates to `TextCorpus`, lexical
-scoring, hashed semantic search, and corpus analysis reports, see
+scoring, model-backed semantic search, and corpus analysis reports, see
 [`docs/TEXT_CORPUS_GUIDE.md`](../../../docs/TEXT_CORPUS_GUIDE.md).
 
 ## Highlights

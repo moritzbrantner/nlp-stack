@@ -5,17 +5,20 @@ for `moritzbrantner-video-analysis`.
 
 Model download and bundle handling belong to `moritzbrantner-model-runtime`; this crate owns
 the text-facing request/response types, imported prediction handling, and
-deterministic fallback behavior.
+local model execution.
 
 ## Stable contract
 
 The stable surface is task selection, model catalog metadata, request/response
-DTOs, imported prediction postprocessing, explicit fallback policies, and
-runtime broker traits supplied by callers.
+DTOs, imported prediction postprocessing, local models, and runtime broker
+traits supplied by callers.
 
 ## Quality and limits
 
-Default classification and sentiment fallbacks are deterministic heuristics.
+There are no heuristic fallbacks: without imported predictions, a caller
+backend or a local model, classification, sentiment and zero-shot requests fail
+with `missing_model`. The former `fast_fallback`/`lexical_fallback` policies were
+removed (#186).
 Catalog entries that are not `loadable` are reference metadata, not runnable
 native models.
 
@@ -35,7 +38,7 @@ ORT_DYLIB_PATH …` error, not a hang.
 ## Package surface
 
 - Primary workflow: `classification.classify` runs imported-prediction or
-  explicit lexical fallback text classification.
+  local-model text classification and fails without a model.
 - Workflow operations: `classification.classify`, `classification.sentiment`,
   and `classification.zeroShot`.
 - Debug operations: `classification.models` inspects the model catalog, and

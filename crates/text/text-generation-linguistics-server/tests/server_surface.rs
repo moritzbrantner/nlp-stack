@@ -12,8 +12,11 @@ fn run_endpoint_calls_library_surface() {
         "/api/run",
         r#"{"operation":"generationLinguistics.synthesizeFromAnalysis","input":{"id":"analysis-doc","text":"Alice presented the tokenizer roadmap in Berlin."}}"#,
     );
-    assert_eq!(response.status_code, 200);
-    assert!(response
-        .body
-        .contains("generationLinguistics.synthesizeFromAnalysis"));
+    // The analysis needs the linguistic models, which this build does not include.
+    assert_ne!(response.status_code, 200);
+    assert!(
+        response.body.contains("missing_dependency"),
+        "{}",
+        response.body
+    );
 }

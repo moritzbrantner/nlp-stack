@@ -1,10 +1,14 @@
 # text-embeddings
 
-Lightweight semantic text embeddings and search for `moritzbrantner-video-analysis`.
+Text embedding backends (ONNX, Candle), embedding search helpers and
+co-occurrence statistics.
 
-Default builds use deterministic hashed/local embedding behavior. Native model
-execution and tokenizer-backed model support are opt-in through explicit feature
-flags.
+There is no default embedding backend: callers supply a real
+`TextEmbeddingBackend`. Native model execution and tokenizer-backed model support
+are opt-in through explicit feature flags. The deterministic feature-hashing
+embedder lives in `testing` as `HashedFixtureEmbedder` for tests that need
+reproducible vectors; it is not a semantic model and never a production default
+(#186).
 
 ## Feature flags
 
@@ -15,47 +19,41 @@ flags.
 
 ## Stable contract
 
-The stable surface is `TextEmbeddingBackend`, deterministic hashed embeddings,
-embedding metadata, vector search helpers, and backend catalog reporting.
-Default package operations use hashed embeddings only.
+The stable surface is `TextEmbeddingBackend`, embedding metadata, vector search
+helpers (`EmbeddingSearchIndex<E>`, `text_similarity`), `NoEmbedder` for
+model-free indexes, and backend catalog reporting. The package surface cannot
+load a model, so `embeddings.embed`, `embeddings.similarity` and
+`embeddings.semanticSearch` fail with a `missing_dependency` error.
 
 ## Quality and limits
 
-Hashed vectors are reproducible interoperability baselines, not production
-semantic embedding quality claims. Native ONNX and Candle embeddings remain
-feature-gated and setup-dependent.
+Native ONNX and Candle embeddings are feature-gated and setup-dependent.
+`testing::HashedFixtureEmbedder` vectors measure term overlap only.
 
 ## Example
 
 ```rust,no_run
-use text_lexical::CorpusOptions;
-use text_embeddings::{HashedTextEmbedder, SemanticTextIndex, TextEmbeddingConfig};
+use text_embeddings::{EmbeddingSearchIndex, TextEmbeddingBackend};
 
-let embedder = HashedTextEmbedder::new(
-    TextEmbeddingConfig {
-        dimensions: 128,
-        use_idf: true,
-    },
-    CorpusOptions::default(),
-) .unwrap();
-let mut index = SemanticTextIndex::new(embedder);
-
-index.add_document("scene-1", "opening scene with presenter").unwrap();
-let matches = index.search("presenter on screen", 5).unwrap();
-
-assert_eq!(matches[0].metadata.model_name.as_deref(), Some("hashed-text-embedder"));
+fn search(embedder: impl TextEmbeddingBackend) {
+    let mut index = EmbeddingSearchIndex::new(embedder);
+    index.add_document("scene-1", "opening scene with presenter").unwrap();
+    let matches = index.search("presenter on screen", 5).unwrap();
+    assert_eq!(matches[0].id, "scene-1");
+}
 ```
 
 ## Package surface
 
-- Primary workflow: `embeddings.embed` builds deterministic hashed embeddings.
+- Primary workflow: `embeddings.embed`, which needs a configured embedding model
+  and otherwise fails with `missing_dependency`.
 - Workflow operations: `embeddings.embed`, `embeddings.similarity`,
   `embeddings.semanticSearch`, and `embeddings.relatedTerms`.
 - Debug operations: `embeddings.backends` inspects backend catalog metadata, and
   `describe` inspects package metadata and operation support.
-- Runtime support: default package-surface operations are pure Rust and
-  available through library, CLI, server, and WASM wrappers; tokenizer, ONNX, and
-  Candle runtime paths remain opt-in library features.
+- Runtime support: `embeddings.relatedTerms` and `embeddings.backends` are pure
+  Rust everywhere; tokenizer, ONNX, and Candle runtime paths remain opt-in library
+  features.
 - Sample output includes `title`, `message`, `summary`, `result`, and
   operation-specific fields such as `embeddings`, `similarity`, `results`, or
   `relatedTerms`.
@@ -65,9 +63,9 @@ assert_eq!(matches[0].metadata.model_name.as_deref(), Some("hashed-text-embedder
 
 ## Model Loading
 
-The catalog treats hashed embeddings as the default loadable path. MiniLM Candle
-and ONNX entries are loadable only when the matching `.model-runtime` bundles
-exist and the crate is built with `candle` or `onnx` plus `model-bundles`.
+The catalog has no default loadable backend. MiniLM Candle and ONNX entries are
+loadable only when the matching `.model-runtime` bundles exist and the crate is
+built with `candle` or `onnx` plus `model-bundles`.
 
 `CandleTextEmbedder::from_bundle` (or `from_bundle_on` for an explicit device)
 loads the weights and parses the tokenizer once; every later call reuses them,

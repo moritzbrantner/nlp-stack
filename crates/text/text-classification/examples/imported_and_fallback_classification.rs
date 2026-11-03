@@ -7,10 +7,10 @@ fn main() {
         input: serde_json::json!({
             "text": "Rust text workflows are reliable.",
             "labels": ["positive", "negative"],
-            "model": {"fallbackPolicy": "lexical_fallback"}
+            "importedPredictions": [{"label": "positive", "score": 0.9}, {"label": "negative", "score": 0.1}]
         }),
     })
-    .expect("fallback classification");
+    .expect("imported classification");
 
     println!("{}", serde_json::to_string_pretty(&response.value).unwrap());
 }

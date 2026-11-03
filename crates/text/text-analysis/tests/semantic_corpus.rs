@@ -1,8 +1,20 @@
 use text_analysis::semantic::{
-    analyze_corpus_semantics, analyze_corpus_semantics_with, SemanticAnalysisOptions,
-    SemanticCorpusAnalysisOptions, SemanticCorpusItem, SemanticUnitKind,
+    analyze_corpus_semantics_with, SemanticAnalysisOptions, SemanticCorpusAnalysisOptions,
+    SemanticCorpusItem, SemanticUnitKind,
 };
 use text_embeddings::{DenseVector, TextEmbeddingBackend};
+
+/// The hashed fixture stands in for an embedding model so the test is deterministic.
+fn analyze_corpus_semantics(
+    items: &[SemanticCorpusItem<'_>],
+    options: &SemanticCorpusAnalysisOptions,
+) -> text_core::Result<text_analysis::semantic::SemanticCorpusReport> {
+    analyze_corpus_semantics_with(
+        items,
+        options,
+        &text_embeddings::testing::HashedFixtureEmbedder::default(),
+    )
+}
 
 fn strict_options() -> SemanticCorpusAnalysisOptions {
     SemanticCorpusAnalysisOptions {
@@ -48,9 +60,9 @@ fn corpus_profiles_aggregate_lexical_and_semantic_evidence_by_author() {
     assert_eq!(report.semantic.clusters.len(), 2);
     assert_eq!(
         report.semantic.embedding_model.model_name,
-        "hashed-tfidf-sentence-baseline"
+        "hashed-fixture-embedder"
     );
-    assert_eq!(report.semantic.embedding_model.dimensions, 512);
+    assert_eq!(report.semantic.embedding_model.dimensions, 128);
 
     let alice = report
         .authors

@@ -2,8 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 use text_core::{split_sentence_spans, tokenize, Result, TextSpan, TokenKind};
-use text_embeddings::{HashedTextEmbedder, TextEmbeddingBackend, TextEmbeddingConfig};
-use text_lexical::CorpusOptions;
+use text_embeddings::TextEmbeddingBackend;
 
 use crate::invalid_argument;
 
@@ -57,22 +56,6 @@ pub struct SemanticWordSenseReport {
     pub senses: Vec<SemanticWordSense>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub semantic: Option<SemanticAnalysisReport>,
-}
-
-/// Clusters sentence contexts for every occurrence of `target` with the deterministic hashed baseline.
-pub fn analyze_word_senses(
-    target: &str,
-    items: &[SemanticCorpusItem<'_>],
-    options: &SemanticWordSenseAnalysisOptions,
-) -> Result<SemanticWordSenseReport> {
-    let embedder = HashedTextEmbedder::new(
-        TextEmbeddingConfig {
-            dimensions: 128,
-            use_idf: false,
-        },
-        CorpusOptions::default(),
-    )?;
-    analyze_word_senses_with(target, items, options, &embedder)
 }
 
 /// Clusters sentence contexts for every occurrence of `target` with a caller-supplied embedder.

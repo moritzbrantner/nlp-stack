@@ -3,15 +3,16 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use text_core::TextSourceRef;
-use text_embeddings::{HashedTextEmbedder, TextEmbeddingConfig};
+use text_embeddings::testing::HashedFixtureEmbedder;
+use text_embeddings::TextEmbeddingConfig;
 use text_index::{
     IndexBuildOptions, IndexDocument, IndexFilter, IndexQuery, MemoryIndexStore, SemanticFacet,
     SemanticFacetFilter, SqliteIndexStore, TextIndex, TextIndexStore,
 };
 use text_lexical::CorpusOptions;
 
-fn embedder() -> HashedTextEmbedder {
-    HashedTextEmbedder::new(
+fn embedder() -> HashedFixtureEmbedder {
+    HashedFixtureEmbedder::new(
         TextEmbeddingConfig {
             dimensions: 32,
             use_idf: false,

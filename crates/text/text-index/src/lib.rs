@@ -13,9 +13,8 @@ use text_core::{
     TextProcessingOptions, TextProvenance, TextSegmentContract, TextSourceRef, TextSpan,
     TimestampContract, TokenKind,
 };
-use text_embeddings::{
-    DenseVector, EmbeddingModelInfo, HashedTextEmbedder, TextEmbedderBackend, TextEmbeddingConfig,
-};
+pub use text_embeddings::NoEmbedder;
+use text_embeddings::{DenseVector, EmbeddingModelInfo, TextEmbedderBackend, TextEmbeddingBackend};
 use text_lexical::{Bm25Corpus, Bm25Options, CorpusOptions, TextCorpus, TextCorpusDocument};
 use thiserror::Error;
 use vector_analysis_index::{
@@ -37,6 +36,11 @@ pub enum TextIndexError {
     Sqlite(#[from] rusqlite::Error),
     #[error(transparent)]
     Core(#[from] DetectError),
+    /// Semantic or hybrid search on an index that was built without an embedding
+    /// model. There is no heuristic embedding fallback; use lexical search or build
+    /// the index with a real embedder.
+    #[error("{mode:?} search requires an embedding model; this index was built lexical-only")]
+    EmbeddingModelRequired { mode: IndexSearchMode },
 }
 
 pub type Result<T> = std::result::Result<T, TextIndexError>;
@@ -561,34 +565,40 @@ impl TextIndexStore for MemoryIndexStore {
 
 #[derive(Debug, Clone)]
 pub struct TextIndex<B, S> {
-    embedder: B,
+    embedder: Option<B>,
     store: S,
     options: IndexBuildOptions,
     corpus_options: CorpusOptions,
     bm25_options: Bm25Options,
 }
 
-pub type MemoryTextIndex<B = HashedTextEmbedder> = TextIndex<B, MemoryIndexStore>;
+pub type MemoryTextIndex<B> = TextIndex<B, MemoryIndexStore>;
 #[cfg(feature = "sqlite")]
-pub type SqliteTextIndex<B = HashedTextEmbedder> = TextIndex<B, SqliteIndexStore>;
+pub type SqliteTextIndex<B> = TextIndex<B, SqliteIndexStore>;
+/// An index without an embedding model: lexical search only.
+pub type LexicalTextIndex<S> = TextIndex<NoEmbedder, S>;
 
-impl MemoryTextIndex<HashedTextEmbedder> {
-    pub fn new_memory() -> Result<Self> {
-        let corpus_options = CorpusOptions::default();
-        let embedder = HashedTextEmbedder::new(
-            TextEmbeddingConfig {
-                dimensions: 128,
-                use_idf: false,
-            },
-            corpus_options.clone(),
-        )
-        .map_err(TextIndexError::Core)?;
-        Ok(TextIndex::with_store(embedder, MemoryIndexStore::new()))
+impl<S: TextIndexStore> TextIndex<NoEmbedder, S> {
+    /// An index that stores no vectors and answers only lexical queries. Semantic
+    /// and hybrid queries fail with [`TextIndexError::EmbeddingModelRequired`].
+    pub fn lexical_only(store: S) -> Self {
+        Self::from_parts(None, store)
+    }
+}
+
+impl MemoryTextIndex<NoEmbedder> {
+    /// A lexical-only in-memory index.
+    pub fn lexical_memory() -> Self {
+        Self::lexical_only(MemoryIndexStore::new())
     }
 }
 
 impl<B: TextEmbedderBackend, S: TextIndexStore> TextIndex<B, S> {
     pub fn with_store(embedder: B, store: S) -> Self {
+        Self::from_parts(Some(embedder), store)
+    }
+
+    fn from_parts(embedder: Option<B>, store: S) -> Self {
         Self {
             embedder,
             store,
@@ -611,8 +621,14 @@ impl<B: TextEmbedderBackend, S: TextIndexStore> TextIndex<B, S> {
         &mut self.store
     }
 
-    pub fn embedder_info(&self) -> EmbeddingModelInfo {
-        self.embedder.model_info()
+    /// The store, for reuse by another index (for example a lexical-only reader).
+    pub fn into_store(self) -> S {
+        self.store
+    }
+
+    /// The embedding model, or `None` for a lexical-only index.
+    pub fn embedder_info(&self) -> Option<EmbeddingModelInfo> {
+        self.embedder.as_ref().map(TextEmbeddingBackend::model_info)
     }
 
     pub fn upsert_documents(&mut self, documents: &[IndexDocument]) -> Result<IndexMutationReport> {
@@ -635,7 +651,10 @@ impl<B: TextEmbedderBackend, S: TextIndexStore> TextIndex<B, S> {
                 total.documents_skipped += 1;
                 continue;
             }
-            let vectors = embed_chunks(&self.embedder, &chunks)?;
+            let vectors = match &self.embedder {
+                Some(embedder) => embed_chunks(embedder, &chunks)?,
+                None => Vec::new(),
+            };
             let report = self.store.upsert_document_state(
                 document.clone(),
                 chunks,
@@ -665,6 +684,11 @@ impl<B: TextEmbedderBackend, S: TextIndexStore> TextIndex<B, S> {
 
     pub fn search(&self, query: &IndexQuery) -> Result<Vec<IndexSearchResult>> {
         validate_query(query)?;
+        let embedder = match (&self.embedder, query.mode) {
+            (_, IndexSearchMode::Lexical) => None,
+            (Some(embedder), _) => Some(embedder),
+            (None, mode) => return Err(TextIndexError::EmbeddingModelRequired { mode }),
+        };
         let normalized_query = normalize_query(&query.text, &self.corpus_options.processing)?;
         let required_phrases =
             normalize_required_phrases(&query.required_phrases, &self.corpus_options.processing);
@@ -705,8 +729,8 @@ impl<B: TextEmbedderBackend, S: TextIndexStore> TextIndex<B, S> {
             BTreeMap::new()
         };
 
-        let semantic_scores = if query.mode != IndexSearchMode::Lexical {
-            let query_vector = self.embedder.embed_text(&normalized_query)?;
+        let semantic_scores = if let Some(embedder) = embedder {
+            let query_vector = embedder.embed_text(&normalized_query)?;
             vector_candidates(&vectors, &chunks, query_vector.as_slice(), limit)?
         } else {
             BTreeMap::new()
@@ -1839,6 +1863,7 @@ fn fts5_query(query: &str) -> String {
 mod tests {
     use super::*;
     use text_core::TextProvenance;
+    use text_embeddings::testing::HashedFixtureEmbedder;
 
     #[test]
     fn snippet_survives_length_changing_lowercase() {
@@ -1852,14 +1877,23 @@ mod tests {
         assert!(build_snippet(&long, "über").ends_with("İ über"));
     }
 
-    fn index() -> MemoryTextIndex<HashedTextEmbedder> {
-        MemoryTextIndex::new_memory()
-            .unwrap()
-            .with_options(IndexBuildOptions {
-                chunk_tokens: 8,
-                chunk_overlap_tokens: 0,
-                ..IndexBuildOptions::default()
-            })
+    fn index() -> MemoryTextIndex<HashedFixtureEmbedder> {
+        TextIndex::with_store(
+            HashedFixtureEmbedder::new(
+                text_embeddings::TextEmbeddingConfig {
+                    dimensions: 128,
+                    use_idf: false,
+                },
+                CorpusOptions::default(),
+            )
+            .unwrap(),
+            MemoryIndexStore::new(),
+        )
+        .with_options(IndexBuildOptions {
+            chunk_tokens: 8,
+            chunk_overlap_tokens: 0,
+            ..IndexBuildOptions::default()
+        })
     }
 
     #[test]

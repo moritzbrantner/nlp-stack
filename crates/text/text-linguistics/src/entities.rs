@@ -1,11 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use text_core::Result;
-use text_core::{Sentence, TextSpan, Token, TokenKind};
+use text_core::{Sentence, TextSpan, Token};
 
 use crate::local_models::{RawPrediction, SequenceLabeler};
-use crate::syntax::sentence_token_ranges;
-use crate::{DependencyRelation, DependencyTree, LemmatizationResult, PosAnnotation, PosTag};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 /// Variants describing entity type.
@@ -92,89 +90,6 @@ impl Default for EntityLinkingOptions {
     }
 }
 
-/// Returns extract named entities.
-pub fn extract_named_entities(
-    text: &str,
-    sentences: &[Sentence],
-    tokens: &[Token],
-    pos: &[PosAnnotation],
-) -> Vec<NamedEntity> {
-    let sentence_ranges = sentence_token_ranges(sentences, tokens);
-    let mut entities = Vec::new();
-    let mut next_id = 0_usize;
-
-    for (sentence_index, (start, end)) in sentence_ranges.into_iter().enumerate() {
-        let mut cursor = start;
-        while cursor < end {
-            let tag = pos
-                .get(cursor)
-                .map(|annotation| annotation.tag)
-                .unwrap_or(PosTag::X);
-            let token = &tokens[cursor];
-            if token.text.starts_with('$') && token.text[1..].chars().any(|ch| ch.is_ascii_digit())
-            {
-                entities.push(build_entity(
-                    next_id,
-                    EntityType::Amount,
-                    text,
-                    sentence_index,
-                    cursor..(cursor + 1),
-                    tokens,
-                    0.9,
-                ));
-                next_id += 1;
-                cursor += 1;
-                continue;
-            }
-            if is_date_token(token) {
-                entities.push(build_entity(
-                    next_id,
-                    EntityType::Date,
-                    text,
-                    sentence_index,
-                    cursor..(cursor + 1),
-                    tokens,
-                    0.85,
-                ));
-                next_id += 1;
-                cursor += 1;
-                continue;
-            }
-            if matches!(tag, PosTag::Propn) {
-                let start_index = cursor;
-                let mut end_index = cursor + 1;
-                while end_index < end {
-                    let next_tag = pos
-                        .get(end_index)
-                        .map(|annotation| annotation.tag)
-                        .unwrap_or(PosTag::X);
-                    if matches!(next_tag, PosTag::Propn | PosTag::Noun) {
-                        end_index += 1;
-                    } else {
-                        break;
-                    }
-                }
-                let entity_type = classify_capitalized_entity(&tokens[start_index..end_index]);
-                entities.push(build_entity(
-                    next_id,
-                    entity_type,
-                    text,
-                    sentence_index,
-                    start_index..end_index,
-                    tokens,
-                    0.7,
-                ));
-                next_id += 1;
-                cursor = end_index;
-                continue;
-            }
-            cursor += 1;
-        }
-    }
-
-    entities
-}
-
 /// Returns named entities from a model-backed BIO token labeler.
 pub fn extract_named_entities_with_labeler(
     text: &str,
@@ -257,31 +172,6 @@ pub fn named_entities_from_model_predictions(
     entities
 }
 
-/// Returns model entities plus deterministic date/amount/law rule entities not
-/// covered by the model. Heuristic person/organization guesses are never used in
-/// model mode, even when the model finds no entities.
-pub fn merge_model_and_heuristic_entities(
-    mut model_entities: Vec<NamedEntity>,
-    heuristic_entities: Vec<NamedEntity>,
-) -> Vec<NamedEntity> {
-    for entity in heuristic_entities {
-        if !matches!(
-            entity.entity_type,
-            EntityType::Date | EntityType::Amount | EntityType::Law
-        ) {
-            continue;
-        }
-        if model_entities
-            .iter()
-            .any(|model_entity| spans_overlap(model_entity.mention.span, entity.mention.span))
-        {
-            continue;
-        }
-        model_entities.push(entity);
-    }
-    model_entities
-}
-
 /// Returns canonicalize entities.
 pub fn canonicalize_entities(
     entities: &[NamedEntity],
@@ -338,7 +228,8 @@ pub struct CorefMention {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-/// Data type for coref cluster.
+/// A coreference cluster. No producer fills this yet: the heuristic resolver was
+/// removed (#186) and coreference requests fail until a model backend exists.
 pub struct CorefCluster {
     /// Identifier for this value.
     pub id: String,
@@ -348,75 +239,6 @@ pub struct CorefCluster {
     pub entity_type: Option<EntityType>,
     /// The mentions value.
     pub mentions: Vec<CorefMention>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-/// Data type for coref resolver.
-pub struct CorefResolver {
-    /// The speaker aware value.
-    pub speaker_aware: bool,
-}
-
-impl CorefResolver {
-    /// Returns resolve.
-    pub fn resolve(
-        &self,
-        tokens: &[Token],
-        canonical_entities: &[CanonicalEntity],
-    ) -> Vec<CorefCluster> {
-        let mut clusters = canonical_entities
-            .iter()
-            .map(|entity| CorefCluster {
-                id: entity.id.clone(),
-                canonical_text: entity.canonical_name.clone(),
-                entity_type: Some(entity.entity_type),
-                mentions: entity
-                    .mentions
-                    .iter()
-                    .map(|mention| CorefMention {
-                        text: mention.mention.text.clone(),
-                        sentence_index: mention.sentence_index,
-                        token_start: mention.token_start,
-                        token_end: mention.token_end,
-                        entity_type: Some(mention.entity_type),
-                        confidence: mention.confidence,
-                    })
-                    .collect(),
-            })
-            .collect::<Vec<_>>();
-
-        for (index, token) in tokens.iter().enumerate() {
-            if token.kind != TokenKind::Word {
-                continue;
-            }
-            let normalized = token.normalized.as_str();
-            let pronoun_type = match normalized {
-                "he" | "him" | "his" | "she" | "her" | "hers" | "they" | "them" | "their" => {
-                    Some(EntityType::Person)
-                }
-                "it" | "its" => Some(EntityType::Misc),
-                _ => None,
-            };
-            let Some(entity_type) = pronoun_type else {
-                continue;
-            };
-            if let Some(cluster) = clusters.iter_mut().rev().find(|cluster| {
-                cluster.entity_type == Some(entity_type)
-                    || cluster.entity_type == Some(EntityType::Organization)
-            }) {
-                cluster.mentions.push(CorefMention {
-                    text: token.text.clone(),
-                    sentence_index: 0,
-                    token_start: index,
-                    token_end: index + 1,
-                    entity_type: Some(entity_type),
-                    confidence: 0.55,
-                });
-            }
-        }
-
-        clusters
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -448,7 +270,8 @@ pub struct EventArgument {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-/// Data type for relation triple.
+/// A relation triple. No producer fills this yet: the heuristic extractor was
+/// removed (#186) and relation requests fail until a model backend exists.
 pub struct RelationTriple {
     /// Source sentence containing this relation.
     pub sentence_index: usize,
@@ -471,7 +294,8 @@ pub struct RelationTriple {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-/// Data type for extracted event.
+/// An extracted event. No producer fills this yet: the heuristic extractor was
+/// removed (#186) and event requests fail until a model backend exists.
 pub struct ExtractedEvent {
     /// The sentence index value.
     pub sentence_index: usize,
@@ -487,109 +311,6 @@ pub struct ExtractedEvent {
     pub arguments: Vec<EventArgument>,
     /// Confidence score for this value.
     pub confidence: f32,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-/// Data type for event extractor.
-pub struct EventExtractor;
-
-impl EventExtractor {
-    /// Returns extract.
-    pub fn extract(
-        &self,
-        trees: &[DependencyTree],
-        tokens: &[Token],
-        lemmas: &LemmatizationResult,
-    ) -> (Vec<ExtractedEvent>, Vec<RelationTriple>) {
-        let mut events = Vec::new();
-        let mut relations = Vec::new();
-        for tree in trees {
-            let Some(root_index) = tree.root_token_index else {
-                continue;
-            };
-            let predicate_token = &tokens[root_index];
-            let predicate = predicate_token.text.clone();
-            let lemma = lemmas
-                .lemmas
-                .get(root_index)
-                .map(|lemma| lemma.value.clone())
-                .unwrap_or_else(|| tokens[root_index].normalized.clone());
-            let subject = tree
-                .edges
-                .iter()
-                .find(|edge| edge.relation == DependencyRelation::Nsubj)
-                .map(|edge| {
-                    let token = &tokens[edge.dependent_token_index];
-                    (token.text.clone(), token.span)
-                });
-            let object = tree
-                .edges
-                .iter()
-                .find(|edge| {
-                    matches!(
-                        edge.relation,
-                        DependencyRelation::Obj | DependencyRelation::Obl
-                    )
-                })
-                .map(|edge| {
-                    let token = &tokens[edge.dependent_token_index];
-                    (token.text.clone(), token.span)
-                });
-            let relation_type =
-                if ["say", "announce", "report", "present"].contains(&lemma.as_str()) {
-                    RelationType::Attribution
-                } else if ["because", "cause"].contains(&lemma.as_str()) {
-                    RelationType::Causal
-                } else if ["visit", "go", "travel"].contains(&lemma.as_str()) {
-                    RelationType::Location
-                } else {
-                    RelationType::Action
-                };
-            let mut arguments = Vec::new();
-            if let Some((subject, span)) = subject.clone() {
-                arguments.push(EventArgument {
-                    role: "subject".to_string(),
-                    text: subject,
-                    span,
-                    confidence: 0.75,
-                });
-            }
-            if let Some((object, span)) = object.clone() {
-                arguments.push(EventArgument {
-                    role: "object".to_string(),
-                    text: object,
-                    span,
-                    confidence: 0.7,
-                });
-            }
-            if !arguments.is_empty() {
-                events.push(ExtractedEvent {
-                    sentence_index: tree.sentence_index,
-                    predicate: predicate.clone(),
-                    predicate_span: predicate_token.span,
-                    lemma: lemma.clone(),
-                    relation_type,
-                    arguments: arguments.clone(),
-                    confidence: 0.7,
-                });
-            }
-            if let (Some((subject, subject_span)), Some((object, object_span))) = (subject, object)
-            {
-                relations.push(RelationTriple {
-                    sentence_index: tree.sentence_index,
-                    subject,
-                    subject_span,
-                    relation: lemma,
-                    relation_span: predicate_token.span,
-                    object,
-                    object_span,
-                    relation_type,
-                    confidence: 0.7,
-                });
-            }
-        }
-        (events, relations)
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -701,90 +422,10 @@ fn build_model_entity(
     })
 }
 
-fn byte_ranges_overlap(byte_start: usize, byte_end: usize, span: TextSpan) -> bool {
-    byte_start < span.byte_end && span.byte_start < byte_end
-}
-
 fn spans_overlap(left: TextSpan, right: TextSpan) -> bool {
     left.byte_start < right.byte_end && right.byte_start < left.byte_end
 }
 
-fn is_date_token(token: &Token) -> bool {
-    let normalized = token.normalized.as_str();
-    normalized.chars().any(|ch| ch.is_ascii_digit())
-        || matches!(
-            normalized,
-            "january"
-                | "february"
-                | "march"
-                | "april"
-                | "may"
-                | "june"
-                | "july"
-                | "august"
-                | "september"
-                | "october"
-                | "november"
-                | "december"
-        )
-}
-
-fn classify_capitalized_entity(tokens: &[Token]) -> EntityType {
-    let normalized = tokens
-        .iter()
-        .map(|token| token.normalized.as_str())
-        .collect::<Vec<_>>();
-    if normalized
-        .iter()
-        .any(|token| matches!(*token, "inc" | "corp" | "ltd" | "gmbh" | "ag"))
-    {
-        EntityType::Organization
-    } else if normalized.iter().any(|token| {
-        is_date_token(&Token {
-            text: (*token).to_string(),
-            normalized: (*token).to_string(),
-            span: TextSpan::from_byte_range(token, 0, token.len())
-                .expect("whole-token byte range is valid UTF-8"),
-            kind: TokenKind::Word,
-        })
-    }) {
-        EntityType::Date
-    } else if tokens.len() == 1 {
-        EntityType::Person
-    } else {
-        EntityType::Organization
-    }
-}
-
-fn build_entity(
-    index: usize,
-    entity_type: EntityType,
-    text: &str,
-    sentence_index: usize,
-    token_range: std::ops::Range<usize>,
-    tokens: &[Token],
-    confidence: f32,
-) -> NamedEntity {
-    let token_start = token_range.start;
-    let token_end = token_range.end;
-    let span = TextSpan::from_byte_range(
-        text,
-        tokens[token_start].span.byte_start,
-        tokens[token_end - 1].span.byte_end,
-    )
-    .expect("token spans define valid UTF-8 byte boundaries");
-    let mention_text = text[span.byte_start..span.byte_end].to_string();
-    NamedEntity {
-        id: format!("mention-{index}"),
-        entity_type,
-        mention: EntityMentionSpan {
-            text: mention_text.clone(),
-            span,
-        },
-        normalized: mention_text.to_lowercase(),
-        sentence_index,
-        token_start,
-        token_end,
-        confidence,
-    }
+fn byte_ranges_overlap(byte_start: usize, byte_end: usize, span: TextSpan) -> bool {
+    byte_start < span.byte_end && span.byte_start < byte_end
 }

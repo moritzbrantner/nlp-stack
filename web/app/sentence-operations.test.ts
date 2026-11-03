@@ -50,13 +50,13 @@ describe("reporting evidence view", () => {
     const [view] = sentenceViews(
       documentReport({
         constructions: [],
-        sentences: [{ sentenceIndex: 0, support: "unsupported", producer: null, reason: "dependency trees come from heuristic:english-rules", constructionCount: 0 }],
+        sentences: [{ sentenceIndex: 0, support: "unsupported", producer: null, reason: "no dependency tree: not requested (DependencyParsingMode::Disabled); no heuristic fallback", constructionCount: 0 }],
       }),
     );
     expect(view!.reporting).toEqual({
       status: "unsupported",
       producer: null,
-      detail: "dependency trees come from heuristic:english-rules",
+      detail: "no dependency tree: not requested (DependencyParsingMode::Disabled); no heuristic fallback",
       roots: [],
     });
   });

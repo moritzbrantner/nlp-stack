@@ -4,14 +4,14 @@ use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 use text_core::{TextProcessingOptions, TextSegmentContract};
 use text_embeddings::{
-    DenseVector, HashedTextEmbedder, TextEmbeddingBackend, TextEmbeddingBackendKind,
+    testing::HashedFixtureEmbedder, DenseVector, TextEmbeddingBackend, TextEmbeddingBackendKind,
     TextEmbeddingConfig, TextEmbeddingMetadata,
 };
 use text_lexical::{Bm25Options, CorpusOptions};
 use vector_analysis_index::{SerializableVectorRecord, VectorRecordMetadata};
 
-fn embedder() -> HashedTextEmbedder {
-    HashedTextEmbedder::new(
+fn embedder() -> HashedFixtureEmbedder {
+    HashedFixtureEmbedder::new(
         TextEmbeddingConfig {
             dimensions: 32,
             use_idf: true,

@@ -48,8 +48,8 @@ pub fn package_surface() -> PackageSurface {
                     "summarySentences": 3,
                     "ngramSizes": [2, 3],
                     "shingleSizes": [3, 5],
-                    "linguistics": {"mode": "heuristicBalanced"},
-                    "embedding": {"mode": "hashed", "dimensions": 128, "useIdf": false}
+                    "linguistics": {"mode": "modelFree"},
+                    "embedding": {"mode": "off"}
                 }),
             ),
             semantic_map::operation(),
@@ -66,8 +66,8 @@ pub fn package_surface() -> PackageSurface {
                     "query": "text analysis",
                     "topK": 10,
                     "includeNearDuplicates": true,
-                    "includeSemanticNeighbors": true,
-                    "embedding": {"mode": "hashed", "dimensions": 128, "useIdf": true}
+                    "includeSemanticNeighbors": false,
+                    "embedding": {"mode": "off"}
                 }),
             ),
             operation(
@@ -91,7 +91,7 @@ pub fn run_surface_operation(request: SurfaceRequest) -> Result<SurfaceResponse,
         "describe" | "analysis.describe" => (describe_value(request.input), Vec::new()),
         "analysis.document" => {
             let input = parse_input::<DocumentRequest>(request.input)?;
-            let options = input.options();
+            let options = input.options()?;
             let report = analyze_text(
                 input.id.unwrap_or_else(|| "doc-0".to_string()),
                 &input.text,
@@ -108,7 +108,7 @@ pub fn run_surface_operation(request: SurfaceRequest) -> Result<SurfaceResponse,
         "analysis.semantic-corpus" => (semantic_corpus::run(request.input)?, Vec::new()),
         "analysis.corpus" => {
             let input = parse_input::<CorpusRequest>(request.input)?;
-            let options = input.options();
+            let options = input.options()?;
             let ids = input
                 .documents
                 .iter()
@@ -314,7 +314,7 @@ struct DocumentRequest {
 }
 
 impl DocumentRequest {
-    fn options(&self) -> DocumentAnalysisOptions {
+    fn options(&self) -> Result<DocumentAnalysisOptions, String> {
         let mut options = if self.profile.as_deref() == Some("modelBacked")
             || self.profile.as_deref() == Some("model-backed")
         {
@@ -346,12 +346,12 @@ impl DocumentRequest {
             options.include_sparse_embedding = include;
         }
         if let Some(linguistics) = &self.linguistics {
-            options.linguistic_depth = parse_linguistic_depth(linguistics);
+            options.linguistic_depth = parse_linguistic_depth(linguistics)?;
         }
         if let Some(embedding) = &self.embedding {
-            options.embedding_depth = parse_embedding_depth(embedding);
+            options.embedding_depth = parse_embedding_depth(embedding)?;
         }
-        options
+        Ok(options)
     }
 }
 
@@ -376,7 +376,7 @@ struct CorpusRequest {
 }
 
 impl CorpusRequest {
-    fn options(&self) -> CorpusAnalysisOptions {
+    fn options(&self) -> Result<CorpusAnalysisOptions, String> {
         let mut options = CorpusAnalysisOptions {
             query: self.query.clone(),
             ..CorpusAnalysisOptions::default()
@@ -397,9 +397,9 @@ impl CorpusRequest {
             options.include_semantic_neighbors = include;
         }
         if let Some(embedding) = &self.embedding {
-            options.document.embedding_depth = parse_embedding_depth(embedding);
+            options.document.embedding_depth = parse_embedding_depth(embedding)?;
         }
-        options
+        Ok(options)
     }
 }
 
@@ -427,10 +427,6 @@ struct ModeRequest {
 struct EmbeddingRequest {
     mode: String,
     #[serde(default)]
-    dimensions: Option<usize>,
-    #[serde(default)]
-    use_idf: Option<bool>,
-    #[serde(default)]
     bundle_dir: Option<String>,
 }
 
@@ -445,12 +441,16 @@ struct SimilarityRequest {
     mode: String,
 }
 
-fn parse_linguistic_depth(request: &ModeRequest) -> LinguisticDepth {
+const LINGUISTIC_MODES: &[&str] = &["off", "modelFree", "localModel"];
+const EMBEDDING_MODES: &[&str] = &["off", "candle", "onnx"];
+
+/// Unknown and removed modes (the former `heuristic*` linguistics) are rejected
+/// instead of silently selecting a heuristic default.
+fn parse_linguistic_depth(request: &ModeRequest) -> Result<LinguisticDepth, String> {
     match request.mode.as_str() {
-        "off" => LinguisticDepth::Off,
-        "heuristicFast" | "heuristic-fast" | "fast" => LinguisticDepth::HeuristicFast,
-        "heuristicRich" | "heuristic-rich" | "rich" => LinguisticDepth::HeuristicRich,
-        "localModel" | "local-model" | "model" => LinguisticDepth::LocalModel {
+        "off" => Ok(LinguisticDepth::Off),
+        "modelFree" | "model-free" => Ok(LinguisticDepth::ModelFree),
+        "localModel" | "local-model" | "model" => Ok(LinguisticDepth::LocalModel {
             bundle_dir: request
                 .bundle_dir
                 .as_deref()
@@ -458,34 +458,44 @@ fn parse_linguistic_depth(request: &ModeRequest) -> LinguisticDepth {
                 .unwrap_or_else(|| PathBuf::from(".model-runtime")),
             auto_download: request.auto_download.unwrap_or(false),
             download_progress: request.download_progress.unwrap_or(false),
-        },
-        _ => LinguisticDepth::HeuristicBalanced,
+        }),
+        other => Err(runtime_core::SurfaceError::unsupported_value(
+            Some("analysis.document"),
+            "linguistics.mode",
+            other,
+            LINGUISTIC_MODES,
+        )
+        .to_error_string()),
     }
 }
 
-fn parse_embedding_depth(request: &EmbeddingRequest) -> EmbeddingDepth {
+/// `hashed` was removed (#186): it was a feature-hashing stand-in, not an embedding
+/// model.
+fn parse_embedding_depth(request: &EmbeddingRequest) -> Result<EmbeddingDepth, String> {
+    let bundle_dir = || {
+        request
+            .bundle_dir
+            .as_deref()
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from(".model-runtime"))
+    };
     match request.mode.as_str() {
-        "off" => EmbeddingDepth::Off,
-        "candle" | "candleBundle" | "candle-bundle" => EmbeddingDepth::CandleBundle {
-            bundle_dir: request
-                .bundle_dir
-                .as_deref()
-                .map(PathBuf::from)
-                .unwrap_or_else(|| PathBuf::from(".model-runtime")),
+        "off" => Ok(EmbeddingDepth::Off),
+        "candle" | "candleBundle" | "candle-bundle" => Ok(EmbeddingDepth::CandleBundle {
+            bundle_dir: bundle_dir(),
             pooling: PoolingStrategy::Mean,
-        },
-        "onnx" | "onnxBundle" | "onnx-bundle" => EmbeddingDepth::OnnxBundle {
-            bundle_dir: request
-                .bundle_dir
-                .as_deref()
-                .map(PathBuf::from)
-                .unwrap_or_else(|| PathBuf::from(".model-runtime")),
+        }),
+        "onnx" | "onnxBundle" | "onnx-bundle" => Ok(EmbeddingDepth::OnnxBundle {
+            bundle_dir: bundle_dir(),
             pooling: PoolingStrategy::Mean,
-        },
-        _ => EmbeddingDepth::Hashed {
-            dimensions: request.dimensions.unwrap_or(128),
-            use_idf: request.use_idf.unwrap_or(false),
-        },
+        }),
+        other => Err(runtime_core::SurfaceError::unsupported_value(
+            Some("analysis.document"),
+            "embedding.mode",
+            other,
+            EMBEDDING_MODES,
+        )
+        .to_error_string()),
     }
 }
 
@@ -529,7 +539,8 @@ mod tests {
             bundle_dir: None,
             auto_download: None,
             download_progress: None,
-        });
+        })
+        .unwrap();
 
         match depth {
             LinguisticDepth::LocalModel {
@@ -551,7 +562,8 @@ mod tests {
             bundle_dir: Some(".model-runtime".to_string()),
             auto_download: Some(true),
             download_progress: Some(true),
-        });
+        })
+        .unwrap();
 
         match depth {
             LinguisticDepth::LocalModel {
@@ -564,5 +576,30 @@ mod tests {
             }
             other => panic!("expected local model depth, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn removed_heuristic_and_hashed_modes_are_rejected() {
+        for mode in [
+            "heuristicFast",
+            "heuristicBalanced",
+            "heuristicRich",
+            "fast",
+        ] {
+            let error = parse_linguistic_depth(&ModeRequest {
+                mode: mode.to_string(),
+                bundle_dir: None,
+                auto_download: None,
+                download_progress: None,
+            })
+            .expect_err("heuristic linguistics was removed");
+            assert!(error.contains("unsupported_value"), "{error}");
+        }
+        let error = parse_embedding_depth(&EmbeddingRequest {
+            mode: "hashed".to_string(),
+            bundle_dir: None,
+        })
+        .expect_err("hashed embeddings were removed");
+        assert!(error.contains("unsupported_value"), "{error}");
     }
 }

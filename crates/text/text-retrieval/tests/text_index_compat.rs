@@ -3,14 +3,15 @@
 use std::collections::BTreeMap;
 
 use tempfile::tempdir;
-use text_embeddings::{HashedTextEmbedder, TextEmbeddingConfig};
+use text_embeddings::testing::HashedFixtureEmbedder;
+use text_embeddings::TextEmbeddingConfig;
 use text_lexical::CorpusOptions;
 use text_retrieval::{
     build_memory_text_index, IngestionOptions, PersistedSearchIndex, RetrievalIndex, SearchDocument,
 };
 
-fn embedder() -> HashedTextEmbedder {
-    HashedTextEmbedder::new(
+fn embedder() -> HashedFixtureEmbedder {
+    HashedFixtureEmbedder::new(
         TextEmbeddingConfig {
             dimensions: 32,
             use_idf: false,

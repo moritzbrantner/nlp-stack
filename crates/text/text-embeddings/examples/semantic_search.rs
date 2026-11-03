@@ -1,15 +1,16 @@
-use text_embeddings::{HashedTextEmbedder, SemanticTextIndex, TextEmbeddingConfig};
+use text_embeddings::testing::{HashedFixtureEmbedder, HashedFixtureTextIndex};
+use text_embeddings::TextEmbeddingConfig;
 use text_lexical::CorpusOptions;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let embedder = HashedTextEmbedder::new(
+    let embedder = HashedFixtureEmbedder::new(
         TextEmbeddingConfig {
             dimensions: 128,
             use_idf: true,
         },
         CorpusOptions::default(),
     )?;
-    let mut index = SemanticTextIndex::new(embedder);
+    let mut index = HashedFixtureTextIndex::new(embedder);
     index.add_document("scene-1", "opening scene with presenter")?;
     index.add_document("scene-2", "cargo build pipeline status")?;
 

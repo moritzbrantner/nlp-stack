@@ -7,16 +7,14 @@ test("text-embeddings-wasm package exports stable entrypoints", async () => {
   expect(typeof entry.runOperation).toBe("function");
 });
 
-test("runOperation computes similarity with structured output", async () => {
+test("runOperation requires an embedding model instead of hashing", async () => {
   const entry = await import("../index.js");
-  const result = assertStructuredResponse(
-    await entry.runOperation({
+  await expect(
+    entry.runOperation({
       operation: "embeddings.similarity",
       input: { left: "rust text", right: "rust language" },
     }),
-    "embeddings.similarity",
-  );
-  expect(Number.isFinite(result.similarity)).toBe(true);
+  ).rejects.toThrow(/missing_dependency/);
 });
 
 test("runOperation exposes backend catalog with structured output", async () => {
@@ -24,12 +22,12 @@ test("runOperation exposes backend catalog with structured output", async () => 
   const result = assertStructuredResponse(
     await entry.runOperation({
       operation: "embeddings.backends",
-      input: { dimensions: 16 },
+      input: {},
     }),
     "embeddings.backends",
   );
-  expect(result.defaultBackend).toBe("hashed");
-  expect(result.backends[0].model.dimensions).toBe(16);
+  expect(result.defaultBackend).toBeNull();
+  expect(result.backends.every((backend: any) => backend.loadable === false)).toBe(true);
 });
 
 function assertStructuredResponse(response: any, operation: string) {
