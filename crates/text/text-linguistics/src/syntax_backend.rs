@@ -159,7 +159,10 @@ impl SyntaxSentence {
                     "token {index} span {start}..{end} is out of order or outside the sentence"
                 ));
             }
-            if !text[previous_end..start].trim().is_empty() {
+            if !text
+                .get(previous_end..start)
+                .is_some_and(|gap| gap.trim().is_empty())
+            {
                 return Err(format!(
                     "text before token {index} ({previous_end}..{start}) is not covered by any token"
                 ));
@@ -176,7 +179,10 @@ impl SyntaxSentence {
             next_word += token.word_count;
             previous_end = end;
         }
-        if !text[previous_end..span.byte_end].trim().is_empty() {
+        if !text
+            .get(previous_end..span.byte_end)
+            .is_some_and(|gap| gap.trim().is_empty())
+        {
             return Err(format!(
                 "text after the last token ({previous_end}..{}) is not covered by any token",
                 span.byte_end
@@ -457,4 +463,33 @@ pub(crate) fn backend_token_layers(
         }
     }
     layers
+}
+
+#[cfg(test)]
+mod validation_tests {
+    use super::*;
+
+    #[test]
+    fn spans_inside_a_character_are_errors_not_panics() {
+        let text = "é";
+        let sentence = SyntaxSentence {
+            sentence_index: 0,
+            language: "es".to_string(),
+            provenance: SyntaxProvenance {
+                backend: "test".to_string(),
+                backend_version: "0".to_string(),
+                models: Vec::new(),
+            },
+            tokens: vec![SyntaxToken {
+                // 1..2 is valid in ASCII but falls inside `é`.
+                span: TextSpan::from_byte_range("ab", 1, 2).unwrap(),
+                text: String::new(),
+                first_word: 0,
+                word_count: 1,
+            }],
+            words: Vec::new(),
+        };
+        let span = TextSpan::from_byte_range(text, 0, 2).unwrap();
+        assert!(sentence.validate(text, span).is_err());
+    }
 }
