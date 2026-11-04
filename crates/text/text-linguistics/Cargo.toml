@@ -37,6 +37,8 @@ model-bundles = ["dep:model-runtime"]
 candle = ["tokenizers", "dep:candle-core", "dep:candle-nn", "dep:candle-transformers"]
 cuda = ["candle", "candle-core/cuda"]
 external-tests = ["candle", "model-bundles"]
+# The Stanza oracle adapter (`sidecars/stanza`); std-only, opt-in.
+stanza = []
 
 [dev-dependencies]
 criterion.workspace = true

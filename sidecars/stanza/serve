@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Runs the Stanza sidecar on 127.0.0.1 (default port 8765, NLP_STANZA_PORT or --port).
+#
+#   sidecars/stanza/serve [--port 8765] [--languages en,de,es] [--model-dir DIR]
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")"
+exec uv run --frozen --no-dev --no-sync python -m stanza_sidecar.server "$@"

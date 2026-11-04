@@ -1,0 +1,170 @@
+{
+  "schema": 1,
+  "stanza_version": "1.15.0",
+  "resources": {
+    "url": "https://raw.githubusercontent.com/stanfordnlp/stanza-resources/967b3ec9bc08ff876e351c4364f27455b3f0a2b6/resources_1.15.0.json",
+    "bytes": 535107,
+    "sha256": "ed01f17735f351e8f08fda331c3208091657d79420a2a10b4f9cfbc685f3d65d"
+  },
+  "languages": {
+    "en": {
+      "repository": "stanfordnlp/stanza-en",
+      "revision": "4003b0a5a175588fd8f6cb17fde741350f5fd725",
+      "packages": {
+        "tokenize": "combined_nocharlm",
+        "mwt": "combined",
+        "pos": "combined_charlm",
+        "lemma": "combined_nocharlm",
+        "depparse": "combined_charlm"
+      },
+      "files": [
+        {
+          "path": "models/tokenize/combined_nocharlm.pt",
+          "bytes": 660797,
+          "sha256": "becae178f59cd8adba655a9dc8b3cac68311e1706da0a331706c7804f0d0c42d"
+        },
+        {
+          "path": "models/mwt/combined.pt",
+          "bytes": 512405,
+          "sha256": "daa12616ba687534ce00cca11835b0fb9c3e15a2d2d48586a50d8de14e02a997"
+        },
+        {
+          "path": "models/pos/combined_charlm.pt",
+          "bytes": 38768281,
+          "sha256": "c3ea30c4f46ee88182597630ad14bed8e40876d28cb80fda793b2b914c8bf8ca"
+        },
+        {
+          "path": "models/pretrain/conll17.pt",
+          "bytes": 106701210,
+          "sha256": "edde4c195f91ba45aab3f3a6254202011f284559da8a5ead5e62ce522f819c5e"
+        },
+        {
+          "path": "models/forward_charlm/1billion.pt",
+          "bytes": 22743428,
+          "sha256": "8a32ac2226dda8ea5d30f2a15fe3f835639977f299cfda315ce1b8a656596fd2"
+        },
+        {
+          "path": "models/backward_charlm/1billion.pt",
+          "bytes": 22743430,
+          "sha256": "5d8cb2306650e4fc2b4f7517cc0fb33b38269e05bbf8d05e712e481471052225"
+        },
+        {
+          "path": "models/lemma/combined_nocharlm.pt",
+          "bytes": 6375550,
+          "sha256": "02cd531592ff0ebca2d3334d935ae792d4d4ea7d1ba2699b6d2a1ab76ae10279"
+        },
+        {
+          "path": "models/depparse/combined_charlm.pt",
+          "bytes": 142384846,
+          "sha256": "e2b22ebadcfd35998f64f2beec01faa6a3854d582ba55d60dc412a1db0010752"
+        }
+      ]
+    },
+    "de": {
+      "repository": "stanfordnlp/stanza-de",
+      "revision": "e7acb8e5f0ff683032c9c60fe95c2a003c672a16",
+      "packages": {
+        "tokenize": "combined_nocharlm",
+        "mwt": "combined",
+        "pos": "combined_charlm",
+        "lemma": "combined_nocharlm",
+        "depparse": "combined_charlm"
+      },
+      "files": [
+        {
+          "path": "models/tokenize/combined_nocharlm.pt",
+          "bytes": 655751,
+          "sha256": "1c1a399870a2dd771356e0e611de8323b42df439a44a66dc8023d8d456217de1"
+        },
+        {
+          "path": "models/mwt/combined.pt",
+          "bytes": 547260,
+          "sha256": "6ccb3c99f2bb099f0e21c5340d3206108b5a9d00f7194e6244a654d7bb3101c7"
+        },
+        {
+          "path": "models/pos/combined_charlm.pt",
+          "bytes": 38278204,
+          "sha256": "70ff1dda0c617a73688340a6a831d8df4fc388dedfdcf6a8cee0bb4f5922814c"
+        },
+        {
+          "path": "models/pretrain/conll17.pt",
+          "bytes": 107359477,
+          "sha256": "19a5cefbfdb93f3696ace424b904553f1d2525e7c1500bf58fb22f06f7ddceb7"
+        },
+        {
+          "path": "models/forward_charlm/newswiki.pt",
+          "bytes": 20017225,
+          "sha256": "ba0ebfb852329cee8f13d9a0d0a30b4bdab7d95587029e78bd90c2a0dfe22248"
+        },
+        {
+          "path": "models/backward_charlm/newswiki.pt",
+          "bytes": 20017226,
+          "sha256": "447e419d87d0623f6ae5a84021472ea8024d6a4b6803566aa8a4f5a80ef598e4"
+        },
+        {
+          "path": "models/lemma/combined_nocharlm.pt",
+          "bytes": 6625238,
+          "sha256": "c14e0f6044be870154d37e62f56267e7ad65802770f681fefcba717609798e18"
+        },
+        {
+          "path": "models/depparse/combined_charlm.pt",
+          "bytes": 136749551,
+          "sha256": "3e69de89d7ae43488f09ebd10ff29c1d305b0a0995d5427406a031623c721361"
+        }
+      ]
+    },
+    "es": {
+      "repository": "stanfordnlp/stanza-es",
+      "revision": "6c5cf2278847a76cd1efd05ee4fddd80594b569d",
+      "packages": {
+        "tokenize": "combined_nocharlm",
+        "mwt": "combined",
+        "pos": "combined_charlm",
+        "lemma": "combined_nocharlm",
+        "depparse": "combined_charlm"
+      },
+      "files": [
+        {
+          "path": "models/tokenize/combined_nocharlm.pt",
+          "bytes": 665857,
+          "sha256": "ed4a59d0dc061e1e358480c78ef70a43c37322a7e36ac5b99c834800d48fd112"
+        },
+        {
+          "path": "models/mwt/combined.pt",
+          "bytes": 637539,
+          "sha256": "940f87ac09794f4dc3c9f0ede9916642df8f43067bf8202b766936ac360fe3eb"
+        },
+        {
+          "path": "models/pos/combined_charlm.pt",
+          "bytes": 38152202,
+          "sha256": "cad6e9a6865b1af5956c298eafcb03e7218342a4ce4b71d116e5ccc24a43ce38"
+        },
+        {
+          "path": "models/pretrain/conll17.pt",
+          "bytes": 106892748,
+          "sha256": "d0c4fbb5a061f5fcca8855efbae04358313a1f00526e1a744986f5180c80846b"
+        },
+        {
+          "path": "models/forward_charlm/newswiki.pt",
+          "bytes": 20012707,
+          "sha256": "a8edffc309f86e8e31212eb15f90f188af2f93132d55a4dff17680d06308d2ea"
+        },
+        {
+          "path": "models/backward_charlm/newswiki.pt",
+          "bytes": 20012708,
+          "sha256": "bc1892d2d044c13668f449621cd85fac14e698aed107f9eea8fcae8f16fb595e"
+        },
+        {
+          "path": "models/lemma/combined_nocharlm.pt",
+          "bytes": 3010866,
+          "sha256": "5322e2fe6a181134cff1201c961464c1d0de24f96af1075822fda6ef895ae926"
+        },
+        {
+          "path": "models/depparse/combined_charlm.pt",
+          "bytes": 139440521,
+          "sha256": "9d83af22938e103c1cfbf678c117d8f9c2c06a03c8c5a17a26cdd9ce2ba1e3a4"
+        }
+      ]
+    }
+  }
+}

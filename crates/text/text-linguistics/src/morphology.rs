@@ -123,6 +123,18 @@ pub enum PosTag {
     X,
 }
 
+impl serde::Serialize for PosTag {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_ud())
+    }
+}
+
+impl serde::Serialize for MorphTagSet {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.features.serialize(serializer)
+    }
+}
+
 impl PosTag {
     /// Every UPOS tag.
     pub const ALL: &'static [Self] = &[

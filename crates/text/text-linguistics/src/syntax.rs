@@ -209,6 +209,12 @@ ud_relations! {
     Xcomp => "xcomp",
 }
 
+impl serde::Serialize for DependencyRelation {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_ud())
+    }
+}
+
 impl DependencyRelation {
     /// Parses a UD universal relation label (`nsubj`, not `nsubj:pass`).
     pub fn from_ud(label: &str) -> Option<Self> {

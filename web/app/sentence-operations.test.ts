@@ -120,3 +120,64 @@ describe("scope evidence view", () => {
     expect(view!.scope.roots).toEqual([]);
   });
 });
+
+describe("syntax view", () => {
+  it("lists the backend's syntactic words with versions and multi-word tokens", () => {
+    const sentence = "Er geht zum Bahnhof.";
+    const word = (token: number, form: string, lemma: string, upos: string, head: number | null, relation: string, feats = {}) => ({
+      token, form, lemma, upos, xpos: null, feats, head, relation, subtype: null,
+    });
+    const report = {
+      core: { sentences: [{ text: sentence, span: span(0, sentence.length), token_count: 5 }] },
+      linguistic: {
+        sentences: [{ sentenceIndex: 0, span: span(0, sentence.length), language: "de", operations: [] }],
+        syntax: [{
+          sentenceIndex: 0,
+          language: "de",
+          provenance: {
+            backend: "stanza",
+            backendVersion: "1.15.0",
+            models: [
+              { stage: "depparse", package: "combined_charlm", source: "stanfordnlp/stanza-de", revision: "e7acb8e5f0ff683032c9c60fe95c2a003c672a16" },
+              { stage: "tokenize", package: "combined_nocharlm", source: "stanfordnlp/stanza-de", revision: "e7acb8e5f0ff683032c9c60fe95c2a003c672a16" },
+            ],
+          },
+          tokens: [
+            { span: span(0, 2), text: "Er", firstWord: 0, wordCount: 1 },
+            { span: span(3, 7), text: "geht", firstWord: 1, wordCount: 1 },
+            { span: span(8, 11), text: "zum", firstWord: 2, wordCount: 2 },
+            { span: span(12, 19), text: "Bahnhof", firstWord: 4, wordCount: 1 },
+            { span: span(19, 20), text: ".", firstWord: 5, wordCount: 1 },
+          ],
+          words: [
+            word(0, "Er", "er", "PRON", 1, "nsubj", { Case: "Nom", Person: "3" }),
+            word(1, "geht", "gehen", "VERB", null, "root"),
+            word(2, "zu", "zu", "ADP", 4, "case"),
+            word(2, "dem", "der", "DET", 4, "det"),
+            word(3, "Bahnhof", "Bahnhof", "NOUN", 1, "obl"),
+            word(4, ".", ".", "PUNCT", 1, "punct"),
+          ],
+        }],
+      },
+    };
+    const [view] = sentenceViews(report);
+    expect(view!.syntax?.producer).toBe("stanza 1.15.0");
+    expect(view!.syntax?.models).toBe("stanfordnlp/stanza-de@e7acb8e5 · de depparse=combined_charlm, tokenize=combined_nocharlm");
+    const words = view!.syntax!.words;
+    expect(words.map((item) => [item.form, item.token, item.upos, item.head, item.relation])).toEqual([
+      ["Er", null, "PRON", "geht", "nsubj"],
+      ["geht", null, "VERB", null, "root"],
+      ["zu", "zum", "ADP", "Bahnhof", "case"],
+      ["dem", "zum", "DET", "Bahnhof", "det"],
+      ["Bahnhof", null, "NOUN", "geht", "obl"],
+      [".", null, "PUNCT", "geht", "punct"],
+    ]);
+    expect(words[0]!.feats).toBe("Case=Nom|Person=3");
+    expect(words[1]!.feats).toBe("_");
+  });
+
+  it("has no syntax section without a backend", () => {
+    const [view] = sentenceViews(documentReport({ constructions: [], sentences: [] }));
+    expect(view!.syntax).toBeNull();
+  });
+});
