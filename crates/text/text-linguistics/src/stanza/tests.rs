@@ -77,6 +77,20 @@ fn refuses_offsets_that_do_not_reproduce_the_token() {
 }
 
 #[test]
+fn refuses_a_response_that_leaves_source_words_uncovered() {
+    let hola = r#"{"start_char":0,"end_char":4,"text":"Hola","words":[{"id":1,"text":"Hola","lemma":"hola","upos":"INTJ","xpos":null,"feats":null,"head":0,"deprel":"root"}]}"#;
+    let text = "Hola mundo";
+    let sentences = [sentence(text, 1, 0, text.len(), "es")];
+    let error = decode_stanza_response(&request(text, &sentences), &response(hola)).unwrap_err();
+    assert!(error.to_string().contains("not covered"), "{error}");
+    let error = decode_stanza_response(&request(text, &sentences), &response("")).unwrap_err();
+    assert!(error.to_string().contains("not covered"), "{error}");
+    let text = "Hola ";
+    let sentences = [sentence(text, 1, 0, text.len(), "es")];
+    assert!(decode_stanza_response(&request(text, &sentences), &response(hola)).is_ok());
+}
+
+#[test]
 fn refuses_other_versions_and_mismatched_sentences() {
     let text = "El niño.";
     let sentences = [sentence(text, 1, 0, text.len(), "es")];

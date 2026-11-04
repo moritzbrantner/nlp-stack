@@ -147,7 +147,8 @@ pub struct SyntaxSentence {
 
 impl SyntaxSentence {
     /// Checks the invariants every consumer relies on: tokens lie inside `span` in
-    /// order, cover their words exactly, and heads point at words of this sentence.
+    /// order and cover all of its non-whitespace text, tokens cover their words
+    /// exactly, and heads point at words of this sentence.
     pub fn validate(&self, text: &str, span: TextSpan) -> Result<(), String> {
         let mut previous_end = span.byte_start;
         let mut next_word = 0;
@@ -156,6 +157,11 @@ impl SyntaxSentence {
             if start < previous_end || end > span.byte_end || start >= end {
                 return Err(format!(
                     "token {index} span {start}..{end} is out of order or outside the sentence"
+                ));
+            }
+            if !text[previous_end..start].trim().is_empty() {
+                return Err(format!(
+                    "text before token {index} ({previous_end}..{start}) is not covered by any token"
                 ));
             }
             if text.get(start..end) != Some(token.text.as_str()) {
@@ -169,6 +175,12 @@ impl SyntaxSentence {
             }
             next_word += token.word_count;
             previous_end = end;
+        }
+        if !text[previous_end..span.byte_end].trim().is_empty() {
+            return Err(format!(
+                "text after the last token ({previous_end}..{}) is not covered by any token",
+                span.byte_end
+            ));
         }
         if next_word != self.words.len() {
             return Err("words are not all covered by tokens".to_string());

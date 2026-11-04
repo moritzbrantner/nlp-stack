@@ -11,7 +11,8 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
-from http.server import HTTPServer
+import socket
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -132,7 +133,8 @@ class ProtocolTests(unittest.TestCase):
             lambda language: self.pipeline,
             verify=lambda lock, language: problems[language],
         )
-        self.server = HTTPServer(("127.0.0.1", 0), make_handler(self.oracle, ["http://localhost:3000"]))
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(self.oracle, ["http://localhost:3000"]))
+        self.server.daemon_threads = True
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         self.base = f"http://127.0.0.1:{self.server.server_port}"
@@ -192,6 +194,16 @@ class ProtocolTests(unittest.TestCase):
         })
         status, _, body = self.request("POST", "/v1/analyze", {"text": "no sentences"})
         self.assertEqual((status, json.loads(body)["error"]["kind"]), (400, "bad_request"))
+
+    def test_idle_keep_alive_connection_does_not_block_other_clients(self):
+        idle = socket.create_connection(("127.0.0.1", self.server.server_port), timeout=5)
+        try:
+            idle.sendall(b"GET /v1/health HTTP/1.1\r\nHost: x\r\n\r\n")
+            idle.recv(65536)  # first response; the connection stays open
+            status, _, _ = self.request("GET", "/v1/health")
+            self.assertEqual(status, 200)
+        finally:
+            idle.close()
 
     def test_cors_only_for_allowed_origins(self):
         status, headers, _ = self.request("OPTIONS", "/v1/analyze", headers={"Origin": "http://localhost:3000"})

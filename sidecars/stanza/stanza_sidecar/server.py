@@ -15,7 +15,8 @@ Endpoints (protocol 1):
 
 Errors are ``{"error": {"kind": ..., "message": ..., "language": ...}}`` with kinds
 ``bad_request`` (400), ``not_found`` (404), ``unsupported_language`` (422),
-``model_missing`` (503) and ``internal`` (500). A language whose pinned models are
+``model_missing`` (503) and ``internal`` (500). Connections are handled concurrently;
+analysis itself runs one request at a time. A language whose pinned models are
 missing or corrupt is refused; nothing is downloaded or substituted at serve time.
 """
 
@@ -25,7 +26,8 @@ import argparse
 import json
 import os
 import sys
-from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import PROTOCOL_VERSION
@@ -91,6 +93,9 @@ class Oracle:
         self.pipeline_factory = pipeline_factory
         self.pipelines = {}
         self.problems = {}
+        # Connections are served concurrently (an idle keep-alive connection must not
+        # block others); Stanza pipelines are not thread-safe, so analysis is serialized.
+        self.analysis_lock = threading.Lock()
         for language in languages:
             self.problems[language] = verify(lock, language)
 
@@ -131,6 +136,10 @@ class Oracle:
         return self.pipelines[language]
 
     def analyze(self, request) -> dict:
+        with self.analysis_lock:
+            return self._analyze(request)
+
+    def _analyze(self, request) -> dict:
         if not isinstance(request, dict) or not isinstance(request.get("sentences"), list):
             raise RequestError(400, "bad_request", "body must be an object with a `sentences` array")
         results = []
@@ -278,7 +287,8 @@ def main(argv: list[str] | None = None) -> int:
     for language, problems in oracle.problems.items():
         state = "ready" if not problems else "NOT READY: " + "; ".join(problems)
         print(f"{language}: {state}", file=sys.stderr)
-    server = HTTPServer((args.host, args.port), make_handler(oracle, args.allow_origin or DEFAULT_ORIGINS))
+    server = ThreadingHTTPServer((args.host, args.port), make_handler(oracle, args.allow_origin or DEFAULT_ORIGINS))
+    server.daemon_threads = True
     print(f"{SERVICE} listening on http://{args.host}:{server.server_port}", file=sys.stderr)
     try:
         server.serve_forever()

@@ -37,7 +37,7 @@ Protocol 1:
 
 CORS is answered only for the Pages origin and the local dev/Storybook origins
 (`--allow-origin` replaces the list), including Chrome's private-network preflight.
-The server listens on 127.0.0.1 by default and handles one request at a time.
+The server listens on 127.0.0.1 by default and handles connections concurrently but runs one analysis at a time.
 
 `python3 -m unittest discover -s sidecars/stanza/tests` checks the protocol and the
 digest handling offline, without Stanza.
