@@ -1,12 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
-use text_core::{Result, TextDocument, TextSpan};
-use text_embeddings::{
-    DenseVector, EmbeddingModelInfo, HashedTextEmbedder, TextEmbeddingBackend,
-    TextEmbeddingBackendKind, TextEmbeddingConfig,
-};
-use text_lexical::{term_frequencies, CorpusOptions, TermFrequency, TfIdfCorpus};
+use text_core::{Result, TextSpan};
+use text_embeddings::TextEmbeddingBackend;
+use text_lexical::{term_frequencies, TermFrequency};
 
 use crate::invalid_argument;
 
@@ -17,7 +14,6 @@ use super::{
     SemanticUnitKind, SpeakerConceptShare,
 };
 
-const DEFAULT_HASHED_SEMANTIC_DIMENSIONS: usize = 512;
 const DEFAULT_MIN_CONCEPT_UNITS: usize = 2;
 const CONCEPT_KEY_TERM_LIMIT: usize = 4;
 
@@ -153,35 +149,6 @@ pub struct SemanticCorpusReport {
     pub semantic: SemanticAnalysisReport,
 }
 
-/// Analyzes an attributed corpus with a deterministic corpus-aware hashed TF-IDF baseline.
-///
-/// This baseline is intentionally local and reproducible. It should not be presented as equivalent
-/// to a learned sentence-embedding model; callers that own such a model can use
-/// [`analyze_corpus_semantics_with`] instead.
-pub fn analyze_corpus_semantics(
-    items: &[SemanticCorpusItem<'_>],
-    options: &SemanticCorpusAnalysisOptions,
-) -> Result<SemanticCorpusReport> {
-    super::validate_options(&options.semantic)?;
-    validate_corpus(items, options)?;
-
-    let units = corpus_units(items, &options.semantic);
-    let corpus_options = semantic_embedding_corpus_options();
-    let tfidf = semantic_tfidf_corpus(&units, corpus_options.clone())?;
-    let embedder = CorpusAwareHashedTextEmbedder {
-        embedder: HashedTextEmbedder::new(
-            TextEmbeddingConfig {
-                dimensions: DEFAULT_HASHED_SEMANTIC_DIMENSIONS,
-                use_idf: true,
-            },
-            corpus_options,
-        )?,
-        corpus: tfidf,
-    };
-
-    analyze_corpus_semantics_prepared(items, options, units, &embedder)
-}
-
 /// Analyzes an attributed corpus with a caller-supplied embedding backend.
 pub fn analyze_corpus_semantics_with<E: TextEmbeddingBackend + ?Sized>(
     items: &[SemanticCorpusItem<'_>],
@@ -303,44 +270,6 @@ fn validate_corpus(
         }
     }
     Ok(())
-}
-
-fn semantic_embedding_corpus_options() -> CorpusOptions {
-    CorpusOptions {
-        min_term_len: 2,
-        ..CorpusOptions::default()
-    }
-}
-
-fn semantic_tfidf_corpus(units: &[SemanticUnit], options: CorpusOptions) -> Result<TfIdfCorpus> {
-    let documents = units
-        .iter()
-        .filter(|unit| unit.kind == SemanticUnitKind::Sentence)
-        .map(|unit| TextDocument::new(unit.id.as_str(), unit.text.as_str()))
-        .collect::<Vec<_>>();
-    TfIdfCorpus::from_documents(documents, options)
-}
-
-struct CorpusAwareHashedTextEmbedder {
-    embedder: HashedTextEmbedder,
-    corpus: TfIdfCorpus,
-}
-
-impl TextEmbeddingBackend for CorpusAwareHashedTextEmbedder {
-    fn embed_text(&self, text: &str) -> Result<DenseVector> {
-        self.embedder
-            .embed_text_with_corpus(text, Some(&self.corpus))
-    }
-
-    fn model_info(&self) -> EmbeddingModelInfo {
-        EmbeddingModelInfo {
-            model_name: "hashed-tfidf-sentence-baseline".to_string(),
-            backend: TextEmbeddingBackendKind::Hashed,
-            dimensions: self.embedder.config.dimensions,
-            normalized: true,
-            max_tokens: None,
-        }
-    }
 }
 
 fn lexical_profile<'a, I>(items: I, top_terms: usize) -> SemanticCorpusLexicalProfile

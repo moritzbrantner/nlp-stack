@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use text_core::{DetectError, Result};
 use text_core::{TextDocumentContract, TextSegmentContract};
-use text_embeddings::{HashedTextEmbedder, TextEmbeddingConfig};
+use text_embeddings::{NoEmbedder, TextEmbedderBackend};
 use text_index::{
     IndexBuildOptions, IndexDocument, IndexInspectReport, IndexMutationReport, IndexQuery,
     IndexSearchResult, MemoryIndexStore, TextIndex,
@@ -18,34 +18,19 @@ use crate::{
     DocumentAnalysisOptions, DocumentAnalysisReport,
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct TextWorkspaceOptions {
     pub corpus: CorpusOptions,
     pub ingestion: IngestionOptions,
     pub index: WorkspaceIndexOptions,
     pub document_analysis: DocumentAnalysisOptions,
     pub corpus_analysis: CorpusAnalysisOptions,
-    pub embedding_dimensions: usize,
-}
-
-impl Default for TextWorkspaceOptions {
-    fn default() -> Self {
-        Self {
-            corpus: CorpusOptions::default(),
-            ingestion: IngestionOptions::default(),
-            index: WorkspaceIndexOptions::default(),
-            document_analysis: DocumentAnalysisOptions::default(),
-            corpus_analysis: CorpusAnalysisOptions::default(),
-            embedding_dimensions: 128,
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WorkspaceIndexOptions {
     pub storage: WorkspaceIndexStorage,
     pub build: IndexBuildOptions,
-    pub embedding_dimensions: usize,
     pub commit: bool,
 }
 
@@ -54,7 +39,6 @@ impl Default for WorkspaceIndexOptions {
         Self {
             storage: WorkspaceIndexStorage::Memory,
             build: IndexBuildOptions::default(),
-            embedding_dimensions: 128,
             commit: false,
         }
     }
@@ -107,16 +91,19 @@ pub struct WorkspaceSnapshot {
     pub documents: Vec<TextDocumentContract>,
 }
 
+/// A document workspace. `E` is the embedding model of the optional retrieval
+/// index; the default [`NoEmbedder`] has no values, so a workspace without a model
+/// cannot build one. The text index is lexical-only (no model needed).
 #[derive(Debug)]
-pub struct TextWorkspace {
+pub struct TextWorkspace<E = NoEmbedder> {
     options: TextWorkspaceOptions,
     corpus: TextCorpus,
-    retrieval: Option<RetrievalIndex<HashedTextEmbedder>>,
+    retrieval: Option<RetrievalIndex<E>>,
     index: Option<WorkspaceIndexState>,
     analysis_reports: BTreeMap<String, DocumentAnalysisReport>,
 }
 
-impl Clone for TextWorkspace {
+impl<E: Clone> Clone for TextWorkspace<E> {
     fn clone(&self) -> Self {
         Self {
             options: self.options.clone(),
@@ -137,18 +124,18 @@ impl Clone for TextWorkspace {
 
 #[derive(Debug)]
 enum WorkspaceIndexState {
-    Memory(TextIndex<HashedTextEmbedder, MemoryIndexStore>),
+    Memory(TextIndex<NoEmbedder, MemoryIndexStore>),
     #[cfg(feature = "sqlite")]
-    Sqlite(TextIndex<HashedTextEmbedder, text_index::SqliteIndexStore>),
+    Sqlite(TextIndex<NoEmbedder, text_index::SqliteIndexStore>),
 }
 
-impl Default for TextWorkspace {
+impl<E: TextEmbedderBackend> Default for TextWorkspace<E> {
     fn default() -> Self {
         Self::new(TextWorkspaceOptions::default())
     }
 }
 
-impl TextWorkspace {
+impl<E: TextEmbedderBackend> TextWorkspace<E> {
     pub fn new(options: TextWorkspaceOptions) -> Self {
         Self {
             corpus: TextCorpus::new(options.corpus.clone()),
@@ -163,7 +150,7 @@ impl TextWorkspace {
         &self.corpus
     }
 
-    pub fn retrieval_index(&self) -> Option<&RetrievalIndex<HashedTextEmbedder>> {
+    pub fn retrieval_index(&self) -> Option<&RetrievalIndex<E>> {
         self.retrieval.as_ref()
     }
 
@@ -233,15 +220,9 @@ impl TextWorkspace {
         )
     }
 
-    pub fn build_retrieval_index(&mut self) -> Result<IngestReport> {
+    /// Builds the embedding-backed retrieval index with the caller's model.
+    pub fn build_retrieval_index(&mut self, embedder: E) -> Result<IngestReport> {
         let _ = self.build_text_index()?;
-        let embedder = HashedTextEmbedder::new(
-            TextEmbeddingConfig {
-                dimensions: self.options.embedding_dimensions.max(1),
-                use_idf: false,
-            },
-            self.options.corpus.clone(),
-        )?;
         let mut index = RetrievalIndex::new(embedder);
         let documents = SearchDocument::from_text_corpus(&self.corpus);
         let report = index.ingest_documents(&documents, &self.options.ingestion)?;
@@ -256,19 +237,13 @@ impl TextWorkspace {
             .iter()
             .map(index_document_from_corpus_document)
             .collect::<Vec<_>>();
-        let embedder = HashedTextEmbedder::new(
-            TextEmbeddingConfig {
-                dimensions: self.options.index.embedding_dimensions.max(1),
-                use_idf: false,
-            },
-            self.options.corpus.clone(),
-        )?;
+        // Lexical-only: semantic and hybrid queries fail with `EmbeddingModelRequired`.
         let mut options = self.options.index.build.clone();
         options.commit = self.options.index.commit;
         match &self.options.index.storage {
             WorkspaceIndexStorage::Memory => {
                 let mut index =
-                    TextIndex::with_store(embedder, MemoryIndexStore::new()).with_options(options);
+                    TextIndex::lexical_only(MemoryIndexStore::new()).with_options(options);
                 let report = index
                     .upsert_documents(&documents)
                     .map_err(text_index_error)?;
@@ -280,7 +255,7 @@ impl TextWorkspace {
                 {
                     let store = text_index::SqliteIndexStore::open(path, self.options.index.commit)
                         .map_err(text_index_error)?;
-                    let mut index = TextIndex::with_store(embedder, store).with_options(options);
+                    let mut index = TextIndex::lexical_only(store).with_options(options);
                     let report = index
                         .upsert_documents(&documents)
                         .map_err(text_index_error)?;

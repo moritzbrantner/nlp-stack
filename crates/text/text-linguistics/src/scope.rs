@@ -130,8 +130,7 @@ pub struct ScopeEvidence {
 /// [`crate::reporting_constructions`] of the same analysis).
 ///
 /// Only sentences whose dependency trees come from a UD-trained model are read;
-/// heuristic trees do not attach cues to the words they modify, so those
-/// sentences are reported as unsupported.
+/// every other sentence reports the dependency layer's reason.
 pub fn scope_operators(
     analysis: &LinguisticAnalysis,
     reporting: &ReportingEvidence,
@@ -147,11 +146,7 @@ pub fn scope_operators(
             reason: String::new(),
             operator_count: 0,
         };
-        match ud_sentence(
-            analysis,
-            routed,
-            "does not attach negation, modal and conditional cues; scope needs a UD dependency model",
-        ) {
+        match ud_sentence(analysis, routed) {
             Ok(parsed) => {
                 if lexicon(parsed.language).is_none() {
                     report.support = OperationSupport::Unsupported;
@@ -667,8 +662,8 @@ mod tests {
     #[test]
     fn conditional_keeps_antecedent_and_consequent_with_nested_negation() {
         let text = "If Zoë doesn't leave, Jürgen will call.";
-        // The heuristic tokenizer's split of "doesn't" decides the arcs below.
-        let words = analyze_text(text, &LinguisticAnalysisOptions::default())
+        // The rule tokenizer's split of "doesn't" decides the arcs below.
+        let words = analyze_text(text, &LinguisticAnalysisOptions::without_models())
             .unwrap()
             .tokens
             .into_iter()
@@ -764,10 +759,10 @@ mod tests {
     }
 
     #[test]
-    fn heuristic_dependencies_report_unsupported_without_operators() {
+    fn missing_dependency_model_reports_unsupported_without_operators() {
         let analysis = analyze_text(
             "John does not believe it.",
-            &LinguisticAnalysisOptions::default(),
+            &LinguisticAnalysisOptions::without_models(),
         )
         .unwrap();
         let (_, scope) = evidence(&analysis);

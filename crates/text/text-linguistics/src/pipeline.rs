@@ -1,26 +1,18 @@
-use std::collections::BTreeSet;
 use std::path::PathBuf;
 
-use crate::discourse::{
-    build_style_profile, build_topic_model, DiscourseSegment, DocumentOutline, SectionClassifier,
-    StyleProfile, TopicModel,
-};
+use crate::discourse::{DiscourseSegment, DocumentOutline, StyleProfile, TopicModel};
 use crate::entities::{
-    canonicalize_entities, extract_named_entities, extract_named_entities_with_labeler,
-    merge_model_and_heuristic_entities, CanonicalEntity, CorefCluster, CorefResolver,
-    EntityLinkingOptions, EventExtractor, ExtractedEvent, NamedEntity, RelationTriple,
+    canonicalize_entities, extract_named_entities_with_labeler, CanonicalEntity, CorefCluster,
+    EntityLinkingOptions, ExtractedEvent, NamedEntity, RelationTriple,
 };
 use crate::language::{
     primary_language_subtag, LanguageDecision, LanguageDetectionOptions, LanguageDetector,
     LanguagePrediction, LanguageProfile, SentenceLanguage, LANGUAGE_DETECTOR_PRODUCER,
 };
 use crate::local_models::{CandleTokenClassifier, SequenceLabeler};
-use crate::morphology::{
-    annotate_morphology, lemmatize_tokens, Lemma, LemmaOptions, LemmatizationResult,
-    MorphAnnotation, PosAnnotation, PosTagger, PosTaggingOptions,
-};
+use crate::morphology::{Lemma, LemmatizationResult, MorphAnnotation, PosAnnotation};
 use crate::routing::{LinguisticOperation, OperationReport, OperationSupport, SentenceAnalysis};
-use crate::syntax::{chunk_phrases, DependencyParser, DependencyTree, PhraseChunk};
+use crate::syntax::{chunk_phrases, DependencyTree, PhraseChunk};
 use crate::tokenization::{
     TokenAlignmentMap, TokenizationMode, TokenizerPolicy, TokenizerRegistry, TokenizerSelection,
 };
@@ -53,10 +45,12 @@ pub enum AnalysisProfile {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// Variants describing entity recognition mode.
 pub enum EntityRecognitionMode {
-    /// Uses a local model backend.
+    /// Uses a local model backend. Fails when the model cannot be loaded.
     LocalModel,
-    /// Uses deterministic rules only.
-    Heuristic,
+    /// Named entity recognition is not requested: every sentence reports the
+    /// operation as unsupported and the analysis has no entities. There is no
+    /// heuristic fallback.
+    Disabled,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -132,12 +126,12 @@ impl ModelPreset {
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// Entity recognition runtime selection.
 ///
-/// Defaults are heuristic and no-download. Use [`EntityRecognitionOptions::local_model`]
-/// when a local bundle has already been materialized, or
-/// [`EntityRecognitionOptions::local_model_with_downloads`] for explicit
-/// download opt-in.
+/// The default is [`EntityRecognitionOptions::local_model`]: the local model
+/// without downloads, failing when its bundle is missing. Use
+/// [`EntityRecognitionOptions::local_model_with_downloads`] for explicit download
+/// opt-in, or [`EntityRecognitionOptions::disabled`] to skip the operation.
 pub struct EntityRecognitionOptions {
-    /// Whether to use deterministic rules or a local model.
+    /// Whether to run the local model or skip the operation.
     pub mode: EntityRecognitionMode,
     /// Directory containing local model bundles when `mode` is `LocalModel`.
     pub bundle_dir: PathBuf,
@@ -154,7 +148,7 @@ pub struct EntityRecognitionOptions {
 
 impl Default for EntityRecognitionOptions {
     fn default() -> Self {
-        Self::heuristic()
+        Self::local_model()
     }
 }
 
@@ -180,10 +174,10 @@ impl EntityRecognitionOptions {
         }
     }
 
-    /// Returns heuristic.
-    pub fn heuristic() -> Self {
+    /// Skips named entity recognition; sentences report it as unsupported.
+    pub fn disabled() -> Self {
         Self {
-            mode: EntityRecognitionMode::Heuristic,
+            mode: EntityRecognitionMode::Disabled,
             ..Self::local_model()
         }
     }
@@ -192,23 +186,24 @@ impl EntityRecognitionOptions {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// How lemmas, part of speech and morphological features are produced.
 pub enum MorphologyMode {
-    /// English heuristics. Sentences in other languages report the layer as
-    /// unsupported and get no lemma, POS or morphology annotations.
-    Heuristic,
     /// UD-treebank-trained taggers ([`UdModelPreset`]) plus UD-derived lemma tables
     /// for sentences in a language that has a preset (en, de, es); unsupported
-    /// otherwise.
+    /// otherwise. Fails when a needed model cannot be loaded.
     LocalModel,
+    /// Lemmas, POS and morphology are not requested: every sentence reports them as
+    /// unsupported. There is no heuristic fallback.
+    Disabled,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-/// Lemma/POS/morphology runtime selection. Defaults are heuristic and no-download.
+/// Lemma/POS/morphology runtime selection. The default is the local UD models
+/// without downloads, failing when a needed bundle is missing.
 ///
 /// Each sentence uses the model for its own language (see
 /// [`LinguisticAnalysis::sentence_analyses`]). Pin one language for every sentence
 /// with `TextProcessingOptions::language`.
 pub struct MorphologyOptions {
-    /// Whether to use heuristics or the UD-trained local models.
+    /// Whether to run the UD-trained local models or skip the layer.
     pub mode: MorphologyMode,
     /// Directory containing local model bundles when `mode` is `LocalModel`.
     pub bundle_dir: PathBuf,
@@ -222,7 +217,7 @@ pub struct MorphologyOptions {
 
 impl Default for MorphologyOptions {
     fn default() -> Self {
-        Self::heuristic()
+        Self::local_model()
     }
 }
 
@@ -247,10 +242,10 @@ impl MorphologyOptions {
         }
     }
 
-    /// English heuristics only.
-    pub fn heuristic() -> Self {
+    /// Skips lemmas, POS and morphology; sentences report them as unsupported.
+    pub fn disabled() -> Self {
         Self {
-            mode: MorphologyMode::Heuristic,
+            mode: MorphologyMode::Disabled,
             ..Self::local_model()
         }
     }
@@ -269,23 +264,24 @@ impl MorphologyOptions {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// How dependency trees are produced.
 pub enum DependencyParsingMode {
-    /// English POS-pattern heuristics. Sentences in other languages report the
-    /// layer as unsupported and get no tree.
-    Heuristic,
     /// The biaffine dependency head of the UD-treebank-trained models
     /// ([`UdModelPreset`]) for sentences in a language that has a preset (en, de,
-    /// es); unsupported otherwise.
+    /// es); unsupported otherwise. Fails when a needed model cannot be loaded.
     LocalModel,
+    /// Dependency trees are not requested: every sentence reports the layer as
+    /// unsupported. There is no heuristic fallback.
+    Disabled,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-/// Dependency parser runtime selection. Defaults are heuristic and no-download.
+/// Dependency parser runtime selection. The default is the local UD models without
+/// downloads, failing when a needed bundle is missing.
 ///
 /// When this and [`MorphologyOptions`] select the same UD model from the same
 /// bundle directory, each sentence is encoded once for both layers. Routing is per
 /// sentence, as for [`MorphologyOptions`].
 pub struct DependencyParsingOptions {
-    /// Whether to use heuristics or the UD-trained local models.
+    /// Whether to run the UD-trained local models or skip the layer.
     pub mode: DependencyParsingMode,
     /// Directory containing local model bundles when `mode` is `LocalModel`.
     pub bundle_dir: PathBuf,
@@ -299,7 +295,7 @@ pub struct DependencyParsingOptions {
 
 impl Default for DependencyParsingOptions {
     fn default() -> Self {
-        Self::heuristic()
+        Self::local_model()
     }
 }
 
@@ -324,10 +320,10 @@ impl DependencyParsingOptions {
         }
     }
 
-    /// English heuristics only.
-    pub fn heuristic() -> Self {
+    /// Skips dependency parsing; sentences report it as unsupported.
+    pub fn disabled() -> Self {
         Self {
-            mode: DependencyParsingMode::Heuristic,
+            mode: DependencyParsingMode::Disabled,
             ..Self::local_model()
         }
     }
@@ -366,10 +362,6 @@ pub struct LinguisticAnalysisOptions {
     pub language_detection: LanguageDetectionOptions,
     /// The tokenizer policy value.
     pub tokenizer_policy: TokenizerPolicy,
-    /// The lemma value.
-    pub lemma: LemmaOptions,
-    /// The pos value.
-    pub pos: PosTaggingOptions,
     /// Lemma/POS/morphology backend selection.
     pub morphology: MorphologyOptions,
     /// Dependency parser backend selection.
@@ -380,15 +372,17 @@ pub struct LinguisticAnalysisOptions {
     pub entity_recognition: EntityRecognitionOptions,
     /// The enable alignment value.
     pub enable_alignment: bool,
-    /// The enable coreference value.
+    /// Requests coreference resolution. No model backend exists yet, so `true`
+    /// fails the analysis instead of running a heuristic resolver.
     pub enable_coreference: bool,
-    /// The enable events value.
+    /// Requests event and relation extraction. No model backend exists yet, so
+    /// `true` fails the analysis instead of running heuristic extraction.
     pub enable_events: bool,
-    /// The enable discourse value.
+    /// Requests discourse segmentation. No model backend exists; `true` fails.
     pub enable_discourse: bool,
-    /// The enable topics value.
+    /// Requests topic modelling. No model backend exists; `true` fails.
     pub enable_topics: bool,
-    /// The enable style value.
+    /// Requests a style profile. No model backend exists; `true` fails.
     pub enable_style: bool,
 }
 
@@ -401,27 +395,30 @@ impl Default for LinguisticAnalysisOptions {
             },
             language_detection: LanguageDetectionOptions::default(),
             tokenizer_policy: TokenizerPolicy::default(),
-            lemma: LemmaOptions::default(),
-            pos: PosTaggingOptions::default(),
             morphology: MorphologyOptions::default(),
             dependency_parsing: DependencyParsingOptions::default(),
             entity_linking: EntityLinkingOptions::default(),
             entity_recognition: EntityRecognitionOptions::default(),
             enable_alignment: false,
-            enable_coreference: true,
-            enable_events: true,
-            enable_discourse: true,
-            enable_topics: true,
-            enable_style: true,
+            enable_coreference: false,
+            enable_events: false,
+            enable_discourse: false,
+            enable_topics: false,
+            enable_style: false,
         }
     }
 }
 
 impl LinguisticAnalysisOptions {
-    /// Returns heuristic.
-    pub fn heuristic() -> Self {
+    /// Only the model-free operations: language detection, sentence segmentation and
+    /// tokenization. Named
+    /// entities, morphology, POS and dependency syntax are disabled and reported as
+    /// unsupported for every sentence.
+    pub fn without_models() -> Self {
         Self {
-            entity_recognition: EntityRecognitionOptions::heuristic(),
+            entity_recognition: EntityRecognitionOptions::disabled(),
+            morphology: MorphologyOptions::disabled(),
+            dependency_parsing: DependencyParsingOptions::disabled(),
             ..Self::default()
         }
     }
@@ -467,7 +464,7 @@ impl TextNlpConfig {
         }
     }
 
-    /// Returns a rich deterministic profile without model-bundle requirements.
+    /// Returns the rich profile with word tokenization and no subword alignment.
     pub fn rich() -> Self {
         let mut options = options_for_profile(AnalysisProfile::Rich);
         options.tokenizer_policy.mode = TokenizationMode::Word;
@@ -528,7 +525,10 @@ impl TextNlpPipeline {
     }
 
     /// Returns analyze text.
-    pub fn analyze_text(&self, text: &str) -> Result<LinguisticAnalysis> {
+    pub fn analyze_text(
+        &self,
+        text: &str,
+    ) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
         analyze_text_with_config(text, &self.config)
     }
 
@@ -537,17 +537,23 @@ impl TextNlpPipeline {
         &self,
         text: &str,
         entity_labeler: &mut dyn SequenceLabeler,
-    ) -> Result<LinguisticAnalysis> {
+    ) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
         analyze_text_with_config_and_labeler(text, &self.config, Some(entity_labeler))
     }
 
     /// Returns analyze document.
-    pub fn analyze_document(&self, document: &TextDocument<'_>) -> Result<LinguisticAnalysis> {
+    pub fn analyze_document(
+        &self,
+        document: &TextDocument<'_>,
+    ) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
         self.analyze_text(document.text)
     }
 
     /// Returns analyze segment.
-    pub fn analyze_segment(&self, segment: &TextSegment<'_>) -> Result<LinguisticAnalysis> {
+    pub fn analyze_segment(
+        &self,
+        segment: &TextSegment<'_>,
+    ) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
         self.analyze_text(segment.text)
     }
 
@@ -681,7 +687,6 @@ fn options_for_profile(profile: AnalysisProfile) -> LinguisticAnalysisOptions {
     match profile {
         AnalysisProfile::Fast => {
             options.tokenizer_policy.mode = TokenizationMode::Word;
-            options.entity_recognition = EntityRecognitionOptions::heuristic();
             options.enable_alignment = false;
             options.enable_coreference = false;
             options.enable_events = false;
@@ -692,11 +697,6 @@ fn options_for_profile(profile: AnalysisProfile) -> LinguisticAnalysisOptions {
         AnalysisProfile::Balanced => {}
         AnalysisProfile::Rich => {
             options.enable_alignment = true;
-            options.enable_coreference = true;
-            options.enable_events = true;
-            options.enable_discourse = true;
-            options.enable_topics = true;
-            options.enable_style = true;
         }
     }
     options
@@ -726,7 +726,7 @@ pub struct SubtitleLinguisticAnalysis {
 pub fn analyze_document(
     document: &TextDocument<'_>,
     options: &LinguisticAnalysisOptions,
-) -> Result<LinguisticAnalysis> {
+) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
     TextNlpPipeline::new(TextNlpConfig::from_options(options.clone())).analyze_document(document)
 }
 
@@ -734,7 +734,7 @@ pub fn analyze_document(
 pub fn analyze_segment(
     segment: &TextSegment<'_>,
     options: &LinguisticAnalysisOptions,
-) -> Result<LinguisticAnalysis> {
+) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
     TextNlpPipeline::new(TextNlpConfig::from_options(options.clone())).analyze_segment(segment)
 }
 
@@ -768,7 +768,10 @@ pub fn analyze_transcription_contract(
 }
 
 /// Returns analyze text.
-pub fn analyze_text(text: &str, options: &LinguisticAnalysisOptions) -> Result<LinguisticAnalysis> {
+pub fn analyze_text(
+    text: &str,
+    options: &LinguisticAnalysisOptions,
+) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
     analyze_text_with_config(text, &TextNlpConfig::from_options(options.clone()))
 }
 
@@ -777,7 +780,7 @@ pub fn analyze_text_with_entity_labeler(
     text: &str,
     options: &LinguisticAnalysisOptions,
     entity_labeler: &mut dyn SequenceLabeler,
-) -> Result<LinguisticAnalysis> {
+) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
     analyze_text_with_config_and_labeler(
         text,
         &TextNlpConfig::from_options(options.clone()),
@@ -785,7 +788,10 @@ pub fn analyze_text_with_entity_labeler(
     )
 }
 
-fn analyze_text_with_config(text: &str, config: &TextNlpConfig) -> Result<LinguisticAnalysis> {
+fn analyze_text_with_config(
+    text: &str,
+    config: &TextNlpConfig,
+) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
     analyze_text_with_config_and_labeler(text, config, None)
 }
 
@@ -793,8 +799,41 @@ fn analyze_text_with_config_and_labeler(
     text: &str,
     config: &TextNlpConfig,
     entity_labeler: Option<&mut dyn SequenceLabeler>,
-) -> Result<LinguisticAnalysis> {
+) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
     let options = &config.options;
+    if options.enable_coreference {
+        return Err(model_required(
+            "coreference resolution",
+            "set `enable_coreference: false`",
+        ));
+    }
+    if options.enable_events {
+        return Err(model_required(
+            "event and relation extraction",
+            "set `enable_events: false`",
+        ));
+    }
+    for (requested, capability, opt_out) in [
+        (
+            options.enable_discourse,
+            "discourse segmentation",
+            "set `enable_discourse: false`",
+        ),
+        (
+            options.enable_topics,
+            "topic modelling",
+            "set `enable_topics: false`",
+        ),
+        (
+            options.enable_style,
+            "style profiling",
+            "set `enable_style: false`",
+        ),
+    ] {
+        if requested {
+            return Err(model_required(capability, opt_out));
+        }
+    }
     let sentences = split_sentence_spans(text, &options.processing);
     let language_detector = LanguageDetector {
         options: options.language_detection.clone(),
@@ -852,75 +891,39 @@ fn analyze_text_with_config_and_labeler(
         &sentences,
         &tokens,
     )?;
-    let heuristic_lemmas = lemmatize_tokens(&tokens, primary_language, &options.lemma);
-    let heuristic_pos = PosTagger {
-        options: options.pos.clone(),
-    }
-    .tag_tokens(&tokens, &heuristic_lemmas);
-    let heuristic_morphology = annotate_morphology(&tokens, &heuristic_lemmas, &heuristic_pos);
-    let mut lemma_values = merge_by_token(heuristic_lemmas.lemmas, ud.lemmas, |lemma| {
-        lemma.token_index
-    });
-    for lemma in &mut lemma_values {
-        let sentence = token_sentences.get(lemma.token_index).copied().flatten();
-        let from_ud = sentence.is_some_and(|sentence| {
-            options.morphology.mode == MorphologyMode::LocalModel
-                && sentence_presets[sentence].is_some()
-        });
-        if !from_ud {
-            if let Some(route) = sentence.and_then(|sentence| routes.get(sentence)) {
-                lemma.language = route.language.clone();
-            }
-        }
-    }
+    // Lemmas, POS, morphology and trees come only from the UD models; sentences
+    // without one get none (their reports say why).
     let lemmas = LemmatizationResult {
         language: primary_language.map(ToString::to_string),
-        lemmas: lemma_values,
+        lemmas: ud.lemmas,
     };
-    let pos = merge_by_token(heuristic_pos, ud.pos, |pos| pos.token_index);
-    let morphology = merge_by_token(heuristic_morphology, ud.morphology, |morphology| {
-        morphology.token_index
-    });
+    let pos = ud.pos;
+    let morphology = ud.morphology;
     let chunks = chunk_phrases(text, &sentences, &tokens, &pos);
-    let mut dependencies = DependencyParser.parse_document(&sentences, &tokens, &pos);
-    if !ud.dependencies.is_empty() {
-        let parsed = ud
-            .dependencies
-            .iter()
-            .map(|tree| tree.sentence_index)
-            .collect::<BTreeSet<_>>();
-        dependencies.retain(|tree| !parsed.contains(&tree.sentence_index));
-        dependencies.extend(ud.dependencies);
-        dependencies.sort_by_key(|tree| tree.sentence_index);
-    }
-    let heuristic_entities = extract_named_entities(text, &sentences, &tokens, &pos);
+    let mut dependencies = ud.dependencies;
+    dependencies.sort_by_key(|tree| tree.sentence_index);
     let entity_producer = if entity_labeler.is_some() {
         EntityProducer::CallerLabeler
-    } else if options.entity_recognition.mode == EntityRecognitionMode::LocalModel {
-        EntityProducer::Preset(options.entity_recognition.preset)
     } else {
-        EntityProducer::Heuristic
+        match options.entity_recognition.mode {
+            EntityRecognitionMode::LocalModel => {
+                EntityProducer::Preset(options.entity_recognition.preset)
+            }
+            EntityRecognitionMode::Disabled => EntityProducer::Disabled,
+        }
     };
-    let used_entity_model = entity_producer != EntityProducer::Heuristic;
-    let entities = if let Some(entity_labeler) = entity_labeler {
-        entities_with_model_labeler(
-            text,
-            &sentences,
-            &tokens,
-            heuristic_entities,
-            entity_labeler,
-        )?
-    } else if options.entity_recognition.mode == EntityRecognitionMode::LocalModel {
-        let mut entity_labeler = local_entity_labeler(&options.entity_recognition)?;
-        entities_with_model_labeler(
-            text,
-            &sentences,
-            &tokens,
-            heuristic_entities,
-            &mut entity_labeler,
-        )?
-    } else {
-        heuristic_entities
+    let used_entity_model = entity_producer != EntityProducer::Disabled;
+    // Model entities are returned as the model produced them, never merged with
+    // rule-based guesses.
+    let entities = match (entity_labeler, entity_producer) {
+        (Some(entity_labeler), _) => {
+            extract_named_entities_with_labeler(text, &sentences, &tokens, entity_labeler)?
+        }
+        (None, EntityProducer::Preset(_)) => {
+            let mut entity_labeler = local_entity_labeler(&options.entity_recognition)?;
+            extract_named_entities_with_labeler(text, &sentences, &tokens, &mut entity_labeler)?
+        }
+        (None, _) => Vec::new(),
     };
     let sentence_analyses = sentence_analyses(
         routes,
@@ -952,43 +955,19 @@ fn analyze_text_with_config_and_labeler(
         })
         .collect::<Vec<_>>();
     let canonical_entities = canonicalize_entities(&entities, &options.entity_linking);
-    let coreference = if options.enable_coreference {
-        CorefResolver::default().resolve(&tokens, &canonical_entities)
-    } else {
-        Vec::new()
-    };
-    let (events, relations) = if options.enable_events {
-        EventExtractor.extract(&dependencies, &tokens, &lemmas)
-    } else {
-        (Vec::new(), Vec::new())
-    };
-    let outline = if options.enable_discourse {
-        SectionClassifier.classify(&sentences)
-    } else {
-        DocumentOutline {
-            segments: Vec::new(),
-        }
+    // Requests for these layers fail above; no backend fills them yet.
+    let coreference = Vec::<CorefCluster>::new();
+    let (events, relations) = (Vec::<ExtractedEvent>::new(), Vec::<RelationTriple>::new());
+    // Requests for these layers fail above; no backend fills them yet.
+    let outline = DocumentOutline {
+        segments: Vec::new(),
     };
     let discourse = outline.segments.clone();
-    let topics = if options.enable_topics {
-        build_topic_model(
-            &sentences,
-            &tokens,
-            &lemmas,
-            &chunks,
-            language.primary.as_ref(),
-        )
-    } else {
-        TopicModel {
-            descriptors: Vec::new(),
-            clusters: Vec::new(),
-        }
+    let topics = TopicModel {
+        descriptors: Vec::new(),
+        clusters: Vec::new(),
     };
-    let style = if options.enable_style {
-        build_style_profile(text, &sentences, &tokens, &lemmas.lemmas, &dependencies)
-    } else {
-        StyleProfile::default()
-    };
+    let style = StyleProfile::default();
     let graph =
         build_annotation_graph_from_parts(text, &tokens, &sentences, &split_paragraphs(text));
     let confidence = summarize_analysis_confidence(
@@ -1054,21 +1033,6 @@ fn analyze_text_with_config_and_labeler(
         topics,
         style,
     })
-}
-
-fn entities_with_model_labeler(
-    text: &str,
-    sentences: &[Sentence],
-    tokens: &[Token],
-    heuristic_entities: Vec<NamedEntity>,
-    entity_labeler: &mut dyn SequenceLabeler,
-) -> Result<Vec<NamedEntity>> {
-    let model_entities =
-        extract_named_entities_with_labeler(text, sentences, tokens, entity_labeler)?;
-    Ok(merge_model_and_heuristic_entities(
-        model_entities,
-        heuristic_entities,
-    ))
 }
 
 /// The language one sentence is analyzed in.
@@ -1148,26 +1112,78 @@ fn token_sentence_indices(sentences: &[Sentence], tokens: &[Token]) -> Vec<Optio
         .collect()
 }
 
-/// `base` with every token that `overrides` annotates replaced, in token order.
-fn merge_by_token<T>(base: Vec<T>, overrides: Vec<T>, key: impl Fn(&T) -> usize) -> Vec<T> {
-    if overrides.is_empty() {
-        return base;
-    }
-    let mut merged = base
-        .into_iter()
-        .map(|item| (key(&item), item))
-        .collect::<std::collections::BTreeMap<_, _>>();
-    for item in overrides {
-        merged.insert(key(&item), item);
-    }
-    merged.into_values().collect()
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum EntityProducer {
-    Heuristic,
+    Disabled,
     Preset(ModelPreset),
     CallerLabeler,
+}
+
+/// Whether this build of text-linguistics can run its local models (the `candle` and
+/// `model-bundles` features). Without them every model-backed operation fails.
+pub fn local_models_compiled() -> bool {
+    cfg!(all(feature = "candle", feature = "model-bundles"))
+}
+
+/// The failure for a requested operation that has no model backend. The pipeline
+/// never substitutes heuristic output.
+fn model_required(capability: &str, opt_out: &str) -> LinguisticAnalysisError {
+    LinguisticAnalysisError::ModelRequired {
+        capability: capability.to_owned(),
+        hint: format!("{capability} has no model backend in text-linguistics yet; {opt_out} to analyze without it"),
+    }
+}
+
+/// Errors from a linguistic analysis run.
+#[derive(Debug)]
+pub enum LinguisticAnalysisError {
+    /// A requested capability needs a model that this build or configuration does not
+    /// provide. No heuristic stand-in is run.
+    ModelRequired {
+        /// The capability that was requested, e.g. `coreference resolution`.
+        capability: String,
+        /// How to provide the model or opt out of the capability.
+        hint: String,
+    },
+    /// Input, tokenizer or model execution failed.
+    Detect(DetectError),
+}
+
+impl std::fmt::Display for LinguisticAnalysisError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ModelRequired { hint, .. } => write!(f, "model required: {hint}"),
+            Self::Detect(error) => error.fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for LinguisticAnalysisError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::ModelRequired { .. } => None,
+            Self::Detect(error) => Some(error),
+        }
+    }
+}
+
+impl From<DetectError> for LinguisticAnalysisError {
+    fn from(error: DetectError) -> Self {
+        Self::Detect(error)
+    }
+}
+
+/// Lets callers that report shared detection errors keep using `?`; the model-required
+/// case becomes an `InvalidArgument` carrying the same message.
+impl From<LinguisticAnalysisError> for DetectError {
+    fn from(error: LinguisticAnalysisError) -> Self {
+        match error {
+            LinguisticAnalysisError::Detect(error) => error,
+            model_required @ LinguisticAnalysisError::ModelRequired { .. } => {
+                DetectError::InvalidArgument(model_required.to_string())
+            }
+        }
+    }
 }
 
 fn sentence_analyses(
@@ -1199,11 +1215,11 @@ fn sentence_analyses(
                 "language-neutral word tokenization rules",
             );
             let named_entities = match (entities, language) {
-                (EntityProducer::Heuristic, _) => OperationReport::new(
+                (EntityProducer::Disabled, _) => OperationReport::new(
                     Op::NamedEntities,
-                    Support::Partial,
-                    Some("heuristic:capitalization".to_string()),
-                    "capitalization rules; not language-aware and not scored",
+                    Support::Unsupported,
+                    None,
+                    "not requested (EntityRecognitionMode::Disabled); no heuristic fallback",
                 ),
                 (EntityProducer::CallerLabeler, _) => OperationReport::new(
                     Op::NamedEntities,
@@ -1243,20 +1259,23 @@ fn sentence_analyses(
                 layer_report(
                     Op::Morphology,
                     language,
-                    morphology_from_ud.then_some(preset).flatten(),
-                    "MorphologyMode::LocalModel",
+                    morphology_from_ud,
+                    preset,
+                    "MorphologyMode::Disabled",
                 ),
                 layer_report(
                     Op::PartOfSpeech,
                     language,
-                    morphology_from_ud.then_some(preset).flatten(),
-                    "MorphologyMode::LocalModel",
+                    morphology_from_ud,
+                    preset,
+                    "MorphologyMode::Disabled",
                 ),
                 layer_report(
                     Op::DependencySyntax,
                     language,
-                    dependencies_from_ud.then_some(preset).flatten(),
-                    "DependencyParsingMode::LocalModel",
+                    dependencies_from_ud,
+                    preset,
+                    "DependencyParsingMode::Disabled",
                 ),
             ];
             SentenceAnalysis {
@@ -1333,39 +1352,30 @@ fn undecided_report(operation: LinguisticOperation) -> OperationReport {
     )
 }
 
-/// Report for a lemma/morphology, POS or dependency layer. `ud_preset` is the UD
-/// model that ran for the sentence, if any.
+/// Report for a lemma/morphology, POS or dependency layer. `requested` says whether
+/// the layer's UD models are selected; `preset` is the sentence's UD model, if any.
 fn layer_report(
     operation: LinguisticOperation,
     language: Option<&str>,
-    ud_preset: Option<UdModelPreset>,
-    local_model_mode: &str,
+    requested: bool,
+    preset: Option<UdModelPreset>,
+    disabled_mode: &str,
 ) -> OperationReport {
-    match (language, ud_preset) {
-        (None, _) => undecided_report(operation),
-        (Some(_), Some(preset)) => OperationReport::new(
+    match (requested, language, preset) {
+        (false, _, _) => OperationReport::new(
+            operation,
+            OperationSupport::Unsupported,
+            None,
+            format!("not requested ({disabled_mode}); no heuristic fallback"),
+        ),
+        (true, None, _) => undecided_report(operation),
+        (true, Some(_), Some(preset)) => OperationReport::new(
             operation,
             OperationSupport::Supported,
             Some(format!("ud-model:{}", preset.as_str())),
             format!("{} (UD-treebank-trained, scored)", preset.repo_id()),
         ),
-        (Some("en"), None) => OperationReport::new(
-            operation,
-            OperationSupport::Partial,
-            Some("heuristic:english-rules".to_string()),
-            "English rules; unscored",
-        ),
-        (Some(language), None) if UdModelPreset::for_language(language).is_some() => {
-            OperationReport::new(
-                operation,
-                OperationSupport::Unsupported,
-                None,
-                format!(
-                    "only English heuristics are configured; the `{language}` UD model needs {local_model_mode}"
-                ),
-            )
-        }
-        (Some(language), None) => OperationReport::new(
+        (true, Some(language), None) => OperationReport::new(
             operation,
             OperationSupport::Unsupported,
             None,
@@ -1863,6 +1873,6 @@ fn analysis_provenance(
     {
         AnnotationProvenance::Model
     } else {
-        AnnotationProvenance::Heuristic
+        AnnotationProvenance::RuleBased
     }
 }

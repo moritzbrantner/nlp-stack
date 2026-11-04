@@ -139,13 +139,59 @@ fn entity_aware_tokens(analysis: &LinguisticAnalysis) -> Vec<String> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn trains_from_linguistic_analysis_using_shared_outputs() {
-        let analysis = text_linguistics::analyze_text(
-            "Alice launched the roadmap in Berlin.",
-            &text_linguistics::LinguisticAnalysisOptions::heuristic(),
+    /// A model-free analysis of `text` with model annotations supplied by hand:
+    /// `lemmas` as `(token, lemma)` and `person` as the token of a PER entity.
+    fn fixture_analysis(text: &str, lemmas: &[(&str, &str)], person: &str) -> LinguisticAnalysis {
+        let mut analysis = text_linguistics::analyze_text(
+            text,
+            &text_linguistics::LinguisticAnalysisOptions::without_models(),
         )
         .unwrap();
+        let index = |word: &str| {
+            analysis
+                .tokens
+                .iter()
+                .position(|token| token.text == word)
+                .unwrap()
+        };
+        analysis.lemmas = lemmas
+            .iter()
+            .map(|&(word, lemma)| text_linguistics::Lemma {
+                token_index: index(word),
+                value: lemma.to_string(),
+                language: Some("en".to_string()),
+                confidence: 0.9,
+            })
+            .collect();
+        let start = index(person);
+        let token = analysis.tokens[start].clone();
+        analysis.entities = vec![text_linguistics::NamedEntity {
+            id: "entity-0".to_string(),
+            entity_type: text_linguistics::EntityType::Person,
+            mention: text_linguistics::EntityMentionSpan {
+                text: token.text.clone(),
+                span: token.span,
+            },
+            normalized: token.text,
+            sentence_index: 0,
+            token_start: start,
+            token_end: start + 1,
+            confidence: 0.9,
+        }];
+        analysis
+    }
+
+    #[test]
+    fn trains_from_linguistic_analysis_using_shared_outputs() {
+        let analysis = fixture_analysis(
+            "Alice launched the roadmap in Berlin.",
+            &[
+                ("Alice", "Alice"),
+                ("launched", "launch"),
+                ("roadmap", "roadmap"),
+            ],
+            "Alice",
+        );
 
         let mut chain = MarkovChain::new(1).unwrap();
         chain.train_analysis(&analysis, MarkovInputMode::Lemma);
@@ -163,11 +209,11 @@ mod tests {
 
     #[test]
     fn synthesizes_document_from_linguistic_analysis() {
-        let analysis = text_linguistics::analyze_text(
+        let analysis = fixture_analysis(
             "Alice presented the roadmap in Berlin.",
-            &text_linguistics::LinguisticAnalysisOptions::heuristic(),
-        )
-        .unwrap();
+            &[("presented", "present"), ("roadmap", "roadmap")],
+            "Alice",
+        );
         let terms = terms_from_analysis(&analysis);
         assert!(terms.iter().any(|term| term.term.contains("alice")));
 

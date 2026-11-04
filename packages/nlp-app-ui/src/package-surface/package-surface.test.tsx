@@ -421,7 +421,7 @@ describe("PackageSurfaceWorkbench", () => {
     const focusedExample = {
       text: "visible text",
       includeNearDuplicates: true,
-      embedding: { mode: "hashed", dimensions: 128 },
+      embedding: { mode: "off" },
     };
     vi.stubGlobal(
       "fetch",
@@ -503,7 +503,7 @@ describe("PackageSurfaceWorkbench", () => {
         input: {
           text: "updated visible text",
           includeNearDuplicates: true,
-          embedding: { mode: "hashed", dimensions: 128 },
+          embedding: { mode: "off" },
         },
       });
     });

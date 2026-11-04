@@ -186,7 +186,7 @@ const MIN_GOLD_LEMMA: f64 = 0.9;
 fn ud_presets_reach_gold_fixture_accuracy() {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../evaluation/corpora/morphology-multilingual-v1.jsonl");
-    let mut options = LinguisticAnalysisOptions::heuristic();
+    let mut options = LinguisticAnalysisOptions::without_models();
     options.morphology = MorphologyOptions {
         bundle_dir: bundle_dir(),
         download_progress: false,
@@ -267,7 +267,7 @@ const MIN_GOLD_LAS: f64 = 0.85;
 fn ud_presets_reach_gold_dependency_accuracy() {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../evaluation/corpora/dependencies-multilingual-v1.jsonl");
-    let mut options = LinguisticAnalysisOptions::heuristic();
+    let mut options = LinguisticAnalysisOptions::without_models();
     options.morphology = MorphologyOptions {
         bundle_dir: bundle_dir(),
         download_progress: false,
@@ -372,7 +372,7 @@ fn mixed_document_routes_each_sentence_to_its_model() {
         .collect::<Vec<_>>()
         .join(" ");
 
-    let mut options = LinguisticAnalysisOptions::heuristic();
+    let mut options = LinguisticAnalysisOptions::without_models();
     options.morphology = MorphologyOptions {
         bundle_dir: bundle_dir(),
         download_progress: false,

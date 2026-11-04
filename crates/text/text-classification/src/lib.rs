@@ -5,7 +5,7 @@ pub mod surface;
 #[cfg(any(feature = "candle", feature = "onnx"))]
 mod tokenizer;
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 #[cfg(feature = "onnx")]
@@ -14,9 +14,7 @@ pub use models::OnnxZeroShotClassifier;
 pub use models::{CandleSequenceClassifier, SEQUENCE_CLASSIFIER_BATCH_SIZE};
 pub use models::{PairSequenceClassifier, RawPrediction, SequenceClassifier};
 use serde::{Deserialize, Serialize};
-use text_core::tokenize_words;
 use text_core::{DetectError, Result};
-use text_lexical::{sentiment as lexical_sentiment, SentimentLexicon};
 
 /// Text classification capability families exposed by this crate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -58,23 +56,19 @@ pub enum TextClassificationRuntime {
     Onnx,
     /// Browser-safe WASM postprocessing.
     WasmPostprocess,
-    /// Deterministic lexical fallback.
-    Lexical,
     /// Caller-supplied model predictions.
     ImportedPredictions,
 }
 
-/// Fallback behavior when the selected native model cannot run.
+/// Behavior when the selected native model cannot run. There is no heuristic
+/// fallback: the former `fast_fallback` and `lexical_fallback` policies (label-word
+/// overlap and lexicon sentiment) were removed (#186).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum FallbackPolicy {
     /// Return a typed error.
     #[default]
     Error,
-    /// Use a fast deterministic fallback.
-    FastFallback,
-    /// Use a lexical fallback.
-    LexicalFallback,
 }
 
 /// Model selection supplied by API, CLI, or UI callers.
@@ -381,10 +375,9 @@ pub fn classify_text_with_context(
             predictions: class_predictions_from_raw(raw, request.top_k),
         });
     }
-    if request.model.fallback_policy != FallbackPolicy::Error {
-        return classify_text(request);
-    }
-    missing_model("classification requires a classifier backend, imported predictions, or an explicit fallback policy")
+    missing_model(
+        "classification requires a classifier backend, a local model or imported predictions",
+    )
 }
 
 /// Runs sentiment with an optional classifier backend.
@@ -430,10 +423,7 @@ pub fn analyze_sentiment_with_context(
             predictions,
         });
     }
-    if request.model.fallback_policy != FallbackPolicy::Error {
-        return analyze_sentiment(request);
-    }
-    missing_model("sentiment requires a classifier backend, imported predictions, or an explicit fallback policy")
+    missing_model("sentiment requires a classifier backend, a local model or imported predictions")
 }
 
 /// Runs zero-shot classification with an optional classifier backend.
@@ -485,13 +475,10 @@ pub fn zero_shot_classify_with_context(
             hypotheses,
         });
     }
-    if request.model.fallback_policy != FallbackPolicy::Error {
-        return zero_shot_classify(request);
-    }
-    missing_model("zero-shot classification requires a classifier backend, imported predictions, or an explicit fallback policy")
+    missing_model("zero-shot classification requires a classifier backend, a local model or imported predictions")
 }
 
-/// Runs classification from imported predictions or an explicit fallback.
+/// Runs classification from imported predictions or a local model.
 pub fn classify_text(request: TextClassificationRequest) -> Result<TextClassificationResponse> {
     ensure_non_empty(&request.text, "text")?;
     let model_id = request
@@ -512,34 +499,13 @@ pub fn classify_text(request: TextClassificationRequest) -> Result<TextClassific
     }
 
     if should_run_local_model(&request.local_model) {
-        match run_local_classification(&request) {
-            Ok(response) => return Ok(response),
-            Err(error) if request.model.fallback_policy != FallbackPolicy::Error => {
-                let _ = error;
-            }
-            Err(error) => return Err(error),
-        }
+        return run_local_classification(&request);
     }
-
-    match request.model.fallback_policy {
-        FallbackPolicy::FastFallback | FallbackPolicy::LexicalFallback => {
-            let predictions = lexical_label_scores(&request.text, &request.labels, request.top_k);
-            Ok(TextClassificationResponse {
-                accepted: true,
-                operation: "classify".to_string(),
-                text: request.text,
-                model_id,
-                runtime: TextClassificationRuntime::Lexical,
-                predictions,
-            })
-        }
-        FallbackPolicy::Error => unsupported_runtime(
-            "native text classification requires imported predictions or an explicit fallback policy",
-        ),
-    }
+    let _ = model_id;
+    missing_model("text classification requires a local model or imported predictions")
 }
 
-/// Runs sentiment from imported predictions or lexical fallback.
+/// Runs sentiment from imported predictions or a local model.
 pub fn analyze_sentiment(request: SentimentRequest) -> Result<SentimentResponse> {
     ensure_non_empty(&request.text, "text")?;
     let model_id = request
@@ -571,39 +537,13 @@ pub fn analyze_sentiment(request: SentimentRequest) -> Result<SentimentResponse>
     }
 
     if should_run_local_model(&request.local_model) {
-        match run_local_sentiment(&request) {
-            Ok(response) => return Ok(response),
-            Err(error) if request.model.fallback_policy != FallbackPolicy::Error => {
-                let _ = error;
-            }
-            Err(error) => return Err(error),
-        }
+        return run_local_sentiment(&request);
     }
-
-    match request.model.fallback_policy {
-        FallbackPolicy::FastFallback | FallbackPolicy::LexicalFallback => {
-            let summary = lexical_sentiment(&request.text, &SentimentLexicon::default());
-            let predictions = sentiment_predictions(&summary.label, summary.compound);
-            Ok(SentimentResponse {
-                accepted: true,
-                operation: "sentiment".to_string(),
-                text: request.text,
-                model_id,
-                runtime: TextClassificationRuntime::Lexical,
-                label: summary.label,
-                positive_score: summary.positive_score,
-                negative_score: summary.negative_score,
-                compound: summary.compound,
-                predictions,
-            })
-        }
-        FallbackPolicy::Error => unsupported_runtime(
-            "native sentiment requires imported predictions or an explicit fallback policy",
-        ),
-    }
+    let _ = model_id;
+    missing_model("sentiment requires a local model or imported predictions")
 }
 
-/// Runs zero-shot classification from imported predictions or lexical label overlap.
+/// Runs zero-shot classification from imported predictions or a local model.
 pub fn zero_shot_classify(
     request: ZeroShotClassificationRequest,
 ) -> Result<ZeroShotClassificationResponse> {
@@ -637,34 +577,10 @@ pub fn zero_shot_classify(
     }
 
     if should_run_local_model(&request.local_model) {
-        match run_local_zero_shot(&request, hypotheses.clone()) {
-            Ok(response) => return Ok(response),
-            Err(error) if request.model.fallback_policy != FallbackPolicy::Error => {
-                let _ = error;
-            }
-            Err(error) => return Err(error),
-        }
+        return run_local_zero_shot(&request, hypotheses);
     }
-
-    match request.model.fallback_policy {
-        FallbackPolicy::FastFallback | FallbackPolicy::LexicalFallback => {
-            let mut predictions =
-                lexical_label_scores(&request.text, &request.labels, request.labels.len());
-            normalize_prediction_scores(&mut predictions);
-            Ok(ZeroShotClassificationResponse {
-                accepted: true,
-                operation: "zero-shot".to_string(),
-                text: request.text,
-                model_id,
-                runtime: TextClassificationRuntime::Lexical,
-                predictions,
-                hypotheses,
-            })
-        }
-        FallbackPolicy::Error => unsupported_runtime(
-            "native zero-shot classification requires imported predictions or an explicit fallback policy",
-        ),
-    }
+    let _ = model_id;
+    missing_model("zero-shot classification requires a local model or imported predictions")
 }
 
 /// Returns preset ids registered for text classification capabilities.
@@ -964,6 +880,7 @@ fn ensure_non_empty(value: &str, name: &str) -> Result<()> {
     Ok(())
 }
 
+#[cfg(any(not(feature = "candle"), not(feature = "onnx")))]
 fn unsupported_runtime<T>(message: &str) -> Result<T> {
     Err(DetectError::InvalidArgument(format!(
         "unsupported_runtime: {message}"
@@ -1021,85 +938,6 @@ fn normalize_prediction_scores(predictions: &mut [TextClassPrediction]) {
             prediction.score /= total;
         }
     }
-}
-
-fn lexical_label_scores(text: &str, labels: &[String], top_k: usize) -> Vec<TextClassPrediction> {
-    let labels = if labels.is_empty() {
-        vec![
-            "positive".to_string(),
-            "negative".to_string(),
-            "neutral".to_string(),
-        ]
-    } else {
-        labels.to_vec()
-    };
-    let text_terms = tokenize_words(text).into_iter().collect::<BTreeSet<_>>();
-    let mut predictions = labels
-        .into_iter()
-        .map(|label| {
-            let label_terms = tokenize_words(&label);
-            let overlap = label_terms
-                .iter()
-                .filter(|term| text_terms.contains(term.as_str()))
-                .count();
-            let score = if label_terms.is_empty() {
-                0.0
-            } else {
-                overlap as f32 / label_terms.len() as f32
-            };
-            TextClassPrediction { label, score }
-        })
-        .collect::<Vec<_>>();
-    if predictions
-        .iter()
-        .all(|prediction| prediction.score <= f32::EPSILON)
-    {
-        let sentiment = lexical_sentiment(text, &SentimentLexicon::default());
-        let prediction_count = predictions.len().max(1) as f32;
-        for prediction in &mut predictions {
-            prediction.score = match prediction.label.to_ascii_lowercase().as_str() {
-                "positive" => sentiment.positive_score.max(0.0),
-                "negative" => sentiment.negative_score.max(0.0),
-                "neutral" => 1.0 - sentiment.compound.abs().min(1.0),
-                _ => 1.0 / prediction_count,
-            };
-        }
-    }
-    predictions.sort_by(|left, right| {
-        right
-            .score
-            .total_cmp(&left.score)
-            .then_with(|| left.label.cmp(&right.label))
-    });
-    predictions.truncate(top_k.max(1));
-    predictions
-}
-
-fn sentiment_predictions(label: &str, compound: f32) -> Vec<TextClassPrediction> {
-    let positive = compound.clamp(0.0, 1.0);
-    let negative = (-compound).clamp(0.0, 1.0);
-    let neutral = (1.0 - compound.abs()).max(0.0);
-    let mut predictions = vec![
-        TextClassPrediction {
-            label: "positive".to_string(),
-            score: positive,
-        },
-        TextClassPrediction {
-            label: "negative".to_string(),
-            score: negative,
-        },
-        TextClassPrediction {
-            label: "neutral".to_string(),
-            score: neutral,
-        },
-    ];
-    for prediction in &mut predictions {
-        if prediction.label == label {
-            prediction.score = prediction.score.max(0.5);
-        }
-    }
-    predictions.sort_by(|left, right| right.score.total_cmp(&left.score));
-    predictions
 }
 
 fn score_for_label(predictions: &[TextClassPrediction], labels: &[&str]) -> f32 {
@@ -1186,28 +1024,36 @@ mod tests {
         let tasks = model_catalog(None)
             .into_iter()
             .map(|model| model.task)
-            .collect::<BTreeSet<_>>();
+            .collect::<std::collections::BTreeSet<_>>();
         assert!(tasks.contains(&TextClassificationTask::TextClassification));
         assert!(tasks.contains(&TextClassificationTask::Sentiment));
         assert!(tasks.contains(&TextClassificationTask::ZeroShotClassification));
     }
 
     #[test]
-    fn fallback_classification_scores_labels() {
-        let response = classify_text(TextClassificationRequest {
+    fn classification_without_a_model_fails_instead_of_scoring_label_words() {
+        let error = classify_text(TextClassificationRequest {
             text: "rust text classification".to_string(),
             labels: vec!["classification".to_string(), "music".to_string()],
             top_k: 2,
             multi_label: false,
-            model: ModelSelection {
-                fallback_policy: FallbackPolicy::LexicalFallback,
-                ..ModelSelection::default()
-            },
+            model: ModelSelection::default(),
             imported_predictions: Vec::new(),
             local_model: None,
         })
-        .expect("classification");
-        assert_eq!(response.predictions[0].label, "classification");
+        .expect_err("no model");
+        assert!(error.to_string().contains("missing_model"), "{error}");
+        let error = analyze_sentiment(SentimentRequest {
+            text: "great work".to_string(),
+            model: ModelSelection::default(),
+            imported_predictions: Vec::new(),
+            local_model: None,
+        })
+        .expect_err("no model");
+        assert!(error.to_string().contains("missing_model"), "{error}");
+        for removed in ["lexical_fallback", "fast_fallback"] {
+            assert!(serde_json::from_value::<FallbackPolicy>(serde_json::json!(removed)).is_err());
+        }
     }
 
     #[test]
@@ -1216,11 +1062,14 @@ mod tests {
             text: "rust text".to_string(),
             labels: vec!["code".to_string(), "music".to_string()],
             hypothesis_template: "This is about {}.".to_string(),
-            model: ModelSelection {
-                fallback_policy: FallbackPolicy::LexicalFallback,
-                ..ModelSelection::default()
-            },
-            imported_predictions: Vec::new(),
+            model: ModelSelection::default(),
+            imported_predictions: vec![ImportedPrediction {
+                kind: None,
+                label: "code".to_string(),
+                text: None,
+                score: 0.9,
+                attributes: BTreeMap::new(),
+            }],
             local_model: None,
         })
         .expect("zero shot");

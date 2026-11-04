@@ -482,7 +482,7 @@ mod tests {
     use crate::{IndexDocument, MemoryTextIndex};
 
     fn index(documents: &[(&str, &str)]) -> SurfaceIndex {
-        let mut index = MemoryTextIndex::new_memory().expect("memory index");
+        let mut index = MemoryTextIndex::lexical_memory();
         let documents = documents
             .iter()
             .map(|(id, body)| IndexDocument::new(*id, *body))

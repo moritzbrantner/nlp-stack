@@ -15,7 +15,7 @@ test("runOperation classifies text with structured output", async () => {
       input: {
         text: "rust is reliable",
         labels: ["positive", "negative"],
-        model: { fallbackPolicy: "lexical_fallback" },
+        importedPredictions: [{ label: "positive", score: 0.9 }, { label: "negative", score: 0.1 }],
       },
     }),
     "classification.classify",

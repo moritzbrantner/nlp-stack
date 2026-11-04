@@ -64,7 +64,7 @@ const packageAppConfig: PackageAppConfig = {
       id: "document-deterministic",
       label: "Document: deterministic report",
       operation: "analysis.document",
-      description: "Deterministic report analysis with non-empty keywords, entity hints, sentence counts, and hashed embeddings.",
+      description: "Report analysis with keywords, sentence counts and model-free linguistics. Model-backed layers show as unsupported; no embedding is requested.",
       input: {
         id: "release-report-berlin",
         text: sampleText,
@@ -73,8 +73,8 @@ const packageAppConfig: PackageAppConfig = {
         summarySentences: 3,
         ngramSizes: [2, 3],
         shingleSizes: [3, 5],
-        linguistics: { mode: "heuristicBalanced" },
-        embedding: { mode: "hashed", dimensions: 128, useIdf: false },
+        linguistics: { mode: "modelFree" },
+        embedding: { mode: "off" },
       },
     },
     {
@@ -157,8 +157,8 @@ const packageAppConfig: PackageAppConfig = {
         query: "tokenizer transcript search evidence",
         topK: 10,
         includeNearDuplicates: true,
-        includeSemanticNeighbors: true,
-        embedding: { mode: "hashed", dimensions: 128, useIdf: true },
+        includeSemanticNeighbors: false,
+        embedding: { mode: "off" },
       },
     },
     {
@@ -181,7 +181,7 @@ const packageAppConfig: PackageAppConfig = {
         "analysis.document": {
           title: "Document analysis",
           summaryFields: ["tokenCount", "sentenceCount", "keywordCount", "entityCount", "embeddingDimensions", "diagnosticCount"],
-          listFields: ["lexical.keywords", "lexical.ruleEntities", "diagnostics"],
+          listFields: ["lexical.keywords", "diagnostics"],
           objectFields: ["core", "lexical", "linguistic", "embedding", "classification"],
           explanation: () => "The orchestrator ran core statistics, lexical keyword extraction, linguistic projections, deterministic embeddings, and retrieval-oriented diagnostics for one document.",
         },

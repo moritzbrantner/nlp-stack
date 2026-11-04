@@ -104,8 +104,12 @@ const languageNames: Record<string, string> = {
   nl: "Dutch",
 };
 
-/** Languages whose lemma/POS/dependency models exist only in the native Rust library. */
-const rustOnlyModelLanguages = new Set(["de", "es"]);
+/**
+ * Languages whose lemma/POS/dependency models exist only in the native Rust library.
+ * The browser runs no heuristic stand-in for them (#186), so these layers show the
+ * model they need instead.
+ */
+const rustOnlyModelLanguages = new Set(["en", "de", "es"]);
 
 export function languageName(language: string | null): string {
   if (!language) return "Undecided";
@@ -169,6 +173,9 @@ function rustRow(label: string, operation: string, language: string | null, repo
   const producer = text(report?.producer);
   const reason = text(report?.reason) ?? "";
   const linguistic = operation === "morphology" || operation === "partOfSpeech" || operation === "dependencySyntax";
+  if (linguistic && support === "unsupported" && !language) {
+    return { operation, label, status: "unknown", producer: null, detail: "sentence language undecided, so no model was chosen" };
+  }
   if (linguistic && support === "unsupported" && language && rustOnlyModelLanguages.has(language)) {
     return {
       operation,
@@ -177,6 +184,9 @@ function rustRow(label: string, operation: string, language: string | null, repo
       producer: null,
       detail: `not available in the browser: the ${languageNames[language]} UD model (COMBO on XLM-RoBERTa base, about 1.1 GB) runs only in the native Rust library`,
     };
+  }
+  if (linguistic && support === "unsupported" && language) {
+    return { operation, label, status: "unsupported", producer: null, detail: `no model for \`${language}\`: UD models exist for en, de and es only` };
   }
   const detail = operation === "tokenization" ? `${tokenCount} ${tokenCount === 1 ? "token" : "tokens"}; ${reason}` : reason;
   const status = (["supported", "partial", "unsupported", "unknown"] as const).find((value) => value === support) ?? "unknown";

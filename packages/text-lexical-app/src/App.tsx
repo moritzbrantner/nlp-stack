@@ -136,8 +136,8 @@ const packageAppConfig: PackageAppConfig = {
         title: "Lexical analysis",
         summaryFields: ["keywordCount", "entityCount", "wordCount", "sentenceCount"],
         listFields: ["keywords", "entities"],
-        objectFields: ["readability", "sentiment", "summary", "statistics"],
-        explanation: () => "The lexical pipeline computed keywords, readability, sentiment-style cues, rule entities, and a compact summary from the sample text.",
+        objectFields: ["readability", "summary", "statistics"],
+        explanation: () => "The lexical pipeline computed keywords, readability, and a compact summary from the sample text.",
       },
       "lexical.keywords": {
         title: "Keyword ranking",

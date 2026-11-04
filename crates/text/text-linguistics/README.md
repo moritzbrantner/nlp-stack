@@ -1,48 +1,52 @@
 # text-linguistics
 
-Heuristic-first, local-first linguistic analysis pipeline for
-`moritzbrantner-video-analysis`.
+Model-backed, local-first linguistic analysis pipeline. There are no heuristic
+fallbacks: an operation without a model fails or reports itself unsupported
+(#186).
 
 ## Highlights
 
 - Per-sentence language detection (lingua) and routing, with typed supported/partial/unsupported/unknown reports per operation
 - Tokenizer routing for word, subword, and mixed analysis modes
 - Surface-to-subword alignment
-- Lemmatization, morphology, POS tagging, chunking, and dependency parsing
-- Explicit local model-backed named entities through `CandleTokenClassifier`
-- Heuristic rule extraction remains available through `LinguisticAnalysisOptions::heuristic()`
-- Coreference, events, discourse, topics, and style analysis
-- Deterministic historical temporal normalization (`normalize_temporal_expressions`): typed dates, ranges, decades and centuries with byte spans, English and German
+- Lemmatization, morphology, POS tagging and dependency parsing from the UD models; phrase chunks from their POS tags
+- Local model-backed named entities through `CandleTokenClassifier`, returned exactly as the model labels them
+- Coreference, events, relations, discourse segments, topics and style have result types but no producer: requesting them (`enable_coreference`, `enable_events`, `enable_discourse`, `enable_topics`, `enable_style`) fails with a "model required" error
+- Rule-based (exact) historical temporal normalization (`normalize_temporal_expressions`): typed dates, ranges, decades and centuries with byte spans, English and German
 
 ## Stable contract
 
-The stable surface is the deterministic analysis pipeline, its request options,
-serializable analysis records, tokenizer policy types, and transcript-contract
-adapters behind the `transcripts` feature. Default constructors use heuristic
-entity recognition, avoid model-bundle tokenizer alignment, and do not create or
-download model bundles.
+The stable surface is the analysis pipeline, its request options, serializable
+analysis records, tokenizer policy types, and transcript-contract adapters
+behind the `transcripts` feature. Default constructors select the local NER and
+UD models without downloads: the analysis fails when a needed bundle is missing
+or the build lacks `candle,model-bundles`. `LinguisticAnalysisOptions::without_models()`
+(or the per-layer `disabled()` constructors) runs only the model-free operations;
+every disabled layer reports `Unsupported` per sentence.
 
 ## Quality and limits
 
-Language, POS, entity, coreference, event, discourse, topic, and style outputs
-are heuristic-first and best-effort. Their data shapes are intended to remain
-stable; their labels and confidence scores should not be treated as
-production-grade NLP accuracy claims.
+Entity, lemma, POS, morphology and dependency outputs come only from the scored
+models below. Reporting and scope evidence are **rule-based**: fixed per-language
+cue lists applied over the UD model's dependency trees (producers
+`text-linguistics:reporting-ud-rules` and `text-linguistics:scope-ud-rules`).
+Temporal normalization is rule-based exact pattern matching. Phrase chunks are
+rule-based groupings of model POS tags.
 
 ## Example
 
 ```rust,no_run
-use text_linguistics::{TextNlpPipeline, TextNlpConfig, LinguisticAnalysisOptions};
+use text_linguistics::{analyze_text, LinguisticAnalysisOptions, LinguisticOperation};
 
-let pipeline = TextNlpPipeline::new(TextNlpConfig {
-    options: LinguisticAnalysisOptions::heuristic(),
-    ..TextNlpConfig::fast()
-});
-let analysis = pipeline
-    .analyze_text("Alice visited Berlin and presented the roadmap.")
-    .unwrap();
+// Model-free: language, sentences and tokens; model layers report Unsupported.
+let analysis = analyze_text(
+    "Alice visited Berlin and presented the roadmap.",
+    &LinguisticAnalysisOptions::without_models(),
+)
+.unwrap();
 
-assert!(!analysis.entities.is_empty());
+assert!(analysis.entities.is_empty());
+assert!(!analysis.sentence_analyses[0].keeps(LinguisticOperation::NamedEntities));
 assert_eq!(analysis.graph.tokens.len(), analysis.tokens.len());
 ```
 
@@ -65,22 +69,22 @@ in the last float bit.
 
 ## Package surface
 
-- Primary workflow: `linguistics.analyze` runs the deterministic linguistic
-  pipeline and returns tokens, language, entities, topics, and style signals.
+- Primary workflow: `linguistics.analyze` runs the model-backed linguistic
+  pipeline and returns tokens, language, morphology, syntax and entities.
+  Builds without `candle,model-bundles` (including WASM) fail with a
+  `missing_dependency` error; there is no heuristic result.
 - Workflow operations: `linguistics.analyze`, `linguistics.entities`, and
   `linguistics.language`.
 - Debug operations: `describe` inspects package metadata and operation support.
-- Runtime support: deterministic package-surface operations are pure Rust and
-  available through library, CLI, server, and WASM wrappers; richer model-backed
-  library APIs remain feature-gated.
+- Runtime support: `linguistics.language` is pure Rust everywhere; the analysis
+  operations need the feature-gated models.
 - Sample output includes `title`, `message`, `summary`, `result`, and
-  operation-specific fields such as `tokens`, `language`, `entities`,
-  `relations`, or `events`.
+  operation-specific fields such as `tokens`, `language` or `entities`.
 - The package surface does not download models or execute hosted LLMs.
 
 ## Model Loading
 
-The deterministic heuristic pipeline is always available. Local NER runs a
+Local NER runs a
 Candle token classifier from a bundle under `EntityRecognitionOptions::bundle_dir`
 (default `.model-runtime`) when the crate is built with `candle,model-bundles`.
 `ModelPreset` selects the model:
@@ -114,8 +118,8 @@ scores below 0.8 F1 for a language it declares.
 
 With `candle,model-bundles`, setting
 `LinguisticAnalysisOptions::morphology` to `MorphologyOptions::local_model()` (or
-`local_model_with_downloads()`) replaces the heuristic lemma, POS and morphology
-layers for English, German and Spanish. The layers come from:
+`local_model_with_downloads()`, the default without downloads) produces the
+lemma, POS and morphology layers for English, German and Spanish. The layers come from:
 
 | Preset | Model (pinned) | Training data |
 | --- | --- | --- |
@@ -171,9 +175,9 @@ UFeats or 0.90 lemma accuracy.
 ## UD dependency syntax (en/de/es)
 
 Setting `LinguisticAnalysisOptions::dependency_parsing` to
-`DependencyParsingOptions::local_model()` (or `local_model_with_downloads()`)
-replaces the heuristic dependency trees for English, German and Spanish with the
-checkpoint's biaffine dependency head. The head uses the same presets and the
+`DependencyParsingOptions::local_model()` (the default) or
+`local_model_with_downloads()` produces the dependency trees for English, German
+and Spanish with the checkpoint's biaffine dependency head. The head uses the same presets and the
 same `UdModel` as morphology. When both layers select the same model and bundle
 directory, each sentence is encoded once.
 
@@ -238,9 +242,9 @@ that anyone holds the belief, or that the content is true. Its `confidence` is t
 dependency-attachment confidence.
 
 Only sentences whose dependency syntax is `Supported` (a UD model parse) are read.
-For heuristic or missing trees the sentence report says `Unsupported`/`Unknown` and
-gives the reason. The Pages workbench has only English heuristic trees, so it shows the
-section as unsupported. The opt-in `tests/reporting_external.rs` checks the en/de/es
+For missing trees the sentence report says `Unsupported`/`Unknown` and gives the
+reason. The Pages workbench runs no dependency model, so it shows the section as
+unsupported. The opt-in `tests/reporting_external.rs` checks the en/de/es
 UD parses.
 
 ## Negation, uncertainty and conditional scope (en/de/es)
@@ -305,15 +309,14 @@ support level, the producer that ran and the reason:
 | Support | Meaning | Results in the analysis |
 | --- | --- | --- |
 | `Supported` | a producer evaluated for this language, or language-neutral rules | kept |
-| `Partial` | ran, but unscored for this language (English heuristics, capitalization NER) | kept, labelled |
-| `Unsupported` | the language is known but nothing configured supports it | omitted for this sentence |
+| `Partial` | ran, but unscored for this language (a caller-supplied labeler) | kept, labelled |
+| `Unsupported` | the layer was not requested, or no configured model supports the language | omitted for this sentence |
 | `Unknown` | the language is undecided, so nothing language-specific ran | omitted for this sentence |
 
 German sentences go to the German UD model and Spanish sentences to the Spanish
 one within the same document, and no relation is drawn across sentences. Lemmas,
 morphology, POS, dependency trees and entities are omitted for sentences whose
-report does not keep them. Chunks, events, topics and style still see every
-sentence. `TextProcessingOptions::language` pins one language for every sentence
+report does not keep them. Chunks still see every sentence's model POS tags. `TextProcessingOptions::language` pins one language for every sentence
 and skips detection.
 
 Accuracy, measured 2026-11-01 (`never_misroutes_a_gold_fixture_sentence` in
@@ -352,22 +355,17 @@ Current state:
 | Part of speech (`MorphologyMode::LocalModel`) | **UD model, scored** | **UD model, scored** | **UD model, scored** |
 | Dependency syntax (`DependencyParsingMode::LocalModel`) | **UD model, scored** | **UD model, scored** | **UD model, scored** |
 
-The `LocalModel` modes route every en/de/es sentence to its language's UD model.
-The default heuristic modes stay English rules: English sentences get them as
-`Partial` (unscored), and German and Spanish sentences report those three layers
-as `Unsupported` instead of receiving English heuristic output.
+The `LocalModel` modes (the default) route every en/de/es sentence to its
+language's UD model. The `Disabled` modes report those three layers as
+`Unsupported` for every sentence; nothing heuristic fills them.
 
 The browser does not run the UD models. The COMBO checkpoints are custom heads on
 XLM-RoBERTa base, which Transformers.js cannot load as-is, and an int8 ONNX
 export would be roughly 280 MB per language, about twice the browser NER model.
-The Pages workbench's Sentences view shows those layers as "Rust only" for German
-and Spanish sentences; English sentences there still get the `Partial` heuristics. In the browser it runs
+The Pages workbench's Sentences view shows those layers as "Rust only" for
+English, German and Spanish sentences. In the browser it runs
 language detection, segmentation and tokenization in Rust/Wasm and NER with the
 browser model, per sentence language.
-
-Heuristic NER (the default `EntityRecognitionMode::Heuristic`) is
-capitalization-based and is not language-aware; it reports `Partial` for every
-sentence.
 
 Browser package apps expose local benchmark scenarios in the `Benchmarks` tab.
 Root scripts `bun run text-native:bench` and `bun run text-wasm:bench:all`

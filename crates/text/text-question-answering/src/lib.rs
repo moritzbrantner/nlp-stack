@@ -15,11 +15,11 @@ pub use models::OnnxQuestionAnswerer;
 pub use models::{QuestionAnsweringBackend, QuestionAnsweringDecodeOptions, RawPrediction};
 use retrieved_context::RetrievedContext;
 use serde::{Deserialize, Serialize};
-use text_embeddings::{HashedTextEmbedder, TextEmbedderBackend, TextEmbeddingConfig};
+use text_embeddings::TextEmbedderBackend;
 use text_index::{
     IndexBuildOptions, IndexDocument, IndexQuery, IndexSearchResult, MemoryIndexStore, TextIndex,
 };
-use text_retrieval::{IngestionOptions, RetrievalIndex, SearchDocument, SearchQuery, SearchResult};
+use text_retrieval::{RetrievalIndex, SearchDocument, SearchQuery, SearchResult};
 
 /// Runtime families for extractive question answering.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -31,8 +31,9 @@ pub enum QuestionAnsweringRuntime {
     Onnx,
     /// Browser-safe WASM postprocessing.
     WasmPostprocess,
-    /// Deterministic or heuristic fallback.
-    Heuristic,
+    /// No QA model ran because retrieval found nothing to answer from; the response
+    /// has no answers. Serialized `not_run`.
+    NotRun,
     /// Caller-supplied model predictions.
     ImportedPredictions,
 }
@@ -79,15 +80,14 @@ pub struct QuestionAnsweringLocalModelOptions {
     pub overwrite: Option<bool>,
 }
 
-/// Fallback behavior when local QA cannot run.
+/// Behavior when local QA cannot run. There is no heuristic answer fallback: the
+/// former `heuristicIfUnavailable` policy was removed (#186).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum QuestionAnsweringFallbackPolicy {
     /// Return a typed error.
     #[default]
     Error,
-    /// Use deterministic heuristic answers if the local model is unavailable.
-    HeuristicIfUnavailable,
 }
 
 /// Caller-supplied native or external runtime backend for QA execution.
@@ -297,15 +297,12 @@ pub struct RetrievalQuestionAnsweringResponse {
 pub struct TextIndexQuestionAnsweringRequest {
     /// Question text.
     pub question: String,
-    /// Documents used to build a transient deterministic text index.
+    /// Documents used to build a transient lexical (BM25) text index.
     #[serde(default)]
     pub documents: Vec<IndexDocument>,
     /// Text index build options.
     #[serde(default)]
     pub index_options: IndexBuildOptions,
-    /// Hashed embedding dimensions for the transient index.
-    #[serde(default = "default_embedding_dimensions")]
-    pub embedding_dimensions: usize,
     /// Retrieved chunk count.
     #[serde(default = "default_top_k_chunks")]
     pub top_k_chunks: usize,
@@ -481,30 +478,8 @@ pub fn answer_question(request: QuestionAnsweringRequest) -> Result<QuestionAnsw
         });
     }
 
-    if request.fallback_policy.unwrap_or_default()
-        == QuestionAnsweringFallbackPolicy::HeuristicIfUnavailable
-        && request
-            .local_model
-            .as_ref()
-            .and_then(|options| options.auto_download)
-            == Some(false)
-    {
-        return Ok(heuristic_answer_response(
-            request,
-            "autoDownload=false".to_string(),
-        ));
-    }
-
-    match run_local_qa(&request) {
-        Ok(response) => Ok(response),
-        Err(error)
-            if request.fallback_policy.unwrap_or_default()
-                == QuestionAnsweringFallbackPolicy::HeuristicIfUnavailable =>
-        {
-            Ok(heuristic_answer_response(request, error.to_string()))
-        }
-        Err(error) => Err(error),
-    }
+    // No heuristic answer fallback: a missing or unloadable model is an error.
+    run_local_qa(&request)
 }
 
 /// Runs multiple imported-span QA requests and returns item-level errors.
@@ -574,16 +549,15 @@ pub fn answer_question_with_retrieval_context(
                 .to_string(),
         ));
     }
-    let embedder = HashedTextEmbedder::new(
-        TextEmbeddingConfig {
-            dimensions: 64,
-            use_idf: false,
-        },
-        text_lexical::CorpusOptions::default(),
-    )?;
-    let mut index = RetrievalIndex::new(embedder);
-    index.ingest_documents(&request.documents, &IngestionOptions::default())?;
-    answer_question_with_retrieval_index(request, &index, context)
+    let _ = context;
+    // A retrieval index embeds every chunk and there is no embedding model to build
+    // one from raw documents here; the hashed stand-in was removed (#186).
+    Err(DetectError::InvalidArgument(
+        "model required: retrieval QA from raw documents needs an embedding model; build a \
+         RetrievalIndex with a real embedder and call answer_question_with_retrieval_index, \
+         or use answer_question_with_text_index (lexical retrieval)"
+            .to_string(),
+    ))
 }
 
 /// Answers a retrieval-backed question using an existing retrieval index.
@@ -607,7 +581,7 @@ pub fn answer_question_with_retrieval_index<B: TextEmbedderBackend>(
             accepted: true,
             operation: "retrieval-question-answer".to_string(),
             question: request.question,
-            runtime: QuestionAnsweringRuntime::Heuristic,
+            runtime: QuestionAnsweringRuntime::NotRun,
             retrieved_chunks,
             answers: Vec::new(),
         });
@@ -696,27 +670,22 @@ pub fn answer_question_with_text_index_context(
         ));
     }
     let top_k_chunks = request.top_k_chunks.max(1);
-    let embedder = HashedTextEmbedder::new(
-        TextEmbeddingConfig {
-            dimensions: request.embedding_dimensions.max(1),
-            use_idf: false,
-        },
-        text_lexical::CorpusOptions::default(),
-    )?;
-    let mut index = TextIndex::with_store(embedder, MemoryIndexStore::new())
+    // Lexical (BM25) retrieval needs no model; semantic retrieval would need a
+    // caller-supplied embedder.
+    let mut index = TextIndex::lexical_only(MemoryIndexStore::new())
         .with_options(request.index_options.clone());
     index
         .upsert_documents(&request.documents)
         .map_err(|error| DetectError::Source(error.to_string()))?;
     let retrieved_chunks = index
-        .search(&IndexQuery::new(request.question.clone(), top_k_chunks))
+        .search(&IndexQuery::lexical(request.question.clone(), top_k_chunks))
         .map_err(|error| DetectError::Source(error.to_string()))?;
     if retrieved_chunks.is_empty() {
         return Ok(TextIndexQuestionAnsweringResponse {
             accepted: true,
             operation: "text-index-question-answer".to_string(),
             question: request.question,
-            runtime: QuestionAnsweringRuntime::Heuristic,
+            runtime: QuestionAnsweringRuntime::NotRun,
             retrieved_chunks,
             answers: Vec::new(),
         });
@@ -774,10 +743,6 @@ fn default_top_k() -> usize {
 
 fn default_top_k_chunks() -> usize {
     5
-}
-
-fn default_embedding_dimensions() -> usize {
-    64
 }
 
 fn ensure_non_empty(value: &str, name: &str) -> Result<()> {
@@ -901,32 +866,6 @@ fn local_question_answerer(
     Ok(answerer)
 }
 
-fn heuristic_answer_response(
-    request: QuestionAnsweringRequest,
-    diagnostic: String,
-) -> QuestionAnsweringResponse {
-    let _ = diagnostic;
-    let span = lexical_answer_span(&request.question, &request.context);
-    let answer = span
-        .map(|span| request.context[span.byte_start..span.byte_end].to_string())
-        .unwrap_or_else(|| request.context.clone());
-    QuestionAnsweringResponse {
-        accepted: true,
-        operation: "question-answer".to_string(),
-        question: request.question,
-        model_id: request
-            .model
-            .model_id
-            .unwrap_or_else(|| "heuristic-unavailable-fallback".to_string()),
-        runtime: QuestionAnsweringRuntime::Heuristic,
-        answers: vec![AnswerPrediction {
-            answer,
-            score: 0.0,
-            span,
-        }],
-    }
-}
-
 fn span_from_attributes(attributes: &BTreeMap<String, String>) -> Option<TextSpanRef> {
     let byte_start = attributes.get("byte_start")?.parse().ok()?;
     let byte_end = attributes.get("byte_end")?.parse().ok()?;
@@ -946,32 +885,6 @@ fn span_from_attributes(attributes: &BTreeMap<String, String>) -> Option<TextSpa
     })
 }
 
-fn lexical_answer_span(question: &str, text: &str) -> Option<TextSpanRef> {
-    let terms = question
-        .split_whitespace()
-        .map(|term| {
-            term.trim_matches(|ch: char| !ch.is_alphanumeric())
-                .to_lowercase()
-        })
-        .filter(|term| term.len() > 2)
-        .collect::<Vec<_>>();
-    terms
-        .iter()
-        .find_map(|term| text_core::find_caseless(text, term))
-        .map(|range| byte_span_to_ref(text, range.start, range.end))
-}
-
-fn byte_span_to_ref(text: &str, byte_start: usize, byte_end: usize) -> TextSpanRef {
-    let char_start = text[..byte_start].chars().count();
-    let char_end = char_start + text[byte_start..byte_end].chars().count();
-    TextSpanRef {
-        byte_start,
-        byte_end,
-        char_start,
-        char_end,
-    }
-}
-
 /// Returns a JSON value for the question-answering schema catalog.
 pub fn schema_summary() -> serde_json::Value {
     serde_json::json!({
@@ -985,6 +898,7 @@ pub fn schema_summary() -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use text_retrieval::IngestionOptions;
 
     struct FakeQa;
 
@@ -1029,44 +943,6 @@ mod tests {
 
         fn runtime(&self) -> QuestionAnsweringRuntime {
             QuestionAnsweringRuntime::ImportedPredictions
-        }
-    }
-
-    #[test]
-    fn heuristic_span_survives_length_changing_lowercase() {
-        // İ, ẞ and final Σ all change byte length when lowercased.
-        for (context, answer) in [
-            ("İ über alles", "über"),
-            ("STRAẞE über alles", "über"),
-            ("ΟΔΟΣ über alles", "über"),
-            ("Die STRAẞE ist lang", "STRAẞE"),
-            ("Η ΟΔΟΣ είναι", "ΟΔΟΣ"),
-        ] {
-            let question = format!("Where is {}?", answer.to_lowercase());
-            let response = answer_question(QuestionAnsweringRequest {
-                question,
-                context: context.to_string(),
-                top_k: 1,
-                model: ModelSelection::default(),
-                imported_predictions: Vec::new(),
-                local_model: None,
-                fallback_policy: Some(QuestionAnsweringFallbackPolicy::HeuristicIfUnavailable),
-            })
-            .unwrap();
-            let prediction = &response.answers[0];
-            assert_eq!(prediction.answer, answer);
-            let span = prediction.span.as_ref().expect("span");
-            assert_eq!(
-                &context[span.byte_start..span.byte_end],
-                answer,
-                "{context}"
-            );
-            let chars = context
-                .chars()
-                .skip(span.char_start)
-                .take(span.char_end - span.char_start)
-                .collect::<String>();
-            assert_eq!(chars, answer, "{context}");
         }
     }
 
@@ -1125,8 +1001,16 @@ mod tests {
     }
 
     #[test]
-    fn retrieval_qa_returns_cited_heuristic_answer() {
-        let response = answer_question(QuestionAnsweringRequest {
+    fn missing_qa_model_fails_instead_of_answering_heuristically() {
+        let bundle_root = std::env::temp_dir().join(format!(
+            "text-qa-no-model-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let result = answer_question(QuestionAnsweringRequest {
             question: "Which ownership model?".to_string(),
             context: "Rust has ownership and deterministic package workflows.".to_string(),
             top_k: 1,
@@ -1134,25 +1018,63 @@ mod tests {
             imported_predictions: Vec::new(),
             local_model: Some(QuestionAnsweringLocalModelOptions {
                 auto_download: Some(false),
+                bundle_root: Some(bundle_root),
                 ..QuestionAnsweringLocalModelOptions::default()
             }),
-            fallback_policy: Some(QuestionAnsweringFallbackPolicy::HeuristicIfUnavailable),
-        })
-        .expect("fallback qa");
+            fallback_policy: None,
+        });
+        assert!(result.is_err());
+        assert!(
+            serde_json::from_value::<QuestionAnsweringFallbackPolicy>(serde_json::json!(
+                "heuristicIfUnavailable"
+            ))
+            .is_err()
+        );
+    }
 
-        assert_eq!(response.runtime, QuestionAnsweringRuntime::Heuristic);
-        assert_eq!(response.answers.len(), 1);
-        assert_eq!(response.answers[0].answer, "ownership");
+    #[test]
+    fn retrieval_qa_from_raw_documents_requires_an_embedding_model() {
+        let error = answer_question_with_retrieval(RetrievalQuestionAnsweringRequest {
+            question: "What has ownership?".to_string(),
+            documents: vec![SearchDocument::new("doc-rust", "Rust has ownership.")],
+            top_k_chunks: 1,
+            top_k_answers: 1,
+            imported_predictions: Vec::new(),
+            model: ModelSelection::default(),
+            local_model: None,
+            fallback_policy: None,
+        })
+        .expect_err("no embedding model");
+        assert!(error.to_string().contains("model required"), "{error}");
+    }
+
+    fn fixture_retrieval_index(
+        documents: &[SearchDocument],
+        options: &IngestionOptions,
+    ) -> RetrievalIndex<text_embeddings::testing::HashedFixtureEmbedder> {
+        let embedder = text_embeddings::testing::HashedFixtureEmbedder::new(
+            text_embeddings::TextEmbeddingConfig {
+                dimensions: 32,
+                use_idf: false,
+            },
+            text_lexical::CorpusOptions::default(),
+        )
+        .expect("embedder");
+        let mut index = RetrievalIndex::new(embedder);
+        index.ingest_documents(documents, options).expect("ingest");
+        index
     }
 
     #[test]
     fn imported_retrieval_qa_prediction_maps_to_chunk_citation() {
-        let response = answer_question_with_retrieval(RetrievalQuestionAnsweringRequest {
+        let documents = vec![SearchDocument::new(
+            "doc-rust",
+            "Rust has ownership and deterministic package workflows.",
+        )];
+        let index = fixture_retrieval_index(&documents, &IngestionOptions::default());
+        let request = RetrievalQuestionAnsweringRequest {
             question: "What has ownership?".to_string(),
-            documents: vec![SearchDocument::new(
-                "doc-rust",
-                "Rust has ownership and deterministic package workflows.",
-            )],
+            documents,
             top_k_chunks: 1,
             top_k_answers: 1,
             imported_predictions: vec![ImportedAnswerPrediction {
@@ -1165,7 +1087,12 @@ mod tests {
             model: ModelSelection::default(),
             local_model: None,
             fallback_policy: None,
-        })
+        };
+        let response = answer_question_with_retrieval_index(
+            request,
+            &index,
+            &mut QuestionAnsweringExecutionContext::default(),
+        )
         .expect("retrieval qa");
 
         assert_eq!(
@@ -1190,7 +1117,6 @@ mod tests {
                 chunk_overlap_tokens: 0,
                 ..IndexBuildOptions::default()
             },
-            embedding_dimensions: 32,
             top_k_chunks: 1,
             top_k_answers: 1,
             imported_predictions: vec![ImportedAnswerPrediction {
@@ -1238,7 +1164,6 @@ mod tests {
                     chunk_overlap_tokens: 0,
                     ..IndexBuildOptions::default()
                 },
-                embedding_dimensions: 32,
                 top_k_chunks: 1,
                 top_k_answers: 1,
                 imported_predictions: Vec::new(),
@@ -1284,7 +1209,6 @@ mod tests {
                     chunk_overlap_tokens: 0,
                     ..IndexBuildOptions::default()
                 },
-                embedding_dimensions: 32,
                 top_k_chunks: 2,
                 top_k_answers: 1,
                 imported_predictions: Vec::new(),
@@ -1309,8 +1233,8 @@ mod tests {
             "Rust starts the compatibility chunk.{} {raw_only}",
             " filler".repeat(80)
         );
-        let embedder = HashedTextEmbedder::new(
-            TextEmbeddingConfig {
+        let embedder = text_embeddings::testing::HashedFixtureEmbedder::new(
+            text_embeddings::TextEmbeddingConfig {
                 dimensions: 32,
                 use_idf: false,
             },

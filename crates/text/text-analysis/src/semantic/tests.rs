@@ -1,10 +1,27 @@
 use text_core::TextDocument;
-use text_linguistics::{TextNlpConfig, TextNlpPipeline};
+use text_embeddings::testing::HashedFixtureEmbedder;
+use text_linguistics::{LinguisticAnalysisOptions, TextNlpConfig, TextNlpPipeline};
+
+/// The hashed fixture stands in for an embedding model so the test is deterministic.
+fn analyze_document_semantics(
+    document: &TextDocument<'_>,
+    options: &SemanticAnalysisOptions,
+) -> text_core::Result<super::SemanticAnalysisReport> {
+    analyze_document_semantics_with(document, options, &HashedFixtureEmbedder::default())
+}
+
+/// The hashed fixture stands in for an embedding model so the test is deterministic.
+fn analyze_conversation_semantics(
+    turns: &[ConversationTurn<'_>],
+    options: &SemanticAnalysisOptions,
+) -> text_core::Result<super::SemanticAnalysisReport> {
+    analyze_conversation_semantics_with(turns, options, &HashedFixtureEmbedder::default())
+}
 
 use super::{
-    analyze_conversation_semantics, analyze_document_semantics, compare_semantic_neighborhoods,
-    compose_linguistic_semantic_graph, interpret_semantic_report, ConversationTurn,
-    SemanticAnalysisOptions, SemanticConceptInterpretationContent,
+    analyze_conversation_semantics_with, analyze_document_semantics_with,
+    compare_semantic_neighborhoods, compose_linguistic_semantic_graph, interpret_semantic_report,
+    ConversationTurn, SemanticAnalysisOptions, SemanticConceptInterpretationContent,
     SemanticConceptInterpretationRequest, SemanticGraphEdgeKind, SemanticGraphNodeKind,
     SemanticInterpretationBackend, SemanticInterpretationMetadata, SemanticUnitKind,
 };
@@ -134,9 +151,38 @@ fn linguistic_graph_joins_existing_linguistic_evidence_to_semantic_units() {
     let text = "Alice visited Berlin. She presented the roadmap.";
     let document = TextDocument::new("doc-graph", text);
     let semantic = analyze_document_semantics(&document, &strict_options()).unwrap();
-    let linguistic = TextNlpPipeline::new(TextNlpConfig::rich())
-        .analyze_document(&document)
-        .unwrap();
+    // A fixed labeler stands in for the NER model.
+    struct FixtureNer;
+    impl text_linguistics::SequenceLabeler for FixtureNer {
+        fn label_text(
+            &mut self,
+            _text: &str,
+        ) -> text_core::Result<Vec<text_linguistics::RawPrediction>> {
+            Ok([("B-PER", 0, 5), ("B-LOC", 14, 20)]
+                .into_iter()
+                .map(|(label, start, end)| {
+                    let mut prediction = text_linguistics::RawPrediction {
+                        kind: Some("token".to_string()),
+                        label: Some(label.to_string()),
+                        score: Some(0.9),
+                        ..text_linguistics::RawPrediction::default()
+                    };
+                    prediction
+                        .attributes
+                        .insert("byte_start".to_string(), start.to_string());
+                    prediction
+                        .attributes
+                        .insert("byte_end".to_string(), end.to_string());
+                    prediction
+                })
+                .collect())
+        }
+    }
+    let linguistic = TextNlpPipeline::new(TextNlpConfig::from_options(
+        LinguisticAnalysisOptions::without_models(),
+    ))
+    .analyze_text_with_entity_labeler(text, &mut FixtureNer)
+    .unwrap();
     let graph = compose_linguistic_semantic_graph(&semantic, &linguistic);
 
     assert!(graph

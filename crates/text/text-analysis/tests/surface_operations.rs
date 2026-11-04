@@ -154,7 +154,10 @@ fn semantic_corpus_surface_preserves_author_and_source_evidence() {
             "topTerms": 6,
             "neighborsPerUnit": 2,
             "neighborThreshold": 0.80,
-            "clusterThreshold": 0.90
+            "clusterThreshold": 0.90,
+            "importedEmbeddings": [
+                {"text": "Semantic search improves retrieval.", "vector": [1.0, 0.0]}
+            ]
         }),
     )
     .unwrap();
@@ -244,6 +247,25 @@ fn workflow_operation_examples_return_structured_values() {
             "{operation_id} should include result"
         );
         assert_eq!(value["summary"]["status"], "ok");
+    }
+}
+
+#[test]
+fn semantic_operations_without_embeddings_require_a_model() {
+    for (operation, input) in [
+        (
+            "analysis.semantic-map",
+            serde_json::json!({"text": "Cats sleep. Dogs bark.", "includeLinguisticGraph": false}),
+        ),
+        (
+            "analysis.semantic-corpus",
+            serde_json::json!({"items": [{"id": "a", "text": "Cats sleep."}]}),
+        ),
+    ] {
+        let error = run(operation, input).unwrap_err();
+        let error = runtime_core::parse_surface_error(&error).expect("typed error");
+        assert_eq!(error.code, "missing_dependency");
+        assert_eq!(error.details["dependency"], "embedding model");
     }
 }
 

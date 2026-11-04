@@ -57,7 +57,8 @@ export interface IndexBuildOptions {
 
 export interface IndexQuery {
   text: string;
-  mode?: IndexSearchMode;
+  /** Required. Semantic and hybrid need an embedding model the WASM surface does not have. */
+  mode: IndexSearchMode;
   topK?: number;
   candidateLimit?: number;
   filter?: unknown;

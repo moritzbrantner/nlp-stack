@@ -3,15 +3,16 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use text_core::TextSourceRef;
-use text_embeddings::{HashedTextEmbedder, TextEmbeddingConfig};
+use text_embeddings::testing::HashedFixtureEmbedder;
+use text_embeddings::TextEmbeddingConfig;
 use text_index::{
     IndexBuildOptions, IndexDocument, IndexFilter, IndexQuery, MemoryIndexStore, SemanticFacet,
     SemanticFacetFilter, SqliteIndexStore, TextIndex, TextIndexStore,
 };
 use text_lexical::CorpusOptions;
 
-fn embedder() -> HashedTextEmbedder {
-    HashedTextEmbedder::new(
+fn embedder() -> HashedFixtureEmbedder {
+    HashedFixtureEmbedder::new(
         TextEmbeddingConfig {
             dimensions: 32,
             use_idf: false,
@@ -76,7 +77,7 @@ fn memory_and_sqlite_search_parity() {
     let query = IndexQuery {
         text: "durable hybrid search".to_string(),
         explain: true,
-        ..IndexQuery::default()
+        ..IndexQuery::hybrid("", 10)
     };
     let memory_results = memory.search(&query).unwrap();
     let sqlite_results = sqlite.search(&query).unwrap();
@@ -110,7 +111,7 @@ fn sqlite_filters_metadata_source_timestamp_and_facets() {
                 }],
                 ..IndexFilter::default()
             },
-            ..IndexQuery::default()
+            ..IndexQuery::hybrid("", 10)
         })
         .unwrap();
     assert_eq!(results.len(), 1);

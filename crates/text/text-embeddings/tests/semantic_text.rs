@@ -1,13 +1,13 @@
 use text_core::TextDocument;
 use text_embeddings::{
-    text_similarity, CooccurrenceConfig, CooccurrenceGraph, HashedTextEmbedder, SemanticTextIndex,
-    TextEmbeddingConfig,
+    testing::{HashedFixtureEmbedder, HashedFixtureTextIndex},
+    text_similarity, CooccurrenceConfig, CooccurrenceGraph, TextEmbeddingConfig,
 };
 use text_lexical::CorpusOptions;
 
 #[test]
 fn semantic_index_embeds_text_documents_and_searches_public_results() {
-    let embedder = HashedTextEmbedder::new(
+    let embedder = HashedFixtureEmbedder::new(
         TextEmbeddingConfig {
             dimensions: 256,
             use_idf: true,
@@ -15,7 +15,7 @@ fn semantic_index_embeds_text_documents_and_searches_public_results() {
         CorpusOptions::default(),
     )
     .unwrap();
-    let mut index = SemanticTextIndex::new(embedder);
+    let mut index = HashedFixtureTextIndex::new(embedder);
 
     index
         .add_text_document(&TextDocument::new(
@@ -43,7 +43,7 @@ fn semantic_index_embeds_text_documents_and_searches_public_results() {
 
 #[test]
 fn hashed_embeddings_support_similarity_and_related_terms() {
-    let embedder = HashedTextEmbedder::new(
+    let embedder = HashedFixtureEmbedder::new(
         TextEmbeddingConfig {
             dimensions: 256,
             use_idf: false,

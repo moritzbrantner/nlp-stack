@@ -8,10 +8,7 @@ use std::path::Path;
 
 use serde::Deserialize;
 use serde_json::Value;
-use text_core::{
-    tokenize, tokenize_words, AnalysisEvent, OwnedTextSegment, TextProcessingOptions, TextSegment,
-    Timestamp, TokenKind,
-};
+use text_core::OwnedTextSegment;
 
 use thiserror::Error;
 pub mod contracts;
@@ -178,32 +175,6 @@ pub fn normalize_subtitle_text(text: &str, options: SubtitleNormalizationOptions
         normalized = collapse_whitespace(&normalized);
     }
     normalized
-}
-
-#[derive(Debug, Default, Clone)]
-/// Transcript-specific deterministic analyzer.
-pub struct TranscriptHeuristicAnalyzer;
-
-impl TranscriptHeuristicAnalyzer {
-    /// Analyzes one transcript segment and returns deterministic speech events.
-    pub fn analyze_segment(&self, segment: &TextSegment<'_>) -> Vec<AnalysisEvent> {
-        let analyzer = "transcript_heuristics";
-        let mut events = Vec::new();
-        let text = segment.text.trim();
-        if text.ends_with(['?', '؟', '？']) {
-            events.push(event_at(analyzer, "speech:question", segment.timestamp));
-        }
-        if has_token_kind(text, TokenKind::Url) {
-            events.push(event_at(analyzer, "speech:url", segment.timestamp));
-        }
-        if has_token_kind(text, TokenKind::Number) {
-            events.push(event_at(analyzer, "speech:number", segment.timestamp));
-        }
-        if tokenize_words(text).len() >= 30 {
-            events.push(event_at(analyzer, "speech:long_segment", segment.timestamp));
-        }
-        events
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -983,21 +954,6 @@ fn insert_optional_display<T: fmt::Display>(
     }
 }
 
-fn has_token_kind(text: &str, kind: TokenKind) -> bool {
-    tokenize(text, &TextProcessingOptions::default())
-        .into_iter()
-        .any(|token| token.kind == kind)
-}
-
-fn event_at(analyzer: &str, label: &str, timestamp: Option<Timestamp>) -> AnalysisEvent {
-    let event = AnalysisEvent::new(analyzer, label);
-    if let Some(timestamp) = timestamp {
-        event.at_timestamp(timestamp)
-    } else {
-        event
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1182,28 +1138,6 @@ mod tests {
         assert_eq!(metadata["end_seconds"], "2");
         assert_eq!(metadata["confidence"], "0.75");
         assert_eq!(metadata["source"], "fixture.srt");
-    }
-
-    #[test]
-    fn transcript_heuristic_analyzer_emits_speech_events() {
-        let segment = TextSegment {
-            segment_index: 0,
-            timestamp: None,
-            text: "Visit https://example.com at 3?",
-            language: None,
-            is_final: true,
-        };
-        let analyzer = TranscriptHeuristicAnalyzer;
-
-        let labels = analyzer
-            .analyze_segment(&segment)
-            .into_iter()
-            .map(|event| event.label)
-            .collect::<Vec<_>>();
-
-        assert!(labels.iter().any(|label| label == "speech:question"));
-        assert!(labels.iter().any(|label| label == "speech:url"));
-        assert!(labels.iter().any(|label| label == "speech:number"));
     }
 
     #[test]

@@ -384,15 +384,15 @@ mod tests {
     use crate::{HybridConfig, IngestionOptions, SearchDocument, SearchQuery};
     use tempfile::tempdir;
     use text_embeddings::{
-        DenseVector, HashedTextEmbedder, TextEmbeddingBackend, TextEmbeddingBackendKind,
-        TextEmbeddingConfig, TextEmbeddingMetadata,
+        testing::HashedFixtureEmbedder, DenseVector, TextEmbeddingBackend,
+        TextEmbeddingBackendKind, TextEmbeddingConfig, TextEmbeddingMetadata,
     };
     use text_lexical::CorpusOptions;
 
     use super::*;
 
-    fn embedder() -> HashedTextEmbedder {
-        HashedTextEmbedder::new(
+    fn embedder() -> HashedFixtureEmbedder {
+        HashedFixtureEmbedder::new(
             TextEmbeddingConfig {
                 dimensions: 32,
                 use_idf: true,

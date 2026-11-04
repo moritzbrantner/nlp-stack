@@ -7,8 +7,9 @@ use serde::Deserialize;
 use text_core::TextDocument;
 use text_linguistics::{TextNlpConfig, TextNlpPipeline};
 
+use super::imported_embeddings::embedding_model_required;
 use crate::{
-    analyze_document_semantics, analyze_document_semantics_with, compare_semantic_neighborhoods,
+    analyze_document_semantics_with, compare_semantic_neighborhoods,
     compose_linguistic_semantic_graph, SemanticAnalysisOptions,
 };
 
@@ -16,15 +17,22 @@ pub(super) fn operation() -> SurfaceOperation {
     super::operation(
         "analysis.semantic-map",
         "Build semantic map",
-        "Builds semantic units, model- or baseline-backed concept neighborhoods, trajectories, linguistic graph evidence, and optional exact-vs-index neighborhood parity evidence.",
+        "Builds semantic units, model-backed concept neighborhoods from supplied `importedEmbeddings`, trajectories, linguistic graph evidence (needs the linguistic models), and optional exact-vs-index neighborhood parity evidence. Fails with `missing_dependency` without embeddings; there is no hashed baseline.",
         serde_json::json!({
             "id": "semantic-doc",
-            "text": "The search team began with exact lexical ranking because every match was easy to audit. A later evaluation showed that paraphrased questions often missed relevant passages. Sentence embeddings recovered many of those passages even when they shared few words with the query. The team therefore compared lexical and semantic retrieval on the same judged queries. Engineers also measured latency because model inference adds work before nearest-neighbor search. Product reviewers insisted that every result retain its source passage and model provenance. After tuning the candidate, the team returned to the original audit requirement and kept exact evidence beside semantic ranking. The launch decision was based on reproducible retrieval gains rather than novelty.",
-            "neighborsPerUnit": 4,
+            "text": "A cat sleeps on the sofa. A feline rests on the couch. Database indexes accelerate lookup.",
+            "neighborsPerUnit": 2,
             "neighborThreshold": 0.25,
             "clusterThreshold": 0.60,
-            "includeLinguisticGraph": true,
-            "includeNeighborhoodEvidence": true
+            "includeLinguisticGraph": false,
+            "includeNeighborhoodEvidence": true,
+            "embeddingModel": {"name": "example-sentence-model", "dimensions": 3},
+            "importedEmbeddings": [
+                {"text": "A cat sleeps on the sofa.", "vector": [1.0, 0.0, 0.0]},
+                {"text": "A feline rests on the couch.", "vector": [0.98, 0.02, 0.0]},
+                {"text": "Database indexes accelerate lookup.", "vector": [0.0, 1.0, 0.0]},
+                {"text": "A cat sleeps on the sofa. A feline rests on the couch. Database indexes accelerate lookup.", "vector": [0.7, 0.3, 0.0]}
+            ]
         }),
     )
 }
@@ -37,18 +45,23 @@ pub(super) fn run(input: serde_json::Value) -> Result<serde_json::Value, String>
         .clone()
         .unwrap_or_else(|| "semantic-doc".to_string());
     let document = TextDocument::new(&id, &input.text);
-    let semantic = if input.imported_embeddings.is_empty() {
-        analyze_document_semantics(&document, &options).map_err(|error| error.to_string())?
-    } else {
-        let embedder = ImportedSemanticEmbedder::new(
-            &input.imported_embeddings,
-            input.embedding_model.as_ref(),
-        )?;
-        analyze_document_semantics_with(&document, &options, &embedder)
-            .map_err(|error| error.to_string())?
-    };
+    if input.imported_embeddings.is_empty() {
+        return Err(embedding_model_required("analysis.semantic-map"));
+    }
+    let embedder =
+        ImportedSemanticEmbedder::new(&input.imported_embeddings, input.embedding_model.as_ref())?;
+    let semantic = analyze_document_semantics_with(&document, &options, &embedder)
+        .map_err(|error| error.to_string())?;
 
     let linguistic_graph = if input.include_linguistic_graph.unwrap_or(true) {
+        if !text_linguistics::local_models_compiled() {
+            return Err(runtime_core::SurfaceError::missing_dependency(
+                Some("analysis.semantic-map"),
+                "linguistic models",
+                "the linguistic graph needs the NER and UD models (text-linguistics `candle,model-bundles`); set `includeLinguisticGraph: false` to skip it",
+            )
+            .to_error_string());
+        }
         let linguistic = TextNlpPipeline::new(TextNlpConfig::rich())
             .analyze_document(&document)
             .map_err(|error| error.to_string())?;

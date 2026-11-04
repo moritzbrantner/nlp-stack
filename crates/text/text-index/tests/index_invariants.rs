@@ -1,13 +1,11 @@
-use text_index::{IndexBuildOptions, IndexDocument, IndexQuery, MemoryTextIndex};
+use text_index::{IndexBuildOptions, IndexDocument, IndexQuery, MemoryTextIndex, NoEmbedder};
 
-fn index() -> MemoryTextIndex {
-    MemoryTextIndex::new_memory()
-        .expect("memory index must construct")
-        .with_options(IndexBuildOptions {
-            chunk_tokens: 4,
-            chunk_overlap_tokens: 1,
-            ..IndexBuildOptions::default()
-        })
+fn index() -> MemoryTextIndex<NoEmbedder> {
+    MemoryTextIndex::lexical_memory().with_options(IndexBuildOptions {
+        chunk_tokens: 4,
+        chunk_overlap_tokens: 1,
+        ..IndexBuildOptions::default()
+    })
 }
 
 #[test]

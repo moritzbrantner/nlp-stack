@@ -1,26 +1,24 @@
 use std::path::PathBuf;
 
 use text_classification::{
-    analyze_sentiment, classify_text, zero_shot_classify, FallbackPolicy, ModelSelection,
-    SentimentRequest, TextClassificationRequest, ZeroShotClassificationRequest,
+    analyze_sentiment, classify_text, zero_shot_classify, ModelSelection, SentimentRequest,
+    TextClassificationRequest, ZeroShotClassificationRequest,
 };
 use text_core::Result;
 use text_core::{
     build_annotation_graph_from_parts, detailed_text_stats, detect_script_profile,
     split_paragraphs, split_sentence_spans, tokenize, TextDocument, TextProcessingOptions,
 };
-use text_embeddings::{
-    HashedTextEmbedder, TextEmbeddingBackend, TextEmbeddingConfig, TextEmbeddingMetadata,
-};
+use text_embeddings::{TextEmbeddingBackend, TextEmbeddingMetadata};
 use text_lexical::{
     character_ngram_frequencies, character_shingles, diverse_extractive_summary,
     english_stop_words, extractive_summary, keywords, phrase_keywords, readability_summary,
-    rule_entities, sentiment, summarize_text, term_frequencies, token_ngram_frequencies,
-    token_shingles, EntityRuleSet, ExtractiveSummaryOptions, KeywordOptions, PhraseKeywordOptions,
-    SentimentLexicon,
+    summarize_text, term_frequencies, token_ngram_frequencies, token_shingles,
+    ExtractiveSummaryOptions, KeywordOptions, PhraseKeywordOptions,
 };
 use text_linguistics::{
-    EntityRecognitionMode, EntityRecognitionOptions, TextNlpConfig, TextNlpPipeline,
+    DependencyParsingOptions, EntityRecognitionOptions, LinguisticAnalysisOptions,
+    MorphologyOptions, TextNlpConfig, TextNlpPipeline,
 };
 
 use crate::fingerprint::{character_shingle_simhash, token_shingle_simhash};
@@ -169,67 +167,6 @@ pub(crate) fn classification_section(
                 zero_shot,
             })
         }
-        ClassificationDepth::LexicalFallback => {
-            let model = ModelSelection {
-                fallback_policy: FallbackPolicy::LexicalFallback,
-                ..ModelSelection::default()
-            };
-            let sentiment = match analyze_sentiment(SentimentRequest {
-                text: text.to_string(),
-                model: model.clone(),
-                imported_predictions: Vec::new(),
-                local_model: None,
-            }) {
-                Ok(response) => response,
-                Err(error) => {
-                    diagnostics.push(TextAnalysisDiagnostic::warning(
-                        "classification_unavailable",
-                        error.to_string(),
-                    ));
-                    return None;
-                }
-            };
-            let classification = match classify_text(TextClassificationRequest {
-                text: text.to_string(),
-                labels: options.classification_labels.clone(),
-                top_k: options.classification_labels.len().max(1),
-                multi_label: false,
-                model: model.clone(),
-                imported_predictions: Vec::new(),
-                local_model: None,
-            }) {
-                Ok(response) => response,
-                Err(error) => {
-                    diagnostics.push(TextAnalysisDiagnostic::warning(
-                        "classification_unavailable",
-                        error.to_string(),
-                    ));
-                    return None;
-                }
-            };
-            let zero_shot = match zero_shot_classify(ZeroShotClassificationRequest {
-                text: text.to_string(),
-                labels: options.zero_shot_labels.clone(),
-                hypothesis_template: "This text is about {}.".to_string(),
-                model,
-                imported_predictions: Vec::new(),
-                local_model: None,
-            }) {
-                Ok(response) => response,
-                Err(error) => {
-                    diagnostics.push(TextAnalysisDiagnostic::warning(
-                        "classification_unavailable",
-                        error.to_string(),
-                    ));
-                    return None;
-                }
-            };
-            Some(ClassificationAnalysisSection {
-                sentiment,
-                classification,
-                zero_shot,
-            })
-        }
     }
 }
 
@@ -241,28 +178,6 @@ pub(crate) fn embedding_section(
 ) -> Option<EmbeddingAnalysisSection> {
     match &options.embedding_depth {
         EmbeddingDepth::Off => None,
-        EmbeddingDepth::Hashed {
-            dimensions,
-            use_idf,
-        } => {
-            let embedder = match HashedTextEmbedder::new(
-                TextEmbeddingConfig {
-                    dimensions: (*dimensions).max(1),
-                    use_idf: *use_idf,
-                },
-                text_lexical::CorpusOptions::default(),
-            ) {
-                Ok(embedder) => embedder,
-                Err(error) => {
-                    diagnostics.push(TextAnalysisDiagnostic::warning(
-                        "embedding_unavailable",
-                        error.to_string(),
-                    ));
-                    return None;
-                }
-            };
-            embedding_from_hashed(text, &embedder, corpus, options, diagnostics)
-        }
         EmbeddingDepth::CandleBundle {
             bundle_dir,
             pooling,
@@ -307,10 +222,8 @@ fn lexical_section(
         keywords: keywords(text, &keyword_options),
         phrase_keywords: phrase_keywords(text, &phrase_options),
         readability: readability_summary(text, &options.processing),
-        sentiment: sentiment(text, &SentimentLexicon::default()),
         extractive_summary: extractive_summary(text, &summary_options)?,
         diverse_extractive_summary: diverse_extractive_summary(text, &summary_options, 0.35)?,
-        rule_entities: rule_entities(text, &EntityRuleSet::default()),
     })
 }
 
@@ -366,23 +279,14 @@ fn linguistic_section(
     processing: &TextProcessingOptions,
     diagnostics: &mut Vec<TextAnalysisDiagnostic>,
 ) -> Option<LinguisticAnalysisSection> {
-    let depth = effective_linguistic_depth(options);
-    let mut config = match depth {
+    let mut config = TextNlpConfig::balanced();
+    match &options.linguistic_depth {
         LinguisticDepth::Off => return None,
-        LinguisticDepth::HeuristicFast => TextNlpConfig::fast(),
-        LinguisticDepth::HeuristicBalanced => TextNlpConfig::balanced(),
-        LinguisticDepth::HeuristicRich => TextNlpConfig::rich(),
-        LinguisticDepth::LocalModel { .. } => TextNlpConfig::balanced(),
-    };
-    config.options.processing = processing.clone();
-    if options.language_hint.is_some() {
-        config.options.language_detection.sentence_level = false;
-    }
-    match depth {
-        LinguisticDepth::HeuristicFast
-        | LinguisticDepth::HeuristicBalanced
-        | LinguisticDepth::HeuristicRich => {
-            config.options.entity_recognition = EntityRecognitionOptions::heuristic();
+        LinguisticDepth::ModelFree => {
+            let models = LinguisticAnalysisOptions::without_models();
+            config.options.entity_recognition = models.entity_recognition;
+            config.options.morphology = models.morphology;
+            config.options.dependency_parsing = models.dependency_parsing;
         }
         LinguisticDepth::LocalModel {
             bundle_dir,
@@ -390,14 +294,28 @@ fn linguistic_section(
             download_progress,
         } => {
             config.options.entity_recognition = EntityRecognitionOptions {
-                mode: EntityRecognitionMode::LocalModel,
-                bundle_dir,
-                auto_download,
-                download_progress,
+                bundle_dir: bundle_dir.clone(),
+                auto_download: *auto_download,
+                download_progress: *download_progress,
                 ..EntityRecognitionOptions::local_model()
             };
+            config.options.morphology = MorphologyOptions {
+                bundle_dir: bundle_dir.clone(),
+                auto_download: *auto_download,
+                download_progress: *download_progress,
+                ..MorphologyOptions::local_model()
+            };
+            config.options.dependency_parsing = DependencyParsingOptions {
+                bundle_dir: bundle_dir.clone(),
+                auto_download: *auto_download,
+                download_progress: *download_progress,
+                ..DependencyParsingOptions::local_model()
+            };
         }
-        LinguisticDepth::Off => return None,
+    }
+    config.options.processing = processing.clone();
+    if options.language_hint.is_some() {
+        config.options.language_detection.sentence_level = false;
     }
 
     match TextNlpPipeline::new(config).analyze_text(text) {
@@ -495,40 +413,7 @@ fn embedding_from_backend<E: TextEmbeddingBackend>(
             return None;
         }
     };
-    let sparse = if options.include_sparse_embedding {
-        match &options.embedding_depth {
-            EmbeddingDepth::Hashed {
-                dimensions,
-                use_idf,
-            } => {
-                let embedder = HashedTextEmbedder::new(
-                    TextEmbeddingConfig {
-                        dimensions: (*dimensions).max(1),
-                        use_idf: *use_idf,
-                    },
-                    text_lexical::CorpusOptions::default(),
-                )
-                .ok()?;
-                match embedder.embed_text_sparse(text, _corpus) {
-                    Ok(sparse) => Some(SparseEmbeddingReport {
-                        dimensions: sparse.dimensions(),
-                        indices: sparse.indices().to_vec(),
-                        values: sparse.values().to_vec(),
-                    }),
-                    Err(error) => {
-                        diagnostics.push(TextAnalysisDiagnostic::warning(
-                            "sparse_embedding_unavailable",
-                            error.to_string(),
-                        ));
-                        None
-                    }
-                }
-            }
-            _ => None,
-        }
-    } else {
-        None
-    };
+    let sparse = sparse_embedding_unavailable(options, diagnostics);
     let model = embedder.model_info();
     let provenance = provenance_label(&embedder.metadata());
     Some(EmbeddingAnalysisSection {
@@ -541,51 +426,19 @@ fn embedding_from_backend<E: TextEmbeddingBackend>(
     })
 }
 
-fn embedding_from_hashed(
-    text: &str,
-    embedder: &HashedTextEmbedder,
-    corpus: Option<&text_lexical::TfIdfCorpus>,
+/// No model in this crate produces sparse embeddings; the hashed sparse vectors were
+/// removed (#186). A request for them is reported instead of silently dropped.
+fn sparse_embedding_unavailable(
     options: &DocumentAnalysisOptions,
     diagnostics: &mut Vec<TextAnalysisDiagnostic>,
-) -> Option<EmbeddingAnalysisSection> {
-    let vector = match embedder.embed_text_with_corpus(text, corpus) {
-        Ok(vector) => vector,
-        Err(error) => {
-            diagnostics.push(TextAnalysisDiagnostic::warning(
-                "embedding_unavailable",
-                error.to_string(),
-            ));
-            return None;
-        }
-    };
-    let sparse = if options.include_sparse_embedding {
-        match embedder.embed_text_sparse(text, corpus) {
-            Ok(sparse) => Some(SparseEmbeddingReport {
-                dimensions: sparse.dimensions(),
-                indices: sparse.indices().to_vec(),
-                values: sparse.values().to_vec(),
-            }),
-            Err(error) => {
-                diagnostics.push(TextAnalysisDiagnostic::warning(
-                    "sparse_embedding_unavailable",
-                    error.to_string(),
-                ));
-                None
-            }
-        }
-    } else {
-        None
-    };
-    let model = embedder.model_info();
-    let provenance = provenance_label(&embedder.metadata());
-    Some(EmbeddingAnalysisSection {
-        dimensions: vector.dimensions(),
-        preview: vector.as_slice().iter().take(16).copied().collect(),
-        vector: vector.as_slice().to_vec(),
-        sparse,
-        model,
-        provenance,
-    })
+) -> Option<SparseEmbeddingReport> {
+    if options.include_sparse_embedding {
+        diagnostics.push(TextAnalysisDiagnostic::warning(
+            "sparse_embedding_unavailable",
+            "no sparse embedding model is available; hashed sparse vectors were removed",
+        ));
+    }
+    None
 }
 
 fn provenance_label(metadata: &TextEmbeddingMetadata) -> String {
@@ -690,20 +543,6 @@ fn onnx_embedding_section(
             "text-analysis was built without the `onnx` feature",
         ));
         None
-    }
-}
-
-fn effective_linguistic_depth(options: &DocumentAnalysisOptions) -> LinguisticDepth {
-    if matches!(options.profile, crate::AnalysisProfile::ModelBacked)
-        && matches!(options.linguistic_depth, LinguisticDepth::HeuristicBalanced)
-    {
-        LinguisticDepth::LocalModel {
-            bundle_dir: PathBuf::from(".model-runtime"),
-            auto_download: false,
-            download_progress: false,
-        }
-    } else {
-        options.linguistic_depth.clone()
     }
 }
 

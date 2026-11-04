@@ -1,11 +1,12 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use std::hint::black_box;
-use text_embeddings::{HashedTextEmbedder, SemanticTextIndex, TextEmbeddingConfig};
+use text_embeddings::testing::{HashedFixtureEmbedder, HashedFixtureTextIndex};
+use text_embeddings::TextEmbeddingConfig;
 use text_lexical::CorpusOptions;
 
 fn bench_semantic_index(c: &mut Criterion) {
-    let mut index = SemanticTextIndex::new(
-        HashedTextEmbedder::new(
+    let mut index = HashedFixtureTextIndex::new(
+        HashedFixtureEmbedder::new(
             TextEmbeddingConfig {
                 dimensions: 256,
                 use_idf: true,

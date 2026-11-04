@@ -17,6 +17,7 @@ fn cli_adapter_runs_default_workflow() {
             ],
             "query": {
                 "text": "text indexing stable adapters",
+                "mode": "lexical",
                 "topK": 2,
                 "requiredPhrases": ["stable adapters"]
             }

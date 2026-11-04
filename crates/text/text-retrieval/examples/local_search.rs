@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
-use text_embeddings::{HashedTextEmbedder, TextEmbeddingConfig};
+use text_embeddings::testing::HashedFixtureEmbedder;
+use text_embeddings::TextEmbeddingConfig;
 use text_lexical::CorpusOptions;
 use text_retrieval::{
     HybridConfig, IngestionOptions, RetrievalIndex, SearchDocument, SearchFilter, SearchQuery,
@@ -30,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
     ];
 
-    let embedder = HashedTextEmbedder::new(
+    let embedder = HashedFixtureEmbedder::new(
         TextEmbeddingConfig {
             dimensions: 64,
             use_idf: false,

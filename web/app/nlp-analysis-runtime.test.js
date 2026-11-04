@@ -118,7 +118,7 @@ function documentRequest(text) {
     input: {
       id: "doc",
       text,
-      linguistics: { mode: "heuristicFast" },
+      linguistics: { mode: "modelFree" },
       embedding: { mode: "off" },
       namedEntities: { mode: "huggingFace" },
     },
@@ -166,7 +166,7 @@ it("fails document analysis instead of falling back to heuristic entities when N
     input: {
       id: "doc",
       text: "Alice works in Berlin with her team.",
-      linguistics: { mode: "heuristicFast" },
+      linguistics: { mode: "modelFree" },
       embedding: { mode: "off" },
       namedEntities: { mode: "huggingFace" },
     },

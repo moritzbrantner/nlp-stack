@@ -23,6 +23,16 @@ test("runOperation detects language with structured output", async () => {
   expect(result.primary.language).toBe("en");
 });
 
+test("runOperation reports model required for analysis in the browser build", async () => {
+  const entry = await import("../index.js");
+  await expect(
+    entry.runOperation({
+      operation: "linguistics.analyze",
+      input: { text: "Alice presented the roadmap in Berlin.", profile: "fast" },
+    }),
+  ).rejects.toThrow(/missing_dependency/);
+});
+
 function assertStructuredResponse(response: any, operation: string) {
   expect(response.operation).toBe(operation);
   expect(response.value.operation).toBe(operation);

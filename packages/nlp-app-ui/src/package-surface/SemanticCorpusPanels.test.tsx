@@ -58,8 +58,8 @@ const corpusResponse: SurfaceResponse = {
       ],
       semantic: {
         embeddingModel: {
-          model_name: "hashed-tfidf-sentence-baseline",
-          backend: "hashed",
+          model_name: "fixture/sentence-model",
+          backend: "external",
           dimensions: 512,
           normalized: true,
         },
@@ -95,7 +95,7 @@ describe("SemanticCorpusPanel", () => {
     expect(screen.getByText("Author profiles")).toBeTruthy();
     expect(screen.getByText("Theme evidence")).toBeTruthy();
     expect(screen.getByText("semantic · retrieval · search")).toBeTruthy();
-    expect(screen.getByText(/hashed-tfidf-sentence-baseline/)).toBeTruthy();
+    expect(screen.getByText(/fixture\/sentence-model/)).toBeTruthy();
     expect(screen.getByText("1 low-support units")).toBeTruthy();
     expect(screen.getAllByText("Alice")).toHaveLength(2);
     expect(screen.getByText("Semantic search improves retrieval.")).toBeTruthy();

@@ -14,12 +14,25 @@ test("runOperation searches an in-memory index with structured output", async ()
       operation: "index.search",
       input: {
         documents: [{ id: "doc-1", body: "rust text index search" }],
-        query: { text: "text index", topK: 2 },
+        query: { text: "text index", mode: "lexical", topK: 2 },
       },
     }),
     "index.search",
   );
   expect(result.results.length).toBeGreaterThan(0);
+});
+
+test("runOperation rejects hybrid search without an embedding model", async () => {
+  const entry = await import("../index.js");
+  await expect(
+    entry.runOperation({
+      operation: "index.search",
+      input: {
+        documents: [{ id: "doc-1", body: "rust text index search" }],
+        query: { text: "text index", mode: "hybrid", topK: 2 },
+      },
+    }),
+  ).rejects.toThrow(/missing_dependency/);
 });
 
 test("runOperation enforces required phrases and returns matched phrases", async () => {
@@ -34,6 +47,7 @@ test("runOperation enforces required phrases and returns matched phrases", async
         ],
         query: {
           text: "climate policy public funding",
+          mode: "lexical",
           topK: 2,
           requiredPhrases: ["public funding"],
         },

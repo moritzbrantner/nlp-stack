@@ -198,112 +198,6 @@ impl Default for PhraseKeywordOptions {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-/// Data type for sentiment lexicon.
-pub struct SentimentLexicon {
-    /// The terms value.
-    pub terms: BTreeMap<String, f32>,
-    /// The neutral threshold value.
-    pub neutral_threshold: f32,
-}
-
-impl Default for SentimentLexicon {
-    fn default() -> Self {
-        let terms = [
-            ("amazing", 2.0),
-            ("bad", -1.5),
-            ("boring", -1.0),
-            ("broken", -1.5),
-            ("delight", 1.5),
-            ("excellent", 2.0),
-            ("fail", -1.5),
-            ("failure", -1.5),
-            ("fast", 0.8),
-            ("good", 1.2),
-            ("great", 1.7),
-            ("happy", 1.4),
-            ("hate", -2.0),
-            ("love", 2.0),
-            ("negative", -1.0),
-            ("poor", -1.5),
-            ("positive", 1.0),
-            ("reliable", 1.0),
-            ("sad", -1.2),
-            ("slow", -0.8),
-            ("terrible", -2.0),
-            ("useful", 1.0),
-            ("worst", -2.0),
-        ]
-        .into_iter()
-        .map(|(term, score)| (term.to_string(), score))
-        .collect();
-        Self {
-            terms,
-            neutral_threshold: 0.05,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-/// Data type for sentiment summary.
-pub struct SentimentSummary {
-    /// The positive score value.
-    pub positive_score: f32,
-    /// The negative score value.
-    pub negative_score: f32,
-    /// The compound value.
-    pub compound: f32,
-    /// The token count value.
-    pub token_count: usize,
-    /// The matched terms value.
-    pub matched_terms: usize,
-    /// Label assigned to this value.
-    pub label: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-/// Data type for entity rule set.
-pub struct EntityRuleSet {
-    /// The emails value.
-    pub emails: bool,
-    /// The URLs value.
-    pub urls: bool,
-    /// The mentions value.
-    pub mentions: bool,
-    /// The hashtags value.
-    pub hashtags: bool,
-    /// The numbers value.
-    pub numbers: bool,
-    /// The capitalized phrases value.
-    pub capitalized_phrases: bool,
-}
-
-impl Default for EntityRuleSet {
-    fn default() -> Self {
-        Self {
-            emails: true,
-            urls: true,
-            mentions: true,
-            hashtags: true,
-            numbers: true,
-            capitalized_phrases: true,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-/// Data type for entity mention.
-pub struct EntityMention {
-    /// The kind value.
-    pub kind: String,
-    /// Text content for this value.
-    pub text: String,
-    /// The normalized value.
-    pub normalized: String,
-    /// The span value.
-    pub span: TextSpan,
-}
-
-#[derive(Debug, Clone, PartialEq)]
 /// Data type for text analysis options.
 pub struct TextAnalysisOptions {
     /// The processing value.
@@ -819,98 +713,6 @@ pub fn diverse_extractive_summary(
     Ok(selected)
 }
 
-/// Returns sentiment.
-pub fn sentiment(text: &str, lexicon: &SentimentLexicon) -> SentimentSummary {
-    let mut positive_score = 0.0_f32;
-    let mut negative_score = 0.0_f32;
-    let mut matched_terms = 0;
-    let tokens = tokenize_words(text);
-    for (index, token) in tokens.iter().enumerate() {
-        if let Some(score) = lexicon.terms.get(token) {
-            matched_terms += 1;
-            let previous = index
-                .checked_sub(1)
-                .and_then(|index| tokens.get(index))
-                .map(String::as_str);
-            let before_previous = index
-                .checked_sub(2)
-                .and_then(|index| tokens.get(index))
-                .map(String::as_str);
-            let mut adjusted = *score;
-            if previous.is_some_and(is_intensifier) || before_previous.is_some_and(is_intensifier) {
-                adjusted *= 1.5;
-            }
-            if previous.is_some_and(is_negation) || before_previous.is_some_and(is_negation) {
-                adjusted *= -0.75;
-            }
-            if adjusted >= 0.0 {
-                positive_score += adjusted;
-            } else {
-                negative_score += adjusted.abs();
-            }
-        }
-    }
-    let total = positive_score + negative_score;
-    let compound = if total <= f32::EPSILON {
-        0.0
-    } else {
-        (positive_score - negative_score) / total
-    };
-    let label = if compound > lexicon.neutral_threshold {
-        "positive"
-    } else if compound < -lexicon.neutral_threshold {
-        "negative"
-    } else {
-        "neutral"
-    }
-    .to_string();
-
-    SentimentSummary {
-        positive_score,
-        negative_score,
-        compound,
-        token_count: tokens.len(),
-        matched_terms,
-        label,
-    }
-}
-
-/// Returns rule entities.
-pub fn rule_entities(text: &str, rules: &EntityRuleSet) -> Vec<EntityMention> {
-    let tokens = tokenize(text, &TextProcessingOptions::default());
-    let mut mentions = Vec::new();
-    for token in &tokens {
-        let kind = match token.kind {
-            TokenKind::Email if rules.emails => Some("email"),
-            TokenKind::Url if rules.urls => Some("url"),
-            TokenKind::Mention if rules.mentions => Some("mention"),
-            TokenKind::Hashtag if rules.hashtags => Some("hashtag"),
-            TokenKind::Number if rules.numbers => Some("number"),
-            _ => None,
-        };
-        if let Some(kind) = kind {
-            mentions.push(EntityMention {
-                kind: kind.to_string(),
-                text: token.text.clone(),
-                normalized: token.normalized.clone(),
-                span: token.span,
-            });
-        }
-    }
-
-    if rules.capitalized_phrases {
-        mentions.extend(capitalized_phrase_mentions(text, &tokens));
-    }
-    mentions.sort_by(|left, right| {
-        left.span
-            .byte_start
-            .cmp(&right.span.byte_start)
-            .then_with(|| left.span.byte_end.cmp(&right.span.byte_end))
-            .then_with(|| left.kind.cmp(&right.kind))
-    });
-    mentions
-}
-
 fn ngram_frequencies(ngrams: Vec<Vec<String>>) -> Vec<NgramFrequency> {
     let total = ngrams.len().max(1) as f32;
     let mut counts = BTreeMap::<Vec<String>, usize>::new();
@@ -951,20 +753,6 @@ fn mmr_score(
     (1.0 - diversity_weight) * candidate.score - diversity_weight * redundancy
 }
 
-fn is_negation(term: &str) -> bool {
-    matches!(
-        term,
-        "not" | "no" | "never" | "none" | "nicht" | "kein" | "pas"
-    )
-}
-
-fn is_intensifier(term: &str) -> bool {
-    matches!(
-        term,
-        "very" | "really" | "extremely" | "so" | "too" | "sehr" | "tres" | "très" | "muy"
-    )
-}
-
 fn stem_english(term: &str) -> String {
     let mut stem = term.to_lowercase();
     if stem.len() <= 3 {
@@ -996,57 +784,6 @@ fn stem_english(term: &str) -> String {
         stem.pop();
     }
     stem
-}
-
-fn capitalized_phrase_mentions(text: &str, tokens: &[text_core::Token]) -> Vec<EntityMention> {
-    let mut mentions = Vec::new();
-    let mut start = None::<usize>;
-    let mut end = None::<usize>;
-    for (index, token) in tokens.iter().enumerate() {
-        let is_capitalized = token.kind == TokenKind::Word
-            && token
-                .text
-                .chars()
-                .next()
-                .is_some_and(|ch| ch.is_uppercase())
-            && token.text.chars().any(|ch| ch.is_lowercase());
-        if is_capitalized {
-            start.get_or_insert(index);
-            end = Some(index);
-        } else if let (Some(start_index), Some(end_index)) = (start.take(), end.take()) {
-            push_capitalized_phrase(text, tokens, start_index, end_index, &mut mentions);
-        }
-    }
-    if let (Some(start_index), Some(end_index)) = (start, end) {
-        push_capitalized_phrase(text, tokens, start_index, end_index, &mut mentions);
-    }
-    mentions
-}
-
-fn push_capitalized_phrase(
-    text: &str,
-    tokens: &[text_core::Token],
-    start_index: usize,
-    end_index: usize,
-    mentions: &mut Vec<EntityMention>,
-) {
-    if end_index < start_index {
-        return;
-    }
-    let Ok(span) = TextSpan::from_byte_range(
-        text,
-        tokens[start_index].span.byte_start,
-        tokens[end_index].span.byte_end,
-    ) else {
-        return;
-    };
-    let raw = text[span.byte_start..span.byte_end].to_string();
-    mentions.push(EntityMention {
-        kind: "capitalized_phrase".to_string(),
-        normalized: raw.to_lowercase(),
-        text: raw,
-        span,
-    });
 }
 
 fn invalid_argument(message: impl Into<String>) -> DetectError {
@@ -1204,46 +941,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(summary.len(), 2);
-    }
-
-    #[test]
-    fn scores_sentiment_polarity_and_neutral_text() {
-        let lexicon = SentimentLexicon::default();
-        assert_eq!(
-            sentiment("excellent reliable work", &lexicon).label,
-            "positive"
-        );
-        assert_eq!(
-            sentiment("terrible broken failure", &lexicon).label,
-            "negative"
-        );
-        assert_eq!(sentiment("table chair window", &lexicon).label, "neutral");
-        assert_eq!(sentiment("not good", &lexicon).label, "negative");
-    }
-
-    #[test]
-    fn extracts_rule_entity_spans() {
-        let text =
-            "Contact Jane Doe at jane@example.com, visit https://example.com @team #Rust 42.";
-        let entities = rule_entities(text, &EntityRuleSet::default());
-        let kinds = entities
-            .iter()
-            .map(|entity| entity.kind.as_str())
-            .collect::<Vec<_>>();
-        assert!(kinds.contains(&"capitalized_phrase"));
-        assert!(kinds.contains(&"email"));
-        assert!(kinds.contains(&"url"));
-        assert!(kinds.contains(&"mention"));
-        assert!(kinds.contains(&"hashtag"));
-        assert!(kinds.contains(&"number"));
-        let email = entities
-            .iter()
-            .find(|entity| entity.kind == "email")
-            .unwrap();
-        assert_eq!(
-            &text[email.span.byte_start..email.span.byte_end],
-            "jane@example.com"
-        );
     }
 
     #[test]

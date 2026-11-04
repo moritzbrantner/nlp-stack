@@ -9,10 +9,19 @@ fn cli_adapter_reports_wrapped_library() {
 #[test]
 fn cli_adapter_runs_default_workflow() {
     let response = text_linguistics_cli::run_operation(
+        "linguistics.language",
+        serde_json::json!({"text": "Alice presented the tokenizer roadmap in Berlin."}),
+    )
+    .expect("language");
+    assert_eq!(response.value["operation"], "linguistics.language");
+}
+
+#[test]
+fn cli_adapter_reports_model_required_for_analysis() {
+    let error = text_linguistics_cli::run_operation(
         "linguistics.analyze",
         serde_json::json!({"text": "Alice presented the tokenizer roadmap in Berlin.", "profile": "fast"}),
     )
-    .expect("analyze");
-    assert_eq!(response.value["operation"], "linguistics.analyze");
-    assert!(!response.value["tokens"].as_array().unwrap().is_empty());
+    .expect_err("no linguistic models in this build");
+    assert!(error.to_string().contains("missing_dependency"), "{error}");
 }

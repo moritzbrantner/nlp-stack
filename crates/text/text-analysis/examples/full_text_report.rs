@@ -10,7 +10,8 @@ fn main() {
             "profile": "deterministic",
             "keywordLimit": 8,
             "summarySentences": 2,
-            "embedding": {"mode": "hashed", "dimensions": 128, "useIdf": false}
+            "linguistics": {"mode": "modelFree"},
+        "embedding": {"mode": "off"}
         }),
     })
     .expect("document report");

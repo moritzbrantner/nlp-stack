@@ -25,7 +25,7 @@ fn analyze(text: &str) -> (ReportingEvidence, ScopeEvidence) {
             bundle_dir,
             ..DependencyParsingOptions::local_model()
         },
-        ..LinguisticAnalysisOptions::default()
+        ..LinguisticAnalysisOptions::without_models()
     };
     let analysis = analyze_text(text, &options).unwrap();
     let reporting = reporting_constructions(&analysis);

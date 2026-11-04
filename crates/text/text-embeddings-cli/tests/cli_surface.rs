@@ -9,13 +9,19 @@ fn cli_adapter_reports_wrapped_library() {
 #[test]
 fn cli_adapter_runs_default_workflow() {
     let response = text_embeddings_cli::run_operation(
-        "embeddings.embed",
-        serde_json::json!({"texts": ["rust text"], "dimensions": 16}),
+        "embeddings.relatedTerms",
+        serde_json::json!({"text": "rust text crates make text analysis reliable", "term": "text"}),
     )
-    .expect("embed");
-    assert_eq!(response.value["operation"], "embeddings.embed");
-    assert_eq!(
-        response.value["embeddings"][0].as_array().unwrap().len(),
-        16
-    );
+    .expect("related terms");
+    assert_eq!(response.value["operation"], "embeddings.relatedTerms");
+}
+
+#[test]
+fn cli_adapter_reports_model_required_for_embeddings() {
+    let error = text_embeddings_cli::run_operation(
+        "embeddings.embed",
+        serde_json::json!({"texts": ["rust text"]}),
+    )
+    .expect_err("no embedding model is configured");
+    assert!(error.to_string().contains("missing_dependency"), "{error}");
 }

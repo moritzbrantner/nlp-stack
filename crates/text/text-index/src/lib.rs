@@ -13,9 +13,8 @@ use text_core::{
     TextProcessingOptions, TextProvenance, TextSegmentContract, TextSourceRef, TextSpan,
     TimestampContract, TokenKind,
 };
-use text_embeddings::{
-    DenseVector, EmbeddingModelInfo, HashedTextEmbedder, TextEmbedderBackend, TextEmbeddingConfig,
-};
+pub use text_embeddings::NoEmbedder;
+use text_embeddings::{DenseVector, EmbeddingModelInfo, TextEmbedderBackend, TextEmbeddingBackend};
 use text_lexical::{Bm25Corpus, Bm25Options, CorpusOptions, TextCorpus, TextCorpusDocument};
 use thiserror::Error;
 use vector_analysis_index::{
@@ -37,6 +36,11 @@ pub enum TextIndexError {
     Sqlite(#[from] rusqlite::Error),
     #[error(transparent)]
     Core(#[from] DetectError),
+    /// Semantic or hybrid search on an index that was built without an embedding
+    /// model. There is no heuristic embedding fallback; use lexical search or build
+    /// the index with a real embedder.
+    #[error("{mode:?} search requires an embedding model; this index was built lexical-only")]
+    EmbeddingModelRequired { mode: IndexSearchMode },
 }
 
 pub type Result<T> = std::result::Result<T, TextIndexError>;
@@ -296,7 +300,8 @@ pub enum IndexSearchMode {
 #[serde(rename_all = "camelCase")]
 pub struct IndexQuery {
     pub text: String,
-    #[serde(default = "default_mode")]
+    /// Required: there is no default mode, so a caller never gets semantic work
+    /// (and an embedding-model requirement) without asking for it.
     pub mode: IndexSearchMode,
     #[serde(default = "default_top_k")]
     pub top_k: usize,
@@ -315,46 +320,37 @@ pub struct IndexQuery {
 }
 
 impl IndexQuery {
-    pub fn new(text: impl Into<String>, top_k: usize) -> Self {
+    /// A query in `mode` with the default top-k independent options. There is no
+    /// mode-less constructor.
+    pub fn with_mode(text: impl Into<String>, top_k: usize, mode: IndexSearchMode) -> Self {
+        let (semantic_weight, lexical_weight) = match mode {
+            IndexSearchMode::Lexical => (0.0, 1.0),
+            IndexSearchMode::Semantic => (1.0, 0.0),
+            IndexSearchMode::Hybrid => (default_semantic_weight(), default_lexical_weight()),
+        };
         Self {
             text: text.into(),
+            mode,
             top_k,
-            ..Self::default()
+            candidate_limit: default_candidate_limit(),
+            filter: IndexFilter::default(),
+            semantic_weight,
+            lexical_weight,
+            required_phrases: Vec::new(),
+            explain: false,
         }
     }
 
     pub fn lexical(text: impl Into<String>, top_k: usize) -> Self {
-        Self {
-            mode: IndexSearchMode::Lexical,
-            semantic_weight: 0.0,
-            lexical_weight: 1.0,
-            ..Self::new(text, top_k)
-        }
+        Self::with_mode(text, top_k, IndexSearchMode::Lexical)
     }
 
     pub fn semantic(text: impl Into<String>, top_k: usize) -> Self {
-        Self {
-            mode: IndexSearchMode::Semantic,
-            semantic_weight: 1.0,
-            lexical_weight: 0.0,
-            ..Self::new(text, top_k)
-        }
+        Self::with_mode(text, top_k, IndexSearchMode::Semantic)
     }
-}
 
-impl Default for IndexQuery {
-    fn default() -> Self {
-        Self {
-            text: String::new(),
-            mode: default_mode(),
-            top_k: default_top_k(),
-            candidate_limit: default_candidate_limit(),
-            filter: IndexFilter::default(),
-            semantic_weight: default_semantic_weight(),
-            lexical_weight: default_lexical_weight(),
-            required_phrases: Vec::new(),
-            explain: false,
-        }
+    pub fn hybrid(text: impl Into<String>, top_k: usize) -> Self {
+        Self::with_mode(text, top_k, IndexSearchMode::Hybrid)
     }
 }
 
@@ -561,34 +557,40 @@ impl TextIndexStore for MemoryIndexStore {
 
 #[derive(Debug, Clone)]
 pub struct TextIndex<B, S> {
-    embedder: B,
+    embedder: Option<B>,
     store: S,
     options: IndexBuildOptions,
     corpus_options: CorpusOptions,
     bm25_options: Bm25Options,
 }
 
-pub type MemoryTextIndex<B = HashedTextEmbedder> = TextIndex<B, MemoryIndexStore>;
+pub type MemoryTextIndex<B> = TextIndex<B, MemoryIndexStore>;
 #[cfg(feature = "sqlite")]
-pub type SqliteTextIndex<B = HashedTextEmbedder> = TextIndex<B, SqliteIndexStore>;
+pub type SqliteTextIndex<B> = TextIndex<B, SqliteIndexStore>;
+/// An index without an embedding model: lexical search only.
+pub type LexicalTextIndex<S> = TextIndex<NoEmbedder, S>;
 
-impl MemoryTextIndex<HashedTextEmbedder> {
-    pub fn new_memory() -> Result<Self> {
-        let corpus_options = CorpusOptions::default();
-        let embedder = HashedTextEmbedder::new(
-            TextEmbeddingConfig {
-                dimensions: 128,
-                use_idf: false,
-            },
-            corpus_options.clone(),
-        )
-        .map_err(TextIndexError::Core)?;
-        Ok(TextIndex::with_store(embedder, MemoryIndexStore::new()))
+impl<S: TextIndexStore> TextIndex<NoEmbedder, S> {
+    /// An index that stores no vectors and answers only lexical queries. Semantic
+    /// and hybrid queries fail with [`TextIndexError::EmbeddingModelRequired`].
+    pub fn lexical_only(store: S) -> Self {
+        Self::from_parts(None, store)
+    }
+}
+
+impl MemoryTextIndex<NoEmbedder> {
+    /// A lexical-only in-memory index.
+    pub fn lexical_memory() -> Self {
+        Self::lexical_only(MemoryIndexStore::new())
     }
 }
 
 impl<B: TextEmbedderBackend, S: TextIndexStore> TextIndex<B, S> {
     pub fn with_store(embedder: B, store: S) -> Self {
+        Self::from_parts(Some(embedder), store)
+    }
+
+    fn from_parts(embedder: Option<B>, store: S) -> Self {
         Self {
             embedder,
             store,
@@ -611,8 +613,14 @@ impl<B: TextEmbedderBackend, S: TextIndexStore> TextIndex<B, S> {
         &mut self.store
     }
 
-    pub fn embedder_info(&self) -> EmbeddingModelInfo {
-        self.embedder.model_info()
+    /// The store, for reuse by another index (for example a lexical-only reader).
+    pub fn into_store(self) -> S {
+        self.store
+    }
+
+    /// The embedding model, or `None` for a lexical-only index.
+    pub fn embedder_info(&self) -> Option<EmbeddingModelInfo> {
+        self.embedder.as_ref().map(TextEmbeddingBackend::model_info)
     }
 
     pub fn upsert_documents(&mut self, documents: &[IndexDocument]) -> Result<IndexMutationReport> {
@@ -635,7 +643,10 @@ impl<B: TextEmbedderBackend, S: TextIndexStore> TextIndex<B, S> {
                 total.documents_skipped += 1;
                 continue;
             }
-            let vectors = embed_chunks(&self.embedder, &chunks)?;
+            let vectors = match &self.embedder {
+                Some(embedder) => embed_chunks(embedder, &chunks)?,
+                None => Vec::new(),
+            };
             let report = self.store.upsert_document_state(
                 document.clone(),
                 chunks,
@@ -665,6 +676,11 @@ impl<B: TextEmbedderBackend, S: TextIndexStore> TextIndex<B, S> {
 
     pub fn search(&self, query: &IndexQuery) -> Result<Vec<IndexSearchResult>> {
         validate_query(query)?;
+        let embedder = match (&self.embedder, query.mode) {
+            (_, IndexSearchMode::Lexical) => None,
+            (Some(embedder), _) => Some(embedder),
+            (None, mode) => return Err(TextIndexError::EmbeddingModelRequired { mode }),
+        };
         let normalized_query = normalize_query(&query.text, &self.corpus_options.processing)?;
         let required_phrases =
             normalize_required_phrases(&query.required_phrases, &self.corpus_options.processing);
@@ -705,8 +721,8 @@ impl<B: TextEmbedderBackend, S: TextIndexStore> TextIndex<B, S> {
             BTreeMap::new()
         };
 
-        let semantic_scores = if query.mode != IndexSearchMode::Lexical {
-            let query_vector = self.embedder.embed_text(&normalized_query)?;
+        let semantic_scores = if let Some(embedder) = embedder {
+            let query_vector = embedder.embed_text(&normalized_query)?;
             vector_candidates(&vectors, &chunks, query_vector.as_slice(), limit)?
         } else {
             BTreeMap::new()
@@ -1623,10 +1639,6 @@ fn remove_document_state(
     }
 }
 
-fn default_mode() -> IndexSearchMode {
-    IndexSearchMode::Hybrid
-}
-
 fn default_top_k() -> usize {
     10
 }
@@ -1839,6 +1851,7 @@ fn fts5_query(query: &str) -> String {
 mod tests {
     use super::*;
     use text_core::TextProvenance;
+    use text_embeddings::testing::HashedFixtureEmbedder;
 
     #[test]
     fn snippet_survives_length_changing_lowercase() {
@@ -1852,14 +1865,23 @@ mod tests {
         assert!(build_snippet(&long, "über").ends_with("İ über"));
     }
 
-    fn index() -> MemoryTextIndex<HashedTextEmbedder> {
-        MemoryTextIndex::new_memory()
-            .unwrap()
-            .with_options(IndexBuildOptions {
-                chunk_tokens: 8,
-                chunk_overlap_tokens: 0,
-                ..IndexBuildOptions::default()
-            })
+    fn index() -> MemoryTextIndex<HashedFixtureEmbedder> {
+        TextIndex::with_store(
+            HashedFixtureEmbedder::new(
+                text_embeddings::TextEmbeddingConfig {
+                    dimensions: 128,
+                    use_idf: false,
+                },
+                CorpusOptions::default(),
+            )
+            .unwrap(),
+            MemoryIndexStore::new(),
+        )
+        .with_options(IndexBuildOptions {
+            chunk_tokens: 8,
+            chunk_overlap_tokens: 0,
+            ..IndexBuildOptions::default()
+        })
     }
 
     #[test]
@@ -1875,7 +1897,7 @@ mod tests {
             .search(&IndexQuery {
                 text: "durable text index".to_string(),
                 explain: true,
-                ..IndexQuery::default()
+                ..IndexQuery::hybrid("", 10)
             })
             .unwrap();
         assert_eq!(results[0].document_id, "doc-1");
@@ -1903,7 +1925,7 @@ mod tests {
             .search(&IndexQuery {
                 text: "climate policy public funding".to_string(),
                 required_phrases: vec!["public funding".to_string()],
-                ..IndexQuery::default()
+                ..IndexQuery::hybrid("", 10)
             })
             .unwrap();
         assert_eq!(results.len(), 1);
@@ -1927,7 +1949,7 @@ mod tests {
                 top_k: 2,
                 candidate_limit: 1,
                 required_phrases: vec!["public funding".to_string()],
-                ..IndexQuery::default()
+                ..IndexQuery::hybrid("", 10)
             })
             .unwrap();
         assert_eq!(results.len(), 2);
@@ -1950,7 +1972,7 @@ mod tests {
                 text: "neural ranking".to_string(),
                 semantic_weight: 0.5,
                 lexical_weight: 0.5,
-                ..IndexQuery::default()
+                ..IndexQuery::hybrid("", 10)
             })
             .unwrap();
         assert_eq!(results[0].document_id, "doc-1");
@@ -1971,7 +1993,7 @@ mod tests {
                 text: "shared passage".to_string(),
                 mode: IndexSearchMode::Lexical,
                 top_k: 2,
-                ..IndexQuery::default()
+                ..IndexQuery::hybrid("", 10)
             })
             .unwrap();
         assert_eq!(
@@ -2008,7 +2030,7 @@ mod tests {
         let inspect = index.inspect().unwrap();
         assert_eq!(inspect.document_count, 1);
         assert_eq!(inspect.facet_count, 1);
-        let results = index.search(&IndexQuery::new("new", 1)).unwrap();
+        let results = index.search(&IndexQuery::hybrid("new", 1)).unwrap();
         assert_eq!(results[0].chunk.semantic_facets[0].value, "new");
     }
 
@@ -2062,7 +2084,7 @@ mod tests {
                     provenance_operations: BTreeSet::from(["analysis.document".to_string()]),
                     ..IndexFilter::default()
                 },
-                ..IndexQuery::default()
+                ..IndexQuery::hybrid("", 10)
             })
             .unwrap();
         assert_eq!(results.len(), 1);

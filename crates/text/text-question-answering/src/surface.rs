@@ -20,8 +20,8 @@ pub fn package_surface() -> PackageSurface {
             operation("describe", "Inspect package metadata", "Extractive question-answering contracts, imported span postprocessing, and backend execution hooks.", serde_json::json!({"includeOperations": true})),
             operation("qa.models", "Inspect QA model catalog", "Lists registered extractive question-answering presets.", serde_json::json!({})),
             operation("qa.answer", "Answer question", "Postprocesses imported span predictions for extractive QA.", serde_json::json!({"question": "What is reliable?", "context": "Rust is reliable.", "importedPredictions": [{"text": "Rust", "score": 0.9}]})),
-            operation("qa.answerWithIndex", "Answer from text index", "Builds a deterministic in-memory Text Index and returns cited extractive answers.", serde_json::json!({"question": "What language has ownership?", "documents": [{"id": "doc-rust", "body": "Rust has ownership and deterministic package workflows.", "language": "en", "metadata": {"attributes": {"kind": "language"}}}], "indexOptions": {"chunkingStrategy": "tokenWindow", "chunkTokens": 16, "chunkOverlapTokens": 0, "storeRawText": true}, "topKChunks": 2, "topKAnswers": 1, "localModel": {"autoDownload": false}, "fallbackPolicy": "heuristicIfUnavailable"})),
-            deprecated_support_operation("qa.answerWithRetrieval", "Answer from compatibility retrieval", "Builds a deterministic in-memory compatibility retrieval index and returns cited extractive answers.", serde_json::json!({"question": "What language has ownership?", "documents": [{"id": "doc-rust", "body": "Rust has ownership and deterministic package workflows."}], "topKChunks": 2, "topKAnswers": 1, "localModel": {"autoDownload": false}, "fallbackPolicy": "heuristicIfUnavailable"})),
+            operation("qa.answerWithIndex", "Answer from text index", "Builds a transient lexical (BM25) Text Index and returns cited extractive answers from a QA model or imported span predictions. Fails without a model; there is no heuristic answer fallback.", serde_json::json!({"question": "What language has ownership?", "documents": [{"id": "doc-rust", "body": "Rust has ownership and deterministic package workflows.", "language": "en", "metadata": {"attributes": {"kind": "language"}}}], "indexOptions": {"chunkingStrategy": "tokenWindow", "chunkTokens": 16, "chunkOverlapTokens": 0, "storeRawText": true}, "topKChunks": 2, "topKAnswers": 1, "importedPredictions": [{"text": "Rust", "score": 0.9}]})),
+            deprecated_support_operation("qa.answerWithRetrieval", "Answer from compatibility retrieval", "Answers from an embedding-backed compatibility retrieval index. The surface has no embedding model, so this fails; use qa.answerWithIndex.", serde_json::json!({"question": "What language has ownership?", "documents": [{"id": "doc-rust", "body": "Rust has ownership and deterministic package workflows."}], "topKChunks": 2, "topKAnswers": 1, "importedPredictions": [{"text": "Rust", "score": 0.9}]})),
             operation("qa.answerBatch", "Answer question batch", "Runs multiple imported-span QA requests and returns item-level successes and errors.", serde_json::json!({"requests": [{"question": "Who presented the roadmap?", "context": "Alice presented the roadmap.", "importedPredictions": [{"text": "Alice", "score": 0.94}]}]})),
         ],
     }
@@ -230,8 +230,7 @@ mod tests {
                 },
                 "topKChunks": 2,
                 "topKAnswers": 1,
-                "localModel": { "autoDownload": false },
-                "fallbackPolicy": "heuristicIfUnavailable"
+                "importedPredictions": [{"text": "Rust", "score": 0.9}]
             }),
         })
         .expect("answer with text index");
@@ -273,15 +272,25 @@ mod tests {
             "qa.answerWithIndex"
         );
 
-        let response = run_surface_operation(SurfaceRequest {
+        let error = run_surface_operation(SurfaceRequest {
             operation: "qa.answerWithRetrieval".into(),
             input: operation.example_request,
         })
-        .expect("answer with retrieval remains runnable");
-        assert_eq!(response.operation.as_str(), "qa.answerWithRetrieval");
-        assert_eq!(
-            response.value["summary"]["backend"],
-            "compatibility-retrieval"
-        );
+        .expect_err("raw-document retrieval QA needs an embedding model");
+        assert!(error.contains("model required"), "{error}");
+    }
+
+    #[test]
+    fn heuristic_fallback_policy_is_rejected() {
+        let error = run_surface_operation(SurfaceRequest {
+            operation: "qa.answerWithIndex".into(),
+            input: serde_json::json!({
+                "question": "What has ownership?",
+                "documents": [{"id": "doc-rust", "body": "Rust has ownership."}],
+                "fallbackPolicy": "heuristicIfUnavailable"
+            }),
+        })
+        .expect_err("the heuristic policy no longer exists");
+        assert!(error.contains("heuristicIfUnavailable"), "{error}");
     }
 }

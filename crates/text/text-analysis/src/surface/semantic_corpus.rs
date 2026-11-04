@@ -5,16 +5,16 @@ use super::imported_embeddings::{
 use runtime_core::SurfaceOperation;
 use serde::Deserialize;
 
+use super::imported_embeddings::embedding_model_required;
 use crate::semantic::{
-    analyze_corpus_semantics, analyze_corpus_semantics_with, SemanticCorpusAnalysisOptions,
-    SemanticCorpusItem,
+    analyze_corpus_semantics_with, SemanticCorpusAnalysisOptions, SemanticCorpusItem,
 };
 
 pub(super) fn operation() -> SurfaceOperation {
     super::operation(
         "analysis.semantic-corpus",
         "Build semantic corpus profile",
-        "Aggregates lexical statistics and model- or baseline-backed corpus themes across attributed items, retaining source provenance and explicit embedding evidence.",
+        "Aggregates lexical statistics and model-backed corpus themes from supplied `importedEmbeddings` across attributed items, retaining source provenance and explicit embedding evidence. Fails with `missing_dependency` without embeddings; there is no hashed baseline.",
         serde_json::json!({
             "items": [
                 {
@@ -22,28 +22,34 @@ pub(super) fn operation() -> SurfaceOperation {
                     "author": "Alice",
                     "source": "letters/1.txt",
                     "timestampMillis": 1700000000000_i64,
-                    "text": "Semantic search improves retrieval. Embedding indexes support semantic search."
+                    "text": "Semantic search improves retrieval."
                 },
                 {
                     "id": "alice-2",
                     "author": "Alice",
                     "source": "letters/2.txt",
                     "timestampMillis": 1710000000000_i64,
-                    "text": "Semantic retrieval finds related passages. Vector indexes accelerate retrieval."
+                    "text": "Semantic retrieval finds related passages."
                 },
                 {
                     "id": "bob-1",
                     "author": "Bob",
                     "source": "notes/1.txt",
                     "timestampMillis": 1720000000000_i64,
-                    "text": "Tomatoes grow in garden soil. Healthy soil supports tomato roots."
+                    "text": "Tomatoes grow in garden soil."
                 }
             ],
             "topTerms": 12,
             "minConceptUnits": 2,
             "neighborsPerUnit": 4,
             "neighborThreshold": 0.25,
-            "clusterThreshold": 0.60
+            "clusterThreshold": 0.60,
+            "embeddingModel": {"name": "example-sentence-model", "dimensions": 2},
+            "importedEmbeddings": [
+                {"text": "Semantic search improves retrieval.", "vector": [1.0, 0.0]},
+                {"text": "Semantic retrieval finds related passages.", "vector": [0.95, 0.05]},
+                {"text": "Tomatoes grow in garden soil.", "vector": [0.0, 1.0]}
+            ]
         }),
     )
 }
@@ -62,16 +68,13 @@ pub(super) fn run(input: serde_json::Value) -> Result<serde_json::Value, String>
             timestamp_millis: item.timestamp_millis,
         })
         .collect::<Vec<_>>();
-    let report = if input.imported_embeddings.is_empty() {
-        analyze_corpus_semantics(&items, &options).map_err(|error| error.to_string())?
-    } else {
-        let embedder = ImportedSemanticEmbedder::new(
-            &input.imported_embeddings,
-            input.embedding_model.as_ref(),
-        )?;
-        analyze_corpus_semantics_with(&items, &options, &embedder)
-            .map_err(|error| error.to_string())?
-    };
+    if input.imported_embeddings.is_empty() {
+        return Err(embedding_model_required("analysis.semantic-corpus"));
+    }
+    let embedder =
+        ImportedSemanticEmbedder::new(&input.imported_embeddings, input.embedding_model.as_ref())?;
+    let report = analyze_corpus_semantics_with(&items, &options, &embedder)
+        .map_err(|error| error.to_string())?;
     serde_json::to_value(report).map_err(|error| error.to_string())
 }
 

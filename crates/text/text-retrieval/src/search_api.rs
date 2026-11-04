@@ -480,10 +480,11 @@ fn invalid_argument(message: impl Into<String>) -> DetectError {
 mod tests {
     use super::*;
     use text_lexical::CorpusOptions;
-    use text_embeddings::{HashedTextEmbedder, TextEmbeddingConfig};
+    use text_embeddings::testing::HashedFixtureEmbedder;
+use text_embeddings::TextEmbeddingConfig;
 
-    fn engine() -> SearchEngine<HashedTextEmbedder> {
-        let embedder = HashedTextEmbedder::new(
+    fn engine() -> SearchEngine<HashedFixtureEmbedder> {
+        let embedder = HashedFixtureEmbedder::new(
             TextEmbeddingConfig {
                 dimensions: 64,
                 use_idf: true,

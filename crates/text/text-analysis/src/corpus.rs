@@ -1,6 +1,5 @@
 use text_core::Result;
 use text_core::{detailed_text_stats, TextDocument};
-use text_embeddings::{HashedTextEmbedder, TextEmbeddingConfig};
 use text_lexical::{
     keywords, token_shingle_similarity, Bm25Corpus, Bm25Options, CorpusOptions, KeywordOptions,
     TfIdfCorpus,
@@ -181,43 +180,6 @@ trait CorpusEmbeddingProvider<'a> {
     ) -> Vec<Option<Vec<f32>>>;
 }
 
-struct HashedCorpusEmbeddingProvider<'a> {
-    embedder: HashedTextEmbedder,
-    corpus: &'a TfIdfCorpus,
-}
-
-impl CorpusEmbeddingProvider<'_> for HashedCorpusEmbeddingProvider<'_> {
-    fn metric(&self) -> &'static str {
-        "hashed_embedding_cosine"
-    }
-
-    fn embed_documents(
-        &self,
-        documents: &[TextDocument<'_>],
-        _options: &CorpusAnalysisOptions,
-        diagnostics: &mut Vec<TextAnalysisDiagnostic>,
-    ) -> Vec<Option<Vec<f32>>> {
-        documents
-            .iter()
-            .map(|document| {
-                match self
-                    .embedder
-                    .embed_text_with_corpus(document.text, Some(self.corpus))
-                {
-                    Ok(vector) => Some(vector.as_slice().to_vec()),
-                    Err(error) => {
-                        diagnostics.push(TextAnalysisDiagnostic::warning(
-                            "semantic_neighbor_embedding_unavailable",
-                            format!("{}: {error}", document.id),
-                        ));
-                        None
-                    }
-                }
-            })
-            .collect()
-    }
-}
-
 struct AnalysisSectionEmbeddingProvider;
 
 impl CorpusEmbeddingProvider<'_> for AnalysisSectionEmbeddingProvider {
@@ -243,24 +205,17 @@ impl CorpusEmbeddingProvider<'_> for AnalysisSectionEmbeddingProvider {
 
 fn selected_corpus_embedding_provider<'a>(
     options: &CorpusAnalysisOptions,
-    corpus: &'a TfIdfCorpus,
+    _corpus: &'a TfIdfCorpus,
     diagnostics: &mut Vec<TextAnalysisDiagnostic>,
 ) -> Result<Option<Box<dyn CorpusEmbeddingProvider<'a> + 'a>>> {
     match options.document.embedding_depth {
-        EmbeddingDepth::Off => Ok(None),
-        EmbeddingDepth::Hashed {
-            dimensions,
-            use_idf,
-        } => Ok(Some(Box::new(HashedCorpusEmbeddingProvider {
-            embedder: HashedTextEmbedder::new(
-                TextEmbeddingConfig {
-                    dimensions: dimensions.max(1),
-                    use_idf,
-                },
-                CorpusOptions::default(),
-            )?,
-            corpus,
-        }))),
+        EmbeddingDepth::Off => {
+            diagnostics.push(TextAnalysisDiagnostic::warning(
+                "semantic_neighbors_unavailable",
+                "semantic neighbors need an embedding model (embedding depth `candle` or `onnx`); none is configured and there is no hashed fallback",
+            ));
+            Ok(None)
+        }
         EmbeddingDepth::CandleBundle { .. } | EmbeddingDepth::OnnxBundle { .. } => {
             diagnostics.push(TextAnalysisDiagnostic::warning(
                 "semantic_neighbors_model_provider",

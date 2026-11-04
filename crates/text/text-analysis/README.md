@@ -8,7 +8,7 @@ invoke native inference runtimes. Local model-backed NER and embeddings are
 available through explicit options and feature flags.
 
 For an end-to-end walkthrough of how `CorpusAnalysisReport` relates to
-`TextCorpus`, lexical scoring, hashed semantic search, and retrieval indexes,
+`TextCorpus`, lexical scoring, model-backed semantic search, and retrieval indexes,
 see [`docs/TEXT_CORPUS_GUIDE.md`](../../../docs/TEXT_CORPUS_GUIDE.md).
 
 ## Example
@@ -35,10 +35,11 @@ speaker turns plus sentence children. The primary sequence is then used to
 produce deterministic semantic-neighbor edges, concept clusters, a semantic
 shift/activation timeline, concept hotspots, and per-speaker concept shares.
 
-The convenience functions use the no-download hashed embedding baseline. The
-matching `*_with` functions accept any `TextEmbeddingBackend`, so local
-Candle/ONNX or future embedding implementations can reuse the same semantic-map
-contracts and deterministic aggregation algorithms.
+The `*_with` functions take the caller's `TextEmbeddingBackend`, so local
+Candle/ONNX or future embedding implementations share the same semantic-map
+contracts and deterministic aggregation algorithms. There is no hashed default
+(#186); the package surface needs `importedEmbeddings` and otherwise fails with
+`missing_dependency`.
 
 The initial exact similarity matrix is intentionally O(n²). It is a transparent
 baseline, not a claim that all future large-corpus analysis should stay
@@ -56,18 +57,20 @@ for the implementation horizon and ownership constraints.
 ## Stable contract
 
 The stable surface is high-level document and corpus report orchestration over
-the focused text crates. Report sections may grow additively, but default
-analysis remains deterministic, local-first, and no-download.
+the focused text crates. Report sections may grow additively. Default analysis is
+local-first and no-download: it requests the local linguistic models (a missing
+model is a `linguistics_unavailable` diagnostic, never heuristic output) and no
+embedding. `LinguisticDepth::ModelFree` runs only the model-free linguistic
+operations.
 
 ## Quality and limits
 
-This crate composes lower-level heuristic and hashed-vector outputs. It provides
+This crate composes lower-level lexical statistics and model outputs. It provides
 consistent report structure, not a production-grade NLP quality guarantee.
 
 Semantic-map clusters and heat-map-oriented metrics are structural signals over
 embedding similarity. They must not be interpreted as psychological judgments,
-truth assessments, or lossless representations of meaning. Hashed embeddings
-remain deterministic fixtures rather than semantic-quality claims.
+truth assessments, or lossless representations of meaning.
 
 ## Model-backed analysis
 

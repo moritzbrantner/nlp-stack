@@ -45,17 +45,17 @@ const packageAppConfig: PackageAppConfig = {
       },
     },
     {
-      id: "hybrid-search",
-      label: "Hybrid search",
+      id: "lexical-search",
+      label: "Lexical search",
       operation: "index.search",
-      description: "Build a transient in-memory Text Index and run hybrid search.",
+      description: "Build a transient in-memory Text Index and run lexical (BM25) search. Hybrid and semantic search need an embedding model.",
       input: {
         documents: [
           { id: "report-1", title: "Multimodal report", body: "The report cites transcript segments about durable hybrid search.", language: "en", metadata: { attributes: { source: "report", kind: "analysis" } } },
           { id: "caption-1", title: "Transcript", body: "Alice describes semantic facets and timestamped evidence.", language: "en", metadata: { attributes: { source: "transcript", speaker: "alice" } } },
           { id: "note-1", title: "Playlist", body: "Music recommendations and editorial notes.", language: "en", metadata: { attributes: { source: "notes" } } },
         ],
-        query: { text: "semantic transcript evidence", topK: 3, explain: true },
+        query: { text: "semantic transcript evidence", mode: "lexical", topK: 3, explain: true },
         options: { chunkingStrategy: "tokenWindow", chunkTokens: 18, chunkOverlapTokens: 0, storeRawText: true, commit: false },
         dimensions: 96,
       },
@@ -99,8 +99,8 @@ const packageAppConfig: PackageAppConfig = {
   ],
   benchmarkScenarios: [
     {
-      id: "hybrid-search",
-      label: "Hybrid Search",
+      id: "lexical-search",
+      label: "Lexical Search",
       operation: "index.search",
       input: {
         documents: [
@@ -108,7 +108,7 @@ const packageAppConfig: PackageAppConfig = {
           { id: "doc-2", body: "video scene reports" },
           { id: "doc-3", body: "transcript semantic facets" },
         ],
-        query: { text: "text search", topK: 3 },
+        query: { text: "text search", mode: "lexical", topK: 3 },
       },
       iterations: 60,
       warmupIterations: 5,

@@ -8,15 +8,15 @@
 
 use text_core::{AnnotationProvenance, Result};
 use text_embeddings::{
-    DenseVector, HashedTextEmbedder, TextEmbeddingBackend, TextEmbeddingBackendKind,
+    testing::HashedFixtureEmbedder, DenseVector, TextEmbeddingBackend, TextEmbeddingBackendKind,
     TextEmbeddingMetadata,
 };
 
 #[test]
-fn hashed_embedder_reports_heuristic_provenance_with_backend_fact_in_metadata() {
-    let metadata = HashedTextEmbedder::default().metadata();
-    assert_eq!(metadata.provenance, AnnotationProvenance::Heuristic);
-    assert_eq!(metadata.backend, TextEmbeddingBackendKind::Hashed);
+fn hashed_fixture_reports_heuristic_provenance_with_backend_fact_in_metadata() {
+    let metadata = HashedFixtureEmbedder::default().metadata();
+    assert_eq!(metadata.provenance, AnnotationProvenance::RuleBased);
+    assert_eq!(metadata.backend, TextEmbeddingBackendKind::HashedFixture);
 }
 
 #[test]

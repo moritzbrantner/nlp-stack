@@ -148,7 +148,7 @@ export function TextAnalysisStudio() {
               summarySentences: 5,
               ngramSizes: [2, 3],
               shingleSizes: [3, 5],
-              linguistics: { mode: "heuristicFast" },
+              linguistics: { mode: "modelFree" },
               embedding: { mode: "off" },
               namedEntities: { mode: "huggingFace" },
             },

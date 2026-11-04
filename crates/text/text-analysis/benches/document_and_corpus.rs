@@ -2,8 +2,7 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use runtime_core::{OperationId, SurfaceRequest};
 use std::hint::black_box;
 use text_analysis::semantic::{
-    analyze_document_semantics, analyze_document_semantics_with, compare_semantic_neighborhoods,
-    SemanticAnalysisOptions,
+    analyze_document_semantics_with, compare_semantic_neighborhoods, SemanticAnalysisOptions,
 };
 use text_analysis::surface::run_surface_operation;
 use text_core::TextDocument;
@@ -16,7 +15,8 @@ fn bench_document_and_corpus(c: &mut Criterion) {
         "profile": "deterministic",
         "keywordLimit": 12,
         "summarySentences": 3,
-        "embedding": {"mode": "hashed", "dimensions": 128, "useIdf": false}
+        "linguistics": {"mode": "modelFree"},
+        "embedding": {"mode": "off"}
     });
     let corpus_input = serde_json::json!({
         "documents": [
@@ -26,8 +26,9 @@ fn bench_document_and_corpus(c: &mut Criterion) {
         ],
         "query": "text analysis",
         "topK": 5,
-        "includeSemanticNeighbors": true,
-        "embedding": {"mode": "hashed", "dimensions": 128, "useIdf": true}
+        "includeSemanticNeighbors": false,
+        "linguistics": {"mode": "modelFree"},
+        "embedding": {"mode": "off"}
     });
     let semantic_text = [
         "Semantic search improves retrieval.",
@@ -41,8 +42,12 @@ fn bench_document_and_corpus(c: &mut Criterion) {
     .repeat(12);
     let semantic_document = TextDocument::new("semantic-bench", &semantic_text);
     let semantic_options = SemanticAnalysisOptions::default();
-    let semantic_report =
-        analyze_document_semantics(&semantic_document, &semantic_options).unwrap();
+    let semantic_report = analyze_document_semantics_with(
+        &semantic_document,
+        &semantic_options,
+        &text_embeddings::testing::HashedFixtureEmbedder::default(),
+    )
+    .unwrap();
 
     c.bench_function("analysis_document", |b| {
         b.iter(|| {

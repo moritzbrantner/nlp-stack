@@ -4,7 +4,7 @@ use text_linguistics::{LinguisticAnalysisOptions, TextNlpConfig, TextNlpPipeline
 
 fn bench_pipeline(c: &mut Criterion) {
     let pipeline = TextNlpPipeline::new(TextNlpConfig {
-        options: LinguisticAnalysisOptions::heuristic(),
+        options: LinguisticAnalysisOptions::without_models(),
         prefer_model_backends: false,
         ..TextNlpConfig::rich()
     });
@@ -14,7 +14,7 @@ fn bench_pipeline(c: &mut Criterion) {
 
     pipeline
         .analyze_text("Alice presented the roadmap in Berlin.")
-        .expect("heuristic text NLP pipeline warmup");
+        .expect("model-free text NLP pipeline warmup");
 
     c.bench_function("rich_text_nlp_pipeline", |b| {
         b.iter(|| pipeline.analyze_text(black_box(&text)).unwrap())

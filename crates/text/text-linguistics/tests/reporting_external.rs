@@ -23,7 +23,7 @@ fn analyze(text: &str) -> ReportingEvidence {
             bundle_dir,
             ..DependencyParsingOptions::local_model()
         },
-        ..LinguisticAnalysisOptions::default()
+        ..LinguisticAnalysisOptions::without_models()
     };
     let analysis = analyze_text(text, &options).unwrap();
     let evidence = reporting_constructions(&analysis);

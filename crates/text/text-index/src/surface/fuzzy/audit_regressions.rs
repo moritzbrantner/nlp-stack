@@ -3,22 +3,13 @@ use super::*;
 use crate::{IndexDocument, MemoryTextIndex};
 
 fn indexes(documents: &[IndexDocument]) -> Vec<SurfaceIndex> {
-    let mut memory = MemoryTextIndex::new_memory().expect("memory index");
+    let mut memory = MemoryTextIndex::lexical_memory();
     memory.upsert_documents(documents).expect("index documents");
     #[cfg(not(feature = "sqlite"))]
     let sqlite: Option<SurfaceIndex> = None;
     #[cfg(feature = "sqlite")]
     let sqlite = {
-        let embedder = crate::HashedTextEmbedder::new(
-            crate::TextEmbeddingConfig {
-                dimensions: 128,
-                use_idf: false,
-            },
-            crate::CorpusOptions::default(),
-        )
-        .expect("embedder");
-        let mut index = crate::SqliteTextIndex::with_store(
-            embedder,
+        let mut index = crate::TextIndex::lexical_only(
             crate::SqliteIndexStore::in_memory().expect("SQLite store"),
         );
         index.upsert_documents(documents).expect("SQLite documents");
