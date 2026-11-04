@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 mod models;
+pub mod nli;
 pub mod surface;
 #[cfg(any(feature = "candle", feature = "onnx"))]
 mod tokenizer;
@@ -13,6 +14,9 @@ pub use models::OnnxZeroShotClassifier;
 #[cfg(feature = "candle")]
 pub use models::{CandleSequenceClassifier, SEQUENCE_CLASSIFIER_BATCH_SIZE};
 pub use models::{PairSequenceClassifier, RawPrediction, SequenceClassifier};
+#[cfg(feature = "onnx")]
+pub use nli::{load_nli_preset, NliPresetLoadOptions, OnnxNliClassifier};
+pub use nli::{NliLabel, NliPrediction, NliPreset, NliPresetFile};
 use serde::{Deserialize, Serialize};
 use text_core::{DetectError, Result};
 

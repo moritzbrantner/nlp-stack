@@ -294,7 +294,10 @@ pub fn softmax(logits: &[f32]) -> Vec<f32> {
 }
 
 #[cfg(any(feature = "candle", feature = "onnx"))]
-fn tokenizer_with_model_limit(tokenizer: TokenizerBundle, config: &Value) -> TokenizerBundle {
+pub(crate) fn tokenizer_with_model_limit(
+    tokenizer: TokenizerBundle,
+    config: &Value,
+) -> TokenizerBundle {
     match model_max_tokens_from_config(config) {
         Some(max_tokens) => tokenizer.max_length(max_tokens),
         None => tokenizer,
@@ -343,7 +346,7 @@ fn architectures_from_config(config: &Value) -> Vec<&str> {
 }
 
 #[cfg(any(feature = "candle", feature = "onnx"))]
-fn required_bundle_file(bundle: &ModelBundle, remote_path: &str) -> Result<PathBuf> {
+pub(crate) fn required_bundle_file(bundle: &ModelBundle, remote_path: &str) -> Result<PathBuf> {
     bundle.file_path(remote_path).ok_or_else(|| {
         invalid_argument(format!(
             "model bundle `{}` is missing required file `{remote_path}`",
@@ -387,7 +390,7 @@ fn preferred_onnx_model_path(bundle: &ModelBundle) -> Result<PathBuf> {
 }
 
 #[cfg(any(feature = "candle", feature = "onnx"))]
-fn read_json(path: &Path) -> Result<Value> {
+pub(crate) fn read_json(path: &Path) -> Result<Value> {
     let data = std::fs::read(path)?;
     serde_json::from_slice(&data).map_err(|err| {
         DetectError::Source(format!("failed to parse JSON `{}`: {err}", path.display()))
@@ -395,7 +398,7 @@ fn read_json(path: &Path) -> Result<Value> {
 }
 
 #[cfg(any(feature = "candle", feature = "onnx"))]
-fn labels_from_config(config: &Value) -> Vec<String> {
+pub(crate) fn labels_from_config(config: &Value) -> Vec<String> {
     let Some(id2label) = config.get("id2label") else {
         return Vec::new();
     };
@@ -489,7 +492,7 @@ pub fn entailment_score_from_logits(logits: &[f32], labels: &[String]) -> f32 {
 }
 
 #[cfg(feature = "onnx")]
-fn run_onnx_pair_classifier(
+pub(crate) fn run_onnx_pair_classifier(
     session: &mut runtime_onnx::OnnxSession,
     tokens: &PairTokens,
 ) -> Result<Vec<f32>> {
@@ -539,7 +542,7 @@ fn extract_sequence_logits(value: &runtime_onnx::OnnxF32Tensor) -> Result<Vec<f3
 }
 
 #[cfg(feature = "onnx")]
-fn runtime_onnx_error(error: runtime_onnx::OnnxRuntimeError) -> DetectError {
+pub(crate) fn runtime_onnx_error(error: runtime_onnx::OnnxRuntimeError) -> DetectError {
     match error {
         runtime_onnx::OnnxRuntimeError::InvalidArgument(message)
         | runtime_onnx::OnnxRuntimeError::InvalidTensorShape(message) => invalid_argument(message),

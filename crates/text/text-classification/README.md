@@ -31,6 +31,23 @@ ranking match per-text `classify`, scores can differ in the last float bits.
 Local zero-shot requests likewise keep one loaded `OnnxZeroShotClassifier`
 (ONNX session and tokenizer) per bundle root and model id.
 
+## Multilingual NLI preset
+
+`NliPreset::MdebertaV3BaseXnliMultilingual` pins
+`MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7` at revision
+`b5113eb38ab63efdd7f280f8c144ea8b13f978ce` (MIT, many languages including
+en/de/es). It runs through the repository's own ONNX export (`onnx/model.onnx`)
+and pins the SHA-256 and size of `config.json`, `tokenizer.json` and the ONNX file.
+`load_nli_preset` (feature `onnx`) resolves the bundle in
+`TEXT_CLASSIFICATION_MODEL_DIR` (default `.model-runtime`). It never downloads
+unless `auto_download` is set, and refuses a different revision or digest. There
+is no default NLI model and no fallback. `OnnxNliClassifier::classify(premise,
+hypothesis)` returns an `NliPrediction`: the label (`entailment`, `neutral`,
+`contradiction`) and all three probabilities as the receipt. Labels come from
+the model's `id2label`, and anything other than those three is refused. Chosen by
+the owner for belief-lab#63 claim polarity (2026-11-04). The opt-in check is
+`tests/nli_preset_external.rs`.
+
 The ONNX paths load ONNX Runtime >= 1.24 from `ORT_DYLIB_PATH` (or the loader
 path). A missing or older library is an `ONNX Runtime unavailable: … set
 ORT_DYLIB_PATH …` error, not a hang.

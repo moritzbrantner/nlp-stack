@@ -27,12 +27,13 @@ candle-nn = { workspace = true, optional = true }
 candle-transformers = { workspace = true, optional = true }
 runtime-onnx = { workspace = true, optional = true }
 tokenizers = { workspace = true, optional = true }
+sha2 = { workspace = true, optional = true }
 
 [features]
 default = []
 model-bundles = ["dep:model-runtime"]
 candle = ["model-bundles", "dep:tokenizers", "dep:candle-core", "dep:candle-nn", "dep:candle-transformers"]
-onnx = ["model-bundles", "dep:tokenizers", "dep:runtime-onnx", "runtime-onnx/onnxruntime"]
+onnx = ["model-bundles", "dep:tokenizers", "dep:runtime-onnx", "runtime-onnx/onnxruntime", "dep:sha2"]
 local-models = ["candle", "onnx"]
 external-tests = ["local-models"]
 
