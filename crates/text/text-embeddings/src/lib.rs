@@ -1,8 +1,14 @@
 #![doc = include_str!("../README.md")]
 
+mod imported;
+mod presets;
 pub mod surface;
 pub mod testing;
 mod tokenizer;
+pub use imported::{ImportedEmbedder, ImportedEmbedding, ImportedEmbeddingModel};
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+pub use presets::{load_embedding_preset, verify_bundle_digests, EmbeddingPresetLoadOptions};
+pub use presets::{EmbeddingPresetFile, MultilingualEmbeddingPreset};
 use std::collections::BTreeMap;
 #[cfg(feature = "model-bundles")]
 use std::fs;
@@ -20,7 +26,10 @@ use candle_core::{DType as CandleDType, Device as CandleDevice, Tensor as Candle
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
 use candle_nn::VarBuilder as CandleVarBuilder;
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
-use candle_transformers::models::{bert as candle_bert, distilbert as candle_distilbert};
+use candle_transformers::models::{
+    bert as candle_bert, distilbert as candle_distilbert, qwen3 as candle_qwen3,
+    xlm_roberta as candle_xlm_roberta,
+};
 #[cfg(feature = "model-bundles")]
 use model_runtime::ModelBundle;
 use serde::{Deserialize, Serialize};
@@ -115,6 +124,12 @@ pub struct EmbeddingModelInfo {
     /// Maximum supported token count when known.
     #[serde(default)]
     pub max_tokens: Option<usize>,
+    /// Pinned model revision (for example a Hugging Face commit) when known.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub revision: Option<String>,
+    /// How token states are pooled into one vector, when the backend pools.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pooling: Option<PoolingStrategy>,
 }
 
 impl Default for EmbeddingModelInfo {
@@ -125,7 +140,58 @@ impl Default for EmbeddingModelInfo {
             dimensions: 0,
             normalized: true,
             max_tokens: None,
+            revision: None,
+            pooling: None,
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+/// What an embedded text is, for models trained with asymmetric inputs.
+///
+/// Retrieval models such as multilingual-e5 and Qwen3-Embedding expect queries and
+/// passages to be formatted differently (`query: ` / `passage: ` prefixes, or a query
+/// instruction). Callers say which role a text plays; the backend applies the
+/// model's format, so callers cannot get the prefixes wrong.
+pub enum EmbeddingInputKind {
+    /// A search query that is compared against passages.
+    Query,
+    /// A passage or document that is stored and searched.
+    Passage,
+    /// A text compared with another text of the same kind (similarity, clustering).
+    Symmetric,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+/// Per-role text prefixes a model expects before embedding.
+pub struct EmbeddingPrompts {
+    /// Prefix for [`EmbeddingInputKind::Query`].
+    pub query: String,
+    /// Prefix for [`EmbeddingInputKind::Passage`].
+    pub passage: String,
+    /// Prefix for [`EmbeddingInputKind::Symmetric`].
+    pub symmetric: String,
+}
+
+impl EmbeddingPrompts {
+    /// No prefixes: every role is embedded as-is.
+    pub fn none() -> Self {
+        Self::default()
+    }
+
+    /// The prefix for `kind`.
+    pub fn prefix(&self, kind: EmbeddingInputKind) -> &str {
+        match kind {
+            EmbeddingInputKind::Query => &self.query,
+            EmbeddingInputKind::Passage => &self.passage,
+            EmbeddingInputKind::Symmetric => &self.symmetric,
+        }
+    }
+
+    /// `text` with the prefix for `kind`.
+    pub fn apply(&self, kind: EmbeddingInputKind, text: &str) -> String {
+        format!("{}{text}", self.prefix(kind))
     }
 }
 
@@ -140,6 +206,11 @@ pub trait EmbeddingCacheHooks {
 }
 
 /// Trait for text embedding backend implementations.
+///
+/// [`Self::embed_text`] and [`Self::embed_batch`] embed symmetric text
+/// ([`EmbeddingInputKind::Symmetric`]). Retrieval code embeds queries with
+/// [`Self::embed_query`] and stored passages with [`Self::embed_passages`]; backends
+/// whose model distinguishes the roles override [`Self::embed_inputs`].
 pub trait TextEmbeddingBackend {
     /// Returns embed text.
     fn embed_text(&self, text: &str) -> Result<DenseVector>;
@@ -147,6 +218,25 @@ pub trait TextEmbeddingBackend {
     /// Returns embed batch.
     fn embed_batch(&self, texts: &[&str]) -> Result<Vec<DenseVector>> {
         texts.iter().map(|text| self.embed_text(text)).collect()
+    }
+
+    /// Embeds `texts` in the role `kind`. The default ignores the role, which is
+    /// right for symmetric models.
+    fn embed_inputs(&self, texts: &[&str], kind: EmbeddingInputKind) -> Result<Vec<DenseVector>> {
+        let _ = kind;
+        self.embed_batch(texts)
+    }
+
+    /// Embeds one search query.
+    fn embed_query(&self, text: &str) -> Result<DenseVector> {
+        self.embed_inputs(&[text], EmbeddingInputKind::Query)?
+            .pop()
+            .ok_or_else(|| invalid_argument("embedder returned no query vector"))
+    }
+
+    /// Embeds stored passages.
+    fn embed_passages(&self, texts: &[&str]) -> Result<Vec<DenseVector>> {
+        self.embed_inputs(texts, EmbeddingInputKind::Passage)
     }
 
     /// Returns metadata.
@@ -168,6 +258,8 @@ pub trait TextEmbeddingBackend {
             dimensions: metadata.dimensions.unwrap_or(0),
             normalized: true,
             max_tokens: None,
+            revision: None,
+            pooling: None,
         }
     }
 
@@ -209,13 +301,16 @@ pub trait SentenceEmbedder: TextEmbedderBackend {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 /// Variants describing pooling strategy.
 pub enum PoolingStrategy {
     /// Use the first token.
     Cls,
     /// Mean-pool unmasked tokens.
     Mean,
+    /// Use the last unmasked token (decoder embedding models such as Qwen3-Embedding).
+    LastToken,
 }
 
 #[cfg(feature = "onnx")]
@@ -349,6 +444,8 @@ pub struct OnnxTextEmbedder<R = UnavailableOnnxRunner> {
     model_name: String,
     dimensions: Option<usize>,
     max_tokens: Option<usize>,
+    revision: Option<String>,
+    prompts: EmbeddingPrompts,
 }
 
 #[cfg(all(
@@ -365,6 +462,8 @@ impl OnnxTextEmbedder<UnavailableOnnxRunner> {
             runner: UnavailableOnnxRunner,
             pooling: PoolingStrategy::Mean,
             normalize: true,
+            revision: Some(bundle.manifest.revision.clone()),
+            prompts: EmbeddingPrompts::none(),
             model_name: bundle.manifest.name,
             dimensions: embedding_dimensions_from_config_path(&info.config_path)?,
             max_tokens: model_max_tokens_from_config_path(&info.config_path)?,
@@ -382,6 +481,8 @@ impl OnnxTextEmbedder<NativeOnnxRunner> {
             runner: NativeOnnxRunner::new(info.model_path)?,
             pooling: PoolingStrategy::Mean,
             normalize: true,
+            revision: Some(bundle.manifest.revision.clone()),
+            prompts: EmbeddingPrompts::none(),
             model_name: bundle.manifest.name,
             dimensions: embedding_dimensions_from_config_path(&info.config_path)?,
             max_tokens: model_max_tokens_from_config_path(&info.config_path)?,
@@ -399,6 +500,8 @@ impl<R: OnnxTextEmbeddingRunner> OnnxTextEmbedder<R> {
             runner,
             pooling: PoolingStrategy::Mean,
             normalize: true,
+            revision: Some(bundle.manifest.revision.clone()),
+            prompts: EmbeddingPrompts::none(),
             model_name: bundle.manifest.name,
             dimensions: embedding_dimensions_from_config_path(&info.config_path)?,
             max_tokens: model_max_tokens_from_config_path(&info.config_path)?,
@@ -420,6 +523,12 @@ impl<R: OnnxTextEmbeddingRunner> OnnxTextEmbedder<R> {
         self
     }
 
+    /// Sets the per-role prefixes the model expects (see [`EmbeddingInputKind`]).
+    pub fn prompts(mut self, prompts: EmbeddingPrompts) -> Self {
+        self.prompts = prompts;
+        self
+    }
+
     /// Returns embed tokenized.
     pub fn embed_tokenized(&self, tokens: &TokenizedText) -> Result<DenseVector> {
         let (values, shape) = self.runner.run_embeddings(tokens)?;
@@ -436,8 +545,20 @@ impl<R: OnnxTextEmbeddingRunner> OnnxTextEmbedder<R> {
 #[cfg(feature = "tokenizers")]
 impl<R: OnnxTextEmbeddingRunner> TextEmbeddingBackend for OnnxTextEmbedder<R> {
     fn embed_text(&self, text: &str) -> Result<DenseVector> {
-        let tokens = self.tokenizer.tokenize(text)?;
+        let tokens = self
+            .tokenizer
+            .tokenize(&self.prompts.apply(EmbeddingInputKind::Symmetric, text))?;
         self.embed_tokenized(&tokens)
+    }
+
+    fn embed_inputs(&self, texts: &[&str], kind: EmbeddingInputKind) -> Result<Vec<DenseVector>> {
+        texts
+            .iter()
+            .map(|text| {
+                let tokens = self.tokenizer.tokenize(&self.prompts.apply(kind, text))?;
+                self.embed_tokenized(&tokens)
+            })
+            .collect()
     }
 
     fn metadata(&self) -> TextEmbeddingMetadata {
@@ -456,6 +577,8 @@ impl<R: OnnxTextEmbeddingRunner> TextEmbeddingBackend for OnnxTextEmbedder<R> {
             dimensions: self.dimensions.unwrap_or(0),
             normalized: self.normalize,
             max_tokens: self.max_tokens.or(self.tokenizer.max_length),
+            revision: self.revision.clone(),
+            pooling: Some(self.pooling),
         }
     }
 }
@@ -495,6 +618,8 @@ pub fn validate_onnx_bundle(bundle: &ModelBundle) -> Result<OnnxBundleInfo> {
 enum CandleEmbeddingArchitecture {
     Bert,
     DistilBert,
+    XlmRoberta,
+    Qwen3,
 }
 
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
@@ -514,6 +639,8 @@ pub struct CandleTextEmbedder {
     model_name: String,
     dimensions: Option<usize>,
     max_tokens: Option<usize>,
+    revision: Option<String>,
+    prompts: EmbeddingPrompts,
     model: std::sync::Arc<CandleEmbeddingModel>,
 }
 
@@ -528,6 +655,8 @@ impl std::fmt::Debug for CandleTextEmbedder {
             .field("model_name", &self.model_name)
             .field("dimensions", &self.dimensions)
             .field("max_tokens", &self.max_tokens)
+            .field("revision", &self.revision)
+            .field("prompts", &self.prompts)
             .field("architecture", &self.model.architecture)
             .field("device", &self.model.device)
             .finish()
@@ -538,6 +667,10 @@ impl std::fmt::Debug for CandleTextEmbedder {
 enum CandleEmbeddingEncoder {
     Bert(candle_bert::BertModel),
     DistilBert(candle_distilbert::DistilBertModel),
+    XlmRoberta(candle_xlm_roberta::XLMRobertaModel),
+    /// Causal decoder. `forward` takes `&mut self` for its KV cache, so every call
+    /// runs on a clone of this never-run model (clones share the weights).
+    Qwen3(candle_qwen3::Model),
 }
 
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
@@ -545,6 +678,8 @@ struct CandleEmbeddingModel {
     architecture: CandleEmbeddingArchitecture,
     encoder: CandleEmbeddingEncoder,
     device: CandleDevice,
+    /// Token id used to pad shorter sequences in a batch.
+    pad_token_id: u32,
 }
 
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
@@ -561,10 +696,13 @@ impl CandleTextEmbedder {
         let config_path = required_bundle_file(&bundle, "config.json")?;
         let tokenizer_path = required_bundle_file(&bundle, "tokenizer.json")?;
         let config = read_json(&config_path)?;
-        let model_paths = bundle_files_with_extension(&bundle, "safetensors");
+        let mut model_paths = bundle_files_with_extension(&bundle, "safetensors");
+        if model_paths.is_empty() {
+            model_paths = bundle_files_with_extension(&bundle, "bin");
+        }
         if model_paths.is_empty() {
             return Err(invalid_argument(
-                "Candle text bundles must contain a `.safetensors` model file",
+                "Candle text bundles must contain a `.safetensors` or PyTorch `.bin` model file",
             ));
         }
         let architecture = embedding_architecture_from_config(&config)?;
@@ -573,6 +711,8 @@ impl CandleTextEmbedder {
             tokenizer: tokenizer_with_model_limit(TokenizerBundle::new(tokenizer_path), &config),
             pooling: PoolingStrategy::Mean,
             normalize: true,
+            revision: Some(bundle.manifest.revision.clone()),
+            prompts: EmbeddingPrompts::none(),
             model_name: bundle.manifest.name,
             dimensions: embedding_dimensions_from_config(&config),
             max_tokens: model_max_tokens_from_config(&config),
@@ -592,6 +732,23 @@ impl CandleTextEmbedder {
         self
     }
 
+    /// Sets the per-role prefixes the model expects (see [`EmbeddingInputKind`]).
+    pub fn prompts(mut self, prompts: EmbeddingPrompts) -> Self {
+        self.prompts = prompts;
+        self
+    }
+
+    /// Sets the model id reported in [`EmbeddingModelInfo`] (defaults to the bundle name).
+    pub fn model_name(mut self, model_name: impl Into<String>) -> Self {
+        self.model_name = model_name.into();
+        self
+    }
+
+    /// The per-role prefixes applied before tokenization.
+    pub fn embedding_prompts(&self) -> &EmbeddingPrompts {
+        &self.prompts
+    }
+
     /// Returns embed tokenized.
     pub fn embed_tokenized(&self, tokens: &TokenizedText) -> Result<DenseVector> {
         let mut vectors = self.embed_tokenized_batch(&[tokens])?;
@@ -608,7 +765,13 @@ impl CandleTextEmbedder {
         let mut order = (0..inputs.len()).collect::<Vec<_>>();
         order.sort_by_key(|&index| inputs[index].input_ids.len());
         let mut results = vec![None; inputs.len()];
-        for chunk in order.chunks(CANDLE_EMBEDDING_BATCH_SIZE) {
+        // The causal decoder has no padding mask, so it runs one sequence per pass.
+        let batch_size = if self.model.architecture == CandleEmbeddingArchitecture::Qwen3 {
+            1
+        } else {
+            CANDLE_EMBEDDING_BATCH_SIZE
+        };
+        for chunk in order.chunks(batch_size) {
             let batch = chunk.iter().map(|&index| inputs[index]).collect::<Vec<_>>();
             let (values, sequence, hidden) = self.model.forward(&batch)?;
             for (row, &index) in chunk.iter().enumerate() {
@@ -631,16 +794,22 @@ impl CandleTextEmbedder {
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
 impl TextEmbeddingBackend for CandleTextEmbedder {
     fn embed_text(&self, text: &str) -> Result<DenseVector> {
-        let tokens = self.tokenizer.tokenize(text)?;
+        let tokens = self
+            .tokenizer
+            .tokenize(&self.prompts.apply(EmbeddingInputKind::Symmetric, text))?;
         self.embed_tokenized(&tokens)
     }
 
     /// Pads up to [`CANDLE_EMBEDDING_BATCH_SIZE`] texts into one forward pass; vectors match
     /// per-text [`TextEmbeddingBackend::embed_text`] except in the last float bits.
     fn embed_batch(&self, texts: &[&str]) -> Result<Vec<DenseVector>> {
+        self.embed_inputs(texts, EmbeddingInputKind::Symmetric)
+    }
+
+    fn embed_inputs(&self, texts: &[&str], kind: EmbeddingInputKind) -> Result<Vec<DenseVector>> {
         let tokens = texts
             .iter()
-            .map(|text| self.tokenizer.tokenize(text))
+            .map(|text| self.tokenizer.tokenize(&self.prompts.apply(kind, text)))
             .collect::<Result<Vec<_>>>()?;
         self.embed_tokenized_batch(&tokens.iter().collect::<Vec<_>>())
     }
@@ -661,6 +830,8 @@ impl TextEmbeddingBackend for CandleTextEmbedder {
             dimensions: self.dimensions.unwrap_or(0),
             normalized: self.normalize,
             max_tokens: self.max_tokens.or(self.tokenizer.max_length),
+            revision: self.revision.clone(),
+            pooling: Some(self.pooling),
         }
     }
 }
@@ -965,6 +1136,15 @@ pub fn pool_embedding_output(
 
     let pooled = match pooling {
         PoolingStrategy::Cls => values[..hidden].to_vec(),
+        PoolingStrategy::LastToken => {
+            let last = (0..sequence)
+                .rev()
+                .find(|&index| attention_mask.get(index).copied().unwrap_or(1) != 0)
+                .ok_or_else(|| {
+                    invalid_argument("last-token pooling requires at least one unmasked token")
+                })?;
+            values[last * hidden..(last + 1) * hidden].to_vec()
+        }
         PoolingStrategy::Mean => {
             let mut pooled = vec![0.0_f32; hidden];
             let mut count = 0.0_f32;
@@ -1064,8 +1244,17 @@ fn embedding_architecture_from_config(config: &Value) -> Result<CandleEmbeddingA
     {
         return Ok(CandleEmbeddingArchitecture::Bert);
     }
+    if architectures.contains(&"XLMRobertaModel") {
+        return Ok(CandleEmbeddingArchitecture::XlmRoberta);
+    }
+    if architectures
+        .iter()
+        .any(|architecture| matches!(*architecture, "Qwen3ForCausalLM" | "Qwen3Model"))
+    {
+        return Ok(CandleEmbeddingArchitecture::Qwen3);
+    }
     Err(invalid_argument(format!(
-        "unsupported Candle text architecture {}; supported: BertModel, DistilBertModel, SentenceTransformer",
+        "unsupported Candle text architecture {}; supported: BertModel, DistilBertModel, SentenceTransformer, XLMRobertaModel, Qwen3ForCausalLM, Qwen3Model",
         if architectures.is_empty() {
             "<missing>".to_string()
         } else {
@@ -1106,11 +1295,35 @@ fn model_max_tokens_from_config_path(config_path: &Path) -> Result<Option<usize>
 
 #[cfg(all(feature = "tokenizers", feature = "model-bundles"))]
 fn model_max_tokens_from_config(config: &Value) -> Option<usize> {
-    config
+    let positions = config
         .get("max_position_embeddings")
         .or_else(|| config.get("max_seq_len"))
         .and_then(Value::as_u64)
-        .and_then(|value| usize::try_from(value).ok())
+        .and_then(|value| usize::try_from(value).ok())?;
+    // RoBERTa-family position ids start after the padding id (`pad_token_id + 1`), so
+    // 514 position embeddings hold 512 tokens.
+    if matches!(
+        config.get("model_type").and_then(Value::as_str),
+        Some("xlm-roberta" | "roberta")
+    ) {
+        let offset = config
+            .get("pad_token_id")
+            .and_then(Value::as_u64)
+            .and_then(|value| usize::try_from(value).ok())
+            .unwrap_or(1)
+            + 1;
+        return positions.checked_sub(offset);
+    }
+    Some(positions)
+}
+
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+fn pad_token_id_from_config(config: &Value) -> u32 {
+    config
+        .get("pad_token_id")
+        .and_then(Value::as_u64)
+        .and_then(|value| u32::try_from(value).ok())
+        .unwrap_or(0)
 }
 
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
@@ -1157,12 +1370,65 @@ fn load_candle_embedder(
                 &vb, &config, &prefixes,
             )?)
         }
+        CandleEmbeddingArchitecture::XlmRoberta => {
+            let config: candle_xlm_roberta::Config = serde_json::from_value(config.clone())
+                .map_err(|err| {
+                    invalid_argument(format!(
+                        "failed to parse XLM-RoBERTa config for Candle: {err}"
+                    ))
+                })?;
+            CandleEmbeddingEncoder::XlmRoberta(load_candle_xlm_roberta_model(
+                &vb, &config, &prefixes,
+            )?)
+        }
+        CandleEmbeddingArchitecture::Qwen3 => {
+            let config: candle_qwen3::Config =
+                serde_json::from_value(config.clone()).map_err(|err| {
+                    invalid_argument(format!("failed to parse Qwen3 config for Candle: {err}"))
+                })?;
+            // Qwen3-Embedding checkpoints store the bare decoder (`embed_tokens.*`,
+            // `layers.*`); Candle's model expects the causal-LM layout (`model.*`).
+            let vb = if vb.contains_tensor("model.embed_tokens.weight") {
+                vb
+            } else {
+                vb.rename_f(|name| name.strip_prefix("model.").unwrap_or(name).to_string())
+            };
+            CandleEmbeddingEncoder::Qwen3(
+                candle_qwen3::Model::new(&config, vb).map_err(candle_error)?,
+            )
+        }
     };
     Ok(CandleEmbeddingModel {
         architecture,
         encoder,
         device,
+        pad_token_id: pad_token_id_from_config(config),
     })
+}
+
+#[cfg(all(feature = "candle", feature = "model-bundles"))]
+fn load_candle_xlm_roberta_model(
+    vb: &CandleVarBuilder<'_>,
+    config: &candle_xlm_roberta::Config,
+    prefixes: &[String],
+) -> Result<candle_xlm_roberta::XLMRobertaModel> {
+    let mut last_error = None;
+    for prefix in prefixes {
+        let model_vb = if prefix.is_empty() {
+            vb.clone()
+        } else {
+            vb.pp(prefix)
+        };
+        match candle_xlm_roberta::XLMRobertaModel::new(config, model_vb) {
+            Ok(model) => return Ok(model),
+            Err(err) => last_error = Some(err.to_string()),
+        }
+    }
+    Err(DetectError::Source(format!(
+        "failed to load Candle XLM-RoBERTa model for prefixes [{}]{}",
+        prefixes.join(", "),
+        last_error.map(|err| format!(": {err}")).unwrap_or_default()
+    )))
 }
 
 #[cfg(all(feature = "candle", feature = "model-bundles"))]
@@ -1176,8 +1442,30 @@ impl CandleEmbeddingModel {
             .max()
             .unwrap_or(0);
         let device = &self.device;
-        let input_ids = candle_input_ids(batch, sequence, device)?;
+        let input_ids = candle_input_ids(batch, sequence, self.pad_token_id, device)?;
         let sequence_output = match &self.encoder {
+            CandleEmbeddingEncoder::XlmRoberta(model) => {
+                let token_type_ids = candle_token_type_ids(batch, sequence, device)?;
+                let attention_mask = candle_attention_mask_keep(batch, sequence, device)?;
+                model
+                    .forward(
+                        &input_ids,
+                        &attention_mask,
+                        &token_type_ids,
+                        None,
+                        None,
+                        None,
+                    )
+                    .map_err(candle_error)?
+            }
+            CandleEmbeddingEncoder::Qwen3(model) => {
+                if batch.len() != 1 {
+                    return Err(invalid_argument(
+                        "the Qwen3 embedder runs one sequence per forward pass",
+                    ));
+                }
+                model.clone().forward(&input_ids, 0).map_err(candle_error)?
+            }
             CandleEmbeddingEncoder::Bert(model) => {
                 let token_type_ids = candle_token_type_ids(batch, sequence, device)?;
                 let attention_mask = candle_attention_mask_keep(batch, sequence, device)?;
@@ -1207,6 +1495,12 @@ fn candle_var_builder<'a>(
     model_paths: &'a [PathBuf],
     device: &CandleDevice,
 ) -> Result<CandleVarBuilder<'a>> {
+    if let [path] = model_paths {
+        if path.extension().and_then(|value| value.to_str()) == Some("bin") {
+            return CandleVarBuilder::from_pth(path, CandleDType::F32, device)
+                .map_err(candle_error);
+        }
+    }
     let paths = model_paths
         .iter()
         .map(|path| path.as_path())
@@ -1273,6 +1567,7 @@ fn model_prefix_candidates(config: &Value) -> Vec<String> {
         push_unique_string(&mut prefixes, model_type.to_string());
     }
     push_unique_string(&mut prefixes, "bert".to_string());
+    push_unique_string(&mut prefixes, "roberta".to_string());
     push_unique_string(&mut prefixes, "distilbert".to_string());
     push_unique_string(&mut prefixes, "0.auto_model".to_string());
     push_unique_string(&mut prefixes, "auto_model".to_string());
@@ -1322,9 +1617,10 @@ fn u32_ids(values: &[i64], what: &str) -> Result<Vec<u32>> {
 fn candle_input_ids(
     batch: &[&TokenizedText],
     sequence: usize,
+    pad_token_id: u32,
     device: &CandleDevice,
 ) -> Result<CandleTensor> {
-    let values = padded_rows(batch, sequence, 0_u32, |tokens| {
+    let values = padded_rows(batch, sequence, pad_token_id, |tokens| {
         u32_ids(&tokens.input_ids, "input id")
     })?;
     CandleTensor::from_vec(values, (batch.len(), sequence), device).map_err(candle_error)

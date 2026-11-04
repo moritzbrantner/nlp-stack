@@ -1,5 +1,5 @@
 use super::imported_embeddings::{
-    ImportedEmbeddingModel, ImportedSemanticEmbedder, ImportedSemanticEmbedding,
+    ImportedEmbedder, ImportedEmbeddingModel, ImportedSemanticEmbedding,
 };
 
 use runtime_core::SurfaceOperation;
@@ -49,7 +49,8 @@ pub(super) fn run(input: serde_json::Value) -> Result<serde_json::Value, String>
         return Err(embedding_model_required("analysis.semantic-map"));
     }
     let embedder =
-        ImportedSemanticEmbedder::new(&input.imported_embeddings, input.embedding_model.as_ref())?;
+        ImportedEmbedder::new(&input.imported_embeddings, input.embedding_model.as_ref())
+            .map_err(|error| error.to_string())?;
     let semantic = analyze_document_semantics_with(&document, &options, &embedder)
         .map_err(|error| error.to_string())?;
 

@@ -30,9 +30,10 @@ tokenizers = { workspace = true, optional = true }
 vector-analysis-core.workspace = true
 vector-analysis-index.workspace = true
 model-runtime = { workspace = true, optional = true }
+sha2 = { workspace = true, optional = true }
 [features]
 default = []
-model-bundles = ["dep:model-runtime", "tokenizers"]
+model-bundles = ["dep:model-runtime", "dep:sha2", "tokenizers"]
 tokenizers = ["dep:tokenizers"]
 onnx = ["tokenizers", "model-bundles", "runtime-onnx/onnxruntime"]
 candle = ["tokenizers", "dep:candle-core", "dep:candle-nn", "dep:candle-transformers"]

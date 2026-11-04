@@ -370,6 +370,23 @@ fn validate_embedder_compatibility(
             persisted.dimensions, current.dimensions
         )));
     }
+    // Vectors from another model revision or pooling are not comparable.
+    if let (Some(persisted_revision), Some(current_revision)) =
+        (&persisted.revision, &current.revision)
+    {
+        if persisted_revision != current_revision {
+            return Err(StorageError::InvalidState(format!(
+                "persisted embedder revision `{persisted_revision}` did not match provided embedder revision `{current_revision}`"
+            )));
+        }
+    }
+    if let (Some(persisted_pooling), Some(current_pooling)) = (persisted.pooling, current.pooling) {
+        if persisted_pooling != current_pooling {
+            return Err(StorageError::InvalidState(format!(
+                "persisted embedder pooling {persisted_pooling:?} did not match provided embedder pooling {current_pooling:?}"
+            )));
+        }
+    }
     Ok(())
 }
 

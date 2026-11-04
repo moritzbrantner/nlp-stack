@@ -11,6 +11,29 @@ embedder lives in `testing` as `HashedFixtureEmbedder` for tests that need
 reproducible vectors; it is not a semantic model and never a production default
 (#186).
 
+## Multilingual presets (#188)
+
+`MultilingualEmbeddingPreset` pins three multilingual models by Hugging Face
+commit and per-file SHA-256. `load_embedding_preset` (features
+`candle,model-bundles`) resolves the bundle through `model-runtime`, checks the
+revision and digests, and returns a `CandleTextEmbedder` with the model's
+pooling, prefixes and L2 normalization:
+
+| Preset | Repository | Dims | Pooling | Query / passage format |
+| --- | --- | --- | --- | --- |
+| `multilingual-e5-base` (default) | `intfloat/multilingual-e5-base` | 768 | mean | `query: ` / `passage: ` (symmetric: `query: `) |
+| `qwen3-embedding-0.6b` | `Qwen/Qwen3-Embedding-0.6B` | 1024 | last token | `Instruct: …\nQuery:` / none |
+| `bge-m3` | `BAAI/bge-m3` | 1024 | CLS | none |
+
+Callers never write prefixes. `embed_query` embeds a search query,
+`embed_passages` embeds stored passages, and `embed_text` / `embed_batch` embed
+symmetric text (similarity). `EmbeddingModelInfo` reports model id, revision and
+pooling. Bundles live in `TEXT_EMBEDDINGS_MODEL_DIR` (default `.model-runtime`);
+downloads are off unless `EmbeddingPresetLoadOptions::auto_download` is set.
+
+`ImportedEmbedder` serves caller-computed vectors (per text, optionally per
+query/passage role) for surfaces that cannot load a model, such as WASM.
+
 ## Feature flags
 
 - `tokenizers`: tokenizer loading and model bundle tokenizer support

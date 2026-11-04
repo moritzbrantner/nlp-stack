@@ -86,9 +86,25 @@ impl TokenizerBundle {
     }
 
     pub(crate) fn tokenize(&self, text: &str) -> Result<TokenizedText> {
-        let encoding = self
-            .tokenizer()?
-            .encode(text, true)
+        let tokenizer = self.tokenizer()?;
+        // Truncate before special-token post-processing and reserve room for the
+        // special tokens, so the trailing EOS/SEP survives long inputs. Last-token
+        // pooling (Qwen3) embeds that token.
+        let mut encoding = tokenizer
+            .encode(text, false)
+            .map_err(|err| DetectError::Source(format!("failed to tokenize text: {err}")))?;
+        if let Some(max_length) = self.max_length {
+            let special = tokenizer.get_post_processor().map_or(0, |processor| {
+                tokenizers::PostProcessor::added_tokens(processor, false)
+            });
+            encoding.truncate(
+                max_length.saturating_sub(special),
+                0,
+                tokenizers::TruncationDirection::Right,
+            );
+        }
+        let encoding = tokenizer
+            .post_process(encoding, None, true)
             .map_err(|err| DetectError::Source(format!("failed to tokenize text: {err}")))?;
         let mut tokenized = TokenizedText {
             input_ids: encoding
@@ -183,4 +199,53 @@ fn bert_normalizer_for_vocab(path: &Path) -> tokenizers::normalizers::bert::Bert
         .and_then(|value| value.get("strip_accents"))
         .and_then(serde_json::Value::as_bool);
     tokenizers::normalizers::bert::BertNormalizer::new(true, true, strip_accents, do_lower_case)
+}
+
+#[cfg(all(test, feature = "model-bundles"))]
+mod tests {
+    use super::TokenizerBundle;
+
+    /// A word-level tokenizer whose post-processor appends `<eos>` (id 1), like Qwen3's.
+    const EOS_TOKENIZER: &str = r#"{
+      "version": "1.0",
+      "truncation": null,
+      "padding": null,
+      "added_tokens": [
+        {"id": 1, "content": "<eos>", "single_word": false, "lstrip": false, "rstrip": false, "normalized": false, "special": true}
+      ],
+      "normalizer": null,
+      "pre_tokenizer": {"type": "Whitespace"},
+      "post_processor": {
+        "type": "TemplateProcessing",
+        "single": [{"Sequence": {"id": "A", "type_id": 0}}, {"SpecialToken": {"id": "<eos>", "type_id": 0}}],
+        "pair": [{"Sequence": {"id": "A", "type_id": 0}}, {"Sequence": {"id": "B", "type_id": 0}}, {"SpecialToken": {"id": "<eos>", "type_id": 0}}],
+        "special_tokens": {"<eos>": {"id": "<eos>", "ids": [1], "tokens": ["<eos>"]}}
+      },
+      "decoder": null,
+      "model": {"type": "WordLevel", "vocab": {"<unk>": 0, "<eos>": 1, "a": 2, "b": 3, "c": 4}, "unk_token": "<unk>"}
+    }"#;
+
+    fn bundle(max_length: Option<usize>) -> TokenizerBundle {
+        let dir = std::env::temp_dir().join(format!("text-embeddings-eos-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("tokenizer.json");
+        std::fs::write(&path, EOS_TOKENIZER).unwrap();
+        let mut bundle = TokenizerBundle::new(path);
+        bundle.max_length = max_length;
+        bundle
+    }
+
+    #[test]
+    fn truncation_keeps_the_trailing_special_token() {
+        let tokens = bundle(Some(4)).tokenize("a b c a b c a b").unwrap();
+        assert_eq!(tokens.input_ids, vec![2, 3, 4, 1]);
+        assert_eq!(tokens.attention_mask.len(), 4);
+        assert_eq!(tokens.offsets.len(), 4);
+    }
+
+    #[test]
+    fn short_input_is_unchanged_by_the_limit() {
+        let tokens = bundle(Some(16)).tokenize("a b").unwrap();
+        assert_eq!(tokens.input_ids, vec![2, 3, 1]);
+    }
 }

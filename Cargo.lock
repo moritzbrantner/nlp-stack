@@ -2004,6 +2004,7 @@ dependencies = [
  "moenarch-vector-analysis-index",
  "serde",
  "serde_json",
+ "sha2",
  "tokenizers",
 ]
 

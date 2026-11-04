@@ -479,10 +479,10 @@ fn default_fuzzy_weight() -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{IndexDocument, MemoryTextIndex};
+    use crate::IndexDocument;
 
     fn index(documents: &[(&str, &str)]) -> SurfaceIndex {
-        let mut index = MemoryTextIndex::lexical_memory();
+        let mut index = crate::TextIndex::from_parts(None, crate::MemoryIndexStore::new());
         let documents = documents
             .iter()
             .map(|(id, body)| IndexDocument::new(*id, *body))

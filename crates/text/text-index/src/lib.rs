@@ -722,7 +722,8 @@ impl<B: TextEmbedderBackend, S: TextIndexStore> TextIndex<B, S> {
         };
 
         let semantic_scores = if let Some(embedder) = embedder {
-            let query_vector = embedder.embed_text(&normalized_query)?;
+            // The model sees the query as written; lexical normalization is for BM25.
+            let query_vector = embedder.embed_query(&query.text)?;
             vector_candidates(&vectors, &chunks, query_vector.as_slice(), limit)?
         } else {
             BTreeMap::new()
@@ -1336,7 +1337,7 @@ fn embed_chunks<B: TextEmbedderBackend>(
         .iter()
         .map(|chunk| chunk.text.as_str())
         .collect::<Vec<_>>();
-    let vectors = embedder.embed_batch(&texts)?;
+    let vectors = embedder.embed_passages(&texts)?;
     if vectors.len() != chunks.len() {
         return Err(TextIndexError::InvalidState(
             "embedder returned a different number of vectors than input chunks".to_string(),

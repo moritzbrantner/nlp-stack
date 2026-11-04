@@ -204,7 +204,8 @@ impl<B: TextEmbedderBackend> RetrievalIndex<B> {
         };
 
         let semantic_hits = if query.hybrid.semantic_weight > f32::EPSILON {
-            let query_vector = self.embedder.embed_text(&normalized_query)?;
+            // The model sees the query as written; lexical normalization is for BM25.
+            let query_vector = self.embedder.embed_query(&query.text)?;
             self.validate_query_dimensions(query_vector.dimensions())?;
             self.vectors.search_filtered(
                 query_vector.as_slice(),
@@ -355,7 +356,7 @@ impl<B: TextEmbedderBackend> RetrievalIndex<B> {
                     .unwrap_or(chunk.text.as_str())
             })
             .collect::<Vec<_>>();
-        let vectors = self.embedder.embed_batch(&texts)?;
+        let vectors = self.embedder.embed_passages(&texts)?;
         if vectors.len() != self.chunks.len() {
             return Err(invalid_argument(
                 "embedder returned a different number of vectors than input texts",

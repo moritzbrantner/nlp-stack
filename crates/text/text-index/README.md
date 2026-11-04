@@ -46,9 +46,14 @@ ranking behavior is evaluated by browser consumers.
 Default package-surface operations are memory-backed and side-effect free.
 SQLite writes require an explicit `backend: "sqlite"`, `path`, and
 `commit: true`. WASM and default builds report SQLite as unsupported instead of
-pretending persistence is available. Package-surface indexes are lexical-only:
-the surface cannot load an embedding model, so semantic and hybrid
-`index.search` requests fail with a `missing_dependency` error.
+pretending persistence is available. The package surface cannot load an
+embedding model. Semantic and hybrid `index.search` requests therefore take
+caller-computed vectors in `importedEmbeddings` (a `passage` vector for every
+chunk text, a `query` vector for the query text) plus `embeddingModel`
+provenance; without them they fail with a `missing_dependency` error. Vectors are
+keyed by exact chunk text, so `chunkingStrategy: "paragraph"` (whole
+paragraphs) is the easiest strategy to embed for. In Rust, pass a real backend
+such as `text_embeddings::load_embedding_preset` to `TextIndex::with_store`.
 
 Fuzzy search currently applies only to lexical mode. It uses Unicode-aware
 bounded Damerau-Levenshtein expansion and caps query terms, vocabulary size,
@@ -103,9 +108,9 @@ diagnostics describing the correction that produced the winning score.
 ## Package surface
 
 - Primary workflow: `index.search` builds or opens the requested backend and
-  searches it lexically. `query.mode` is required (there is no default);
-  `hybrid` and `semantic` fail with `missing_dependency` because no embedding
-  model is configured.
+  searches it. `query.mode` is required (there is no default); `hybrid` and
+  `semantic` need `importedEmbeddings` and otherwise fail with
+  `missing_dependency`.
 - `index.search` optionally accepts bounded fuzzy settings inside its query
   object when `mode` is `lexical`.
 - Workflow operations: `index.build`, `index.addDocuments`, `index.search`, and

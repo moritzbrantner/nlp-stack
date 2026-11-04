@@ -35,6 +35,31 @@ test("runOperation rejects hybrid search without an embedding model", async () =
   ).rejects.toThrow(/missing_dependency/);
 });
 
+test("runOperation runs semantic search over imported query and passage vectors", async () => {
+  const entry = await import("../index.js");
+  const result = assertStructuredResponse(
+    await entry.runOperation({
+      operation: "index.search",
+      input: {
+        documents: [
+          { id: "en", body: "The capital of Germany is Berlin." },
+          { id: "food", body: "Tomatoes grow in garden soil." },
+        ],
+        options: { chunkingStrategy: "paragraph", chunkTokens: 256, chunkOverlapTokens: 32, storeRawText: true },
+        query: { text: "Was ist die Hauptstadt von Deutschland?", mode: "semantic", topK: 2 },
+        embeddingModel: { name: "intfloat/multilingual-e5-base", pooling: "mean", dimensions: 2 },
+        importedEmbeddings: [
+          { text: "The capital of Germany is Berlin.", kind: "passage", vector: [0.9, 0.1] },
+          { text: "Tomatoes grow in garden soil.", kind: "passage", vector: [0.1, 0.9] },
+          { text: "Was ist die Hauptstadt von Deutschland?", kind: "query", vector: [0.8, 0.2] },
+        ],
+      },
+    }),
+    "index.search",
+  );
+  expect(result.results[0].documentId).toBe("en");
+});
+
 test("runOperation enforces required phrases and returns matched phrases", async () => {
   const entry = await import("../index.js");
   const result = assertStructuredResponse(
