@@ -1902,6 +1902,7 @@ dependencies = [
  "moenarch-text-lexical",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
  "tokenizers",
 ]
