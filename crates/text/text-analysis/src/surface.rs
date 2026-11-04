@@ -52,6 +52,13 @@ pub fn package_surface() -> PackageSurface {
                     "embedding": {"mode": "off"}
                 }),
             ),
+            #[cfg(feature = "stanza")]
+            operation(
+                "analysis.stanza-request",
+                "Build a Stanza sidecar request",
+                "Returns the sentences (with routed en/de/es languages) that `analysis.document` with `linguistics.mode: stanza` expects the local Stanza sidecar to analyze, as its `POST /v1/analyze` body. Send it to the sidecar and pass the answer as `linguistics.stanzaResponse`.",
+                serde_json::json!({"text": "Sarah says John is late. Er glaubt, dass John nicht kommen wird."}),
+            ),
             semantic_map::operation(),
             semantic_corpus::operation(),
             operation(
@@ -102,6 +109,19 @@ pub fn run_surface_operation(request: SurfaceRequest) -> Result<SurfaceResponse,
             (
                 serde_json::to_value(report).map_err(|error| error.to_string())?,
                 diagnostics,
+            )
+        }
+        #[cfg(feature = "stanza")]
+        "analysis.stanza-request" => {
+            let input = parse_input::<StanzaRequestInput>(request.input)?;
+            let options = crate::DocumentAnalysisOptions {
+                language_hint: input.language_hint,
+                ..crate::DocumentAnalysisOptions::default()
+            };
+            (
+                serde_json::to_value(crate::stanza_requests(&input.text, &options))
+                    .map_err(|error| error.to_string())?,
+                Vec::new(),
             )
         }
         "analysis.semantic-map" => (semantic_map::run(request.input)?, Vec::new()),
@@ -354,6 +374,15 @@ impl DocumentRequest {
     }
 }
 
+#[cfg(feature = "stanza")]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StanzaRequestInput {
+    text: String,
+    #[serde(default)]
+    language_hint: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct CorpusRequest {
@@ -409,7 +438,7 @@ struct CorpusDocumentRequest {
     text: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ModeRequest {
     mode: String,
@@ -419,6 +448,10 @@ struct ModeRequest {
     auto_download: Option<bool>,
     #[serde(default)]
     download_progress: Option<bool>,
+    /// For `stanza`: the sidecar's `POST /v1/analyze` answer to `analysis.stanza-request`.
+    #[cfg(feature = "stanza")]
+    #[serde(default)]
+    stanza_response: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -440,7 +473,10 @@ struct SimilarityRequest {
     mode: String,
 }
 
+#[cfg(not(feature = "stanza"))]
 const LINGUISTIC_MODES: &[&str] = &["off", "modelFree", "localModel"];
+#[cfg(feature = "stanza")]
+const LINGUISTIC_MODES: &[&str] = &["off", "modelFree", "localModel", "stanza"];
 const EMBEDDING_MODES: &[&str] = &["off", "candle", "onnx"];
 
 /// Unknown and removed modes (the former `heuristic*` linguistics) are rejected
@@ -458,6 +494,19 @@ fn parse_linguistic_depth(request: &ModeRequest) -> Result<LinguisticDepth, Stri
             auto_download: request.auto_download.unwrap_or(false),
             download_progress: request.download_progress.unwrap_or(false),
         }),
+        #[cfg(feature = "stanza")]
+        "stanza" => {
+            let response = request.stanza_response.as_ref().ok_or_else(|| {
+                runtime_core::SurfaceError::invalid_request(
+                    Some("analysis.document"),
+                    "linguistics.mode `stanza` needs `linguistics.stanzaResponse`: the Stanza sidecar's answer to `analysis.stanza-request`",
+                )
+                .to_error_string()
+            })?;
+            Ok(LinguisticDepth::StanzaResponse {
+                body: response.to_string(),
+            })
+        }
         other => Err(runtime_core::SurfaceError::unsupported_value(
             Some("analysis.document"),
             "linguistics.mode",
@@ -538,6 +587,7 @@ mod tests {
             bundle_dir: None,
             auto_download: None,
             download_progress: None,
+            ..ModeRequest::default()
         })
         .unwrap();
 
@@ -561,6 +611,7 @@ mod tests {
             bundle_dir: Some(".model-runtime".to_string()),
             auto_download: Some(true),
             download_progress: Some(true),
+            ..ModeRequest::default()
         })
         .unwrap();
 
@@ -590,6 +641,7 @@ mod tests {
                 bundle_dir: None,
                 auto_download: None,
                 download_progress: None,
+                ..ModeRequest::default()
             })
             .expect_err("heuristic linguistics was removed");
             assert!(error.contains("unsupported_value"), "{error}");
@@ -600,5 +652,64 @@ mod tests {
         })
         .expect_err("hashed embeddings were removed");
         assert!(error.contains("unsupported_value"), "{error}");
+    }
+
+    #[cfg(feature = "stanza")]
+    #[test]
+    fn stanza_mode_replays_a_sidecar_response_into_syntax() {
+        let text = include_str!("../../text-linguistics/tests/fixtures/stanza/sample-en-de-es.txt");
+        let recorded: serde_json::Value = serde_json::from_str(include_str!(
+            "../../text-linguistics/tests/fixtures/stanza/sample-en-de-es.json"
+        ))
+        .unwrap();
+        let request = run_surface_operation(SurfaceRequest {
+            operation: OperationId::new("analysis.stanza-request"),
+            input: serde_json::json!({ "text": text }),
+        })
+        .unwrap();
+        let sentences = request.value["sentences"].as_array().unwrap();
+        assert_eq!(
+            sentences
+                .iter()
+                .map(|sentence| sentence["language"].as_str().unwrap())
+                .collect::<Vec<_>>(),
+            ["en", "de", "es"]
+        );
+
+        let response = run_surface_operation(SurfaceRequest {
+            operation: OperationId::new("analysis.document"),
+            input: serde_json::json!({
+                "text": text,
+                "linguistics": { "mode": "stanza", "stanzaResponse": recorded },
+                "embedding": { "mode": "off" }
+            }),
+        })
+        .unwrap();
+        let linguistic = &response.value["linguistic"];
+        let syntax = linguistic["syntax"].as_array().unwrap();
+        assert_eq!(syntax.len(), 3);
+        assert_eq!(syntax[1]["provenance"]["backendVersion"], "1.15.0");
+        let zum = syntax[1]["tokens"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|token| token["text"] == "zum")
+            .unwrap();
+        assert_eq!(zum["wordCount"], 2);
+        let report = &linguistic["sentences"][2]["operations"][6];
+        assert_eq!(report["operation"], "dependencySyntax");
+        assert_eq!(report["support"], "supported");
+        assert_eq!(report["producer"], "stanza-1.15.0:es/combined_charlm");
+    }
+
+    #[cfg(feature = "stanza")]
+    #[test]
+    fn stanza_mode_without_a_response_is_rejected() {
+        let error = parse_linguistic_depth(&ModeRequest {
+            mode: "stanza".to_string(),
+            ..ModeRequest::default()
+        })
+        .unwrap_err();
+        assert!(error.contains("stanzaResponse"), "{error}");
     }
 }

@@ -23,6 +23,28 @@ export interface SentenceView {
   rows: OperationRow[];
   reporting: ReportingView;
   scope: ScopeView;
+  syntax: SyntaxView | null;
+}
+
+/** One syntactic word from a syntax backend (`text_linguistics::SyntaxWord`). */
+export interface SyntaxWordView {
+  index: number;
+  form: string;
+  /** The surface token's text when it expands to several words (`zum` for `zu`). */
+  token: string | null;
+  lemma: string | null;
+  upos: string | null;
+  feats: string;
+  /** The head word's form, or `null` for the root. */
+  head: string | null;
+  relation: string;
+}
+
+/** Word-level syntax of one sentence with the backend and model versions that produced it. */
+export interface SyntaxView {
+  producer: string;
+  models: string;
+  words: SyntaxWordView[];
 }
 
 /** A reporting construction an operator refers to, by its source and cue. */
@@ -182,7 +204,7 @@ function rustRow(label: string, operation: string, language: string | null, repo
       label,
       status: "rust-only",
       producer: null,
-      detail: `not available in the browser: the ${languageNames[language]} UD model (COMBO on XLM-RoBERTa base, about 1.1 GB) runs only in the native Rust library`,
+      detail: `not available in the browser: the ${languageNames[language]} UD model (COMBO on XLM-RoBERTa base, about 1.1 GB) runs only in the native Rust library; connect a local Stanza sidecar to see this layer here`,
     };
   }
   if (linguistic && support === "unsupported" && language) {
@@ -287,11 +309,49 @@ function scopeView(scope: JsonRecord | null, reporting: JsonRecord | null, sente
 }
 
 /** One view per core sentence, in source order. */
+function syntaxView(sentence: JsonRecord | null): SyntaxView | null {
+  if (!sentence) return null;
+  const provenance = record(sentence.provenance);
+  const tokens = records(sentence.tokens);
+  const words = records(sentence.words);
+  const models = records(provenance?.models);
+  const depparse = models.find((model) => model.stage === "depparse") ?? models[0] ?? null;
+  const language = text(sentence.language) ?? "?";
+  const producer = `${text(provenance?.backend) ?? "backend"} ${text(provenance?.backendVersion) ?? "?"}`;
+  const modelLabel = depparse
+    ? `${text(depparse.source) ?? "?"}@${(text(depparse.revision) ?? "").slice(0, 8)} · ${language} ${models
+        .map((model) => `${text(model.stage)}=${text(model.package)}`)
+        .join(", ")}`
+    : "no model versions reported";
+  return {
+    producer,
+    models: modelLabel,
+    words: words.map((word, index) => {
+      const token = tokens[Number(word.token)] ?? null;
+      const feats = Object.entries(record(word.feats) ?? {})
+        .map(([name, value]) => `${name}=${String(value)}`)
+        .join("|");
+      const head = typeof word.head === "number" ? words[word.head] ?? null : null;
+      return {
+        index,
+        form: text(word.form) ?? "",
+        token: token && Number(token.wordCount) > 1 ? text(token.text) : null,
+        lemma: text(word.lemma),
+        upos: text(word.upos),
+        feats: feats || "_",
+        head: head ? text(head.form) : null,
+        relation: [text(word.relation) ?? "dep", text(word.subtype)].filter(Boolean).join(":"),
+      };
+    }),
+  };
+}
+
 export function sentenceViews(documentReport: JsonRecord | null): SentenceView[] {
   const core = record(documentReport?.core);
   const routing = records(record(documentReport?.linguistic)?.sentences);
   const reporting = record(record(documentReport?.linguistic)?.reporting);
   const scope = record(record(documentReport?.linguistic)?.scope);
+  const syntax = records(record(documentReport?.linguistic)?.syntax);
   const model = record(documentReport?.namedEntityModel);
   const nerReports = records(model?.sentences);
   return records(core?.sentences).map((sentence, index) => {
@@ -317,6 +377,9 @@ export function sentenceViews(documentReport: JsonRecord | null): SentenceView[]
       rows,
       reporting: reportingView(reporting, routed ? Number(routed.sentenceIndex) : null),
       scope: scopeView(scope, reporting, routed ? Number(routed.sentenceIndex) : null),
+      syntax: syntaxView(
+        routed ? syntax.find((item) => Number(item.sentenceIndex) === Number(routed.sentenceIndex)) ?? null : null,
+      ),
     };
   });
 }

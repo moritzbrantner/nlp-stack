@@ -39,6 +39,7 @@ local-models = ["text-classification/local-models", "candle", "onnx", "model-bun
 external-tests = ["local-models"]
 sqlite = ["text-index/sqlite"]
 transcripts = ["dep:text-transcripts"]
+stanza = ["text-linguistics/stanza"]
 
 [dev-dependencies]
 criterion.workspace = true

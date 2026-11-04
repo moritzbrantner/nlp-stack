@@ -13,6 +13,10 @@ use crate::local_models::{CandleTokenClassifier, SequenceLabeler};
 use crate::morphology::{Lemma, LemmatizationResult, MorphAnnotation, PosAnnotation};
 use crate::routing::{LinguisticOperation, OperationReport, OperationSupport, SentenceAnalysis};
 use crate::syntax::{chunk_phrases, DependencyTree, PhraseChunk};
+use crate::syntax_backend::{
+    backend_token_layers, SyntaxBackend, SyntaxBackendError, SyntaxRequest, SyntaxSentence,
+    SyntaxSentenceRequest,
+};
 use crate::tokenization::{
     TokenAlignmentMap, TokenizationMode, TokenizerPolicy, TokenizerRegistry, TokenizerSelection,
 };
@@ -190,6 +194,10 @@ pub enum MorphologyMode {
     /// for sentences in a language that has a preset (en, de, es); unsupported
     /// otherwise. Fails when a needed model cannot be loaded.
     LocalModel,
+    /// The caller-supplied [`SyntaxBackend`] (for example the Stanza sidecar) via
+    /// [`analyze_text_with_syntax_backend`], for sentences in a language it serves.
+    /// Without a backend the analysis fails with `ModelRequired`.
+    SyntaxBackend,
     /// Lemmas, POS and morphology are not requested: every sentence reports them as
     /// unsupported. There is no heuristic fallback.
     Disabled,
@@ -242,6 +250,14 @@ impl MorphologyOptions {
         }
     }
 
+    /// Lemmas, POS and morphology from the caller's [`SyntaxBackend`].
+    pub fn syntax_backend() -> Self {
+        Self {
+            mode: MorphologyMode::SyntaxBackend,
+            ..Self::local_model()
+        }
+    }
+
     /// Skips lemmas, POS and morphology; sentences report them as unsupported.
     pub fn disabled() -> Self {
         Self {
@@ -268,6 +284,10 @@ pub enum DependencyParsingMode {
     /// ([`UdModelPreset`]) for sentences in a language that has a preset (en, de,
     /// es); unsupported otherwise. Fails when a needed model cannot be loaded.
     LocalModel,
+    /// The caller-supplied [`SyntaxBackend`] via
+    /// [`analyze_text_with_syntax_backend`], for sentences in a language it serves.
+    /// Without a backend the analysis fails with `ModelRequired`.
+    SyntaxBackend,
     /// Dependency trees are not requested: every sentence reports the layer as
     /// unsupported. There is no heuristic fallback.
     Disabled,
@@ -316,6 +336,14 @@ impl DependencyParsingOptions {
         Self {
             auto_download: true,
             download_progress: true,
+            ..Self::local_model()
+        }
+    }
+
+    /// Dependency trees from the caller's [`SyntaxBackend`].
+    pub fn syntax_backend() -> Self {
+        Self {
+            mode: DependencyParsingMode::SyntaxBackend,
             ..Self::local_model()
         }
     }
@@ -532,13 +560,22 @@ impl TextNlpPipeline {
         analyze_text_with_config(text, &self.config)
     }
 
+    /// Analyzes `text` with `backend` for the layers whose mode is `SyntaxBackend`.
+    pub fn analyze_text_with_syntax_backend(
+        &self,
+        text: &str,
+        backend: &dyn SyntaxBackend,
+    ) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
+        analyze_text_with_config_and_labeler(text, &self.config, None, Some(backend))
+    }
+
     /// Returns analyze text with a model-backed entity labeler.
     pub fn analyze_text_with_entity_labeler(
         &self,
         text: &str,
         entity_labeler: &mut dyn SequenceLabeler,
     ) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
-        analyze_text_with_config_and_labeler(text, &self.config, Some(entity_labeler))
+        analyze_text_with_config_and_labeler(text, &self.config, Some(entity_labeler), None)
     }
 
     /// Returns analyze document.
@@ -650,6 +687,10 @@ pub struct LinguisticAnalysis {
     pub chunks: Vec<PhraseChunk>,
     /// Dependency trees, only for sentences whose dependency report keeps results.
     pub dependencies: Vec<DependencyTree>,
+    /// Word-level syntax from the [`SyntaxBackend`], with its own tokens (including
+    /// multi-word expansions), exact byte spans and backend/model versions. Empty
+    /// unless a layer selected the backend; only sentences it analyzed.
+    pub syntax: Vec<SyntaxSentence>,
     /// Entities, only for sentences whose entity report keeps results.
     pub entities: Vec<NamedEntity>,
     /// The canonical entities value.
@@ -775,6 +816,91 @@ pub fn analyze_text(
     analyze_text_with_config(text, &TextNlpConfig::from_options(options.clone()))
 }
 
+/// Analyzes `text`, taking lemmas/POS/morphology and/or dependency trees from
+/// `backend` for the layers whose mode is `SyntaxBackend`
+/// ([`MorphologyOptions::syntax_backend`], [`DependencyParsingOptions::syntax_backend`]).
+/// Each sentence goes to the backend in its own routed language when the backend
+/// serves it; a backend failure fails the analysis (no fallback).
+pub fn analyze_text_with_syntax_backend(
+    text: &str,
+    options: &LinguisticAnalysisOptions,
+    backend: &dyn SyntaxBackend,
+) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
+    analyze_text_with_config_and_labeler(
+        text,
+        &TextNlpConfig::from_options(options.clone()),
+        None,
+        Some(backend),
+    )
+}
+
+/// The backend request for `text`: its sentences in their routed languages that
+/// `serves` accepts, exactly as [`analyze_text_with_syntax_backend`] sends them. A
+/// caller that reaches the backend itself (a browser calling the Stanza sidecar)
+/// uses this to build the request and replays the answer with
+/// `RecordedStanzaResponse` (feature `stanza`).
+pub fn syntax_backend_requests(
+    text: &str,
+    options: &LinguisticAnalysisOptions,
+    serves: &dyn Fn(&str) -> bool,
+) -> Vec<SyntaxSentenceRequest> {
+    let sentences = split_sentence_spans(text, &options.processing);
+    let routes = analysis_routes(text, options, &sentences);
+    backend_requests(&routes, &sentences, serves)
+}
+
+fn backend_requests(
+    routes: &[SentenceRoute],
+    sentences: &[Sentence],
+    serves: &dyn Fn(&str) -> bool,
+) -> Vec<SyntaxSentenceRequest> {
+    routes
+        .iter()
+        .zip(sentences)
+        .enumerate()
+        .filter_map(|(sentence_index, (route, sentence))| {
+            let language = route.language.as_deref()?;
+            serves(language).then(|| SyntaxSentenceRequest {
+                sentence_index,
+                span: sentence.span,
+                language: language.to_string(),
+            })
+        })
+        .collect()
+}
+
+/// Language detection and per-sentence routing for `sentences`.
+fn analysis_routes(
+    text: &str,
+    options: &LinguisticAnalysisOptions,
+    sentences: &[Sentence],
+) -> Vec<SentenceRoute> {
+    analysis_language(text, options, sentences).1
+}
+
+fn analysis_language(
+    text: &str,
+    options: &LinguisticAnalysisOptions,
+    sentences: &[Sentence],
+) -> (LanguageProfile, Vec<SentenceRoute>, Option<String>) {
+    let language_detector = LanguageDetector {
+        options: options.language_detection.clone(),
+    };
+    let language = if options.language_detection.sentence_level {
+        language_detector.detect_sentences(text, sentences)
+    } else {
+        language_detector.detect_sentences(text, &[])
+    };
+    let pinned_language = options
+        .processing
+        .language
+        .as_deref()
+        .map(primary_language_subtag)
+        .filter(|language| !language.is_empty());
+    let routes = sentence_routes(&language, sentences, pinned_language.as_deref());
+    (language, routes, pinned_language)
+}
+
 /// Returns analyze text with a model-backed entity labeler.
 pub fn analyze_text_with_entity_labeler(
     text: &str,
@@ -785,6 +911,7 @@ pub fn analyze_text_with_entity_labeler(
         text,
         &TextNlpConfig::from_options(options.clone()),
         Some(entity_labeler),
+        None,
     )
 }
 
@@ -792,15 +919,25 @@ fn analyze_text_with_config(
     text: &str,
     config: &TextNlpConfig,
 ) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
-    analyze_text_with_config_and_labeler(text, config, None)
+    analyze_text_with_config_and_labeler(text, config, None, None)
 }
 
 fn analyze_text_with_config_and_labeler(
     text: &str,
     config: &TextNlpConfig,
     entity_labeler: Option<&mut dyn SequenceLabeler>,
+    syntax_backend: Option<&dyn SyntaxBackend>,
 ) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
     let options = &config.options;
+    let morphology_from_backend = options.morphology.mode == MorphologyMode::SyntaxBackend;
+    let dependencies_from_backend =
+        options.dependency_parsing.mode == DependencyParsingMode::SyntaxBackend;
+    if (morphology_from_backend || dependencies_from_backend) && syntax_backend.is_none() {
+        return Err(LinguisticAnalysisError::ModelRequired {
+            capability: "syntax backend".to_string(),
+            hint: "a layer selects `SyntaxBackend` but no backend was supplied; call `analyze_text_with_syntax_backend` (for example with the Stanza sidecar) or choose another mode".to_string(),
+        });
+    }
     if options.enable_coreference {
         return Err(model_required(
             "coreference resolution",
@@ -835,21 +972,7 @@ fn analyze_text_with_config_and_labeler(
         }
     }
     let sentences = split_sentence_spans(text, &options.processing);
-    let language_detector = LanguageDetector {
-        options: options.language_detection.clone(),
-    };
-    let language = if options.language_detection.sentence_level {
-        language_detector.detect_sentences(text, &sentences)
-    } else {
-        language_detector.detect_sentences(text, &[])
-    };
-    let pinned_language = options
-        .processing
-        .language
-        .as_deref()
-        .map(primary_language_subtag)
-        .filter(|language| !language.is_empty());
-    let routes = sentence_routes(&language, &sentences, pinned_language.as_deref());
+    let (language, routes, pinned_language) = analysis_language(text, options, &sentences);
     let primary_language = pinned_language.clone().or_else(|| {
         language
             .primary
@@ -884,13 +1007,68 @@ fn analyze_text_with_config_and_labeler(
                 .and_then(UdModelPreset::for_language)
         })
         .collect::<Vec<_>>();
-    let ud = ud_model_layers(
+    let mut ud = ud_model_layers(
         &options.morphology,
         &options.dependency_parsing,
         &sentence_presets,
         &sentences,
         &tokens,
     )?;
+    // Sentences the backend analyzed, and the producer label for each.
+    let mut backend_producers = vec![None; sentences.len()];
+    let mut syntax = Vec::new();
+    if let Some(backend) =
+        syntax_backend.filter(|_| morphology_from_backend || dependencies_from_backend)
+    {
+        let requests = backend_requests(&routes, &sentences, &|language| {
+            backend.supports_language(language)
+        });
+        let results = backend.analyze(&SyntaxRequest {
+            text,
+            sentences: &requests,
+        })?;
+        if results.len() != requests.len()
+            || results
+                .iter()
+                .zip(&requests)
+                .any(|(result, request)| result.sentence_index != request.sentence_index)
+        {
+            return Err(LinguisticAnalysisError::SyntaxBackend(
+                SyntaxBackendError::Protocol {
+                    backend: backend.name().to_string(),
+                    message: "results do not answer the requested sentences in order".to_string(),
+                },
+            ));
+        }
+        for result in &results {
+            backend_producers[result.sentence_index] =
+                Some(result.provenance.producer(&result.language));
+        }
+        let layers = backend_token_layers(
+            &results,
+            &tokens,
+            morphology_from_backend,
+            dependencies_from_backend,
+        );
+        ud.lemmas.extend(layers.lemmas);
+        ud.pos.extend(layers.pos);
+        ud.morphology.extend(layers.morphology);
+        ud.dependencies.extend(layers.dependencies);
+        syntax = results;
+    }
+    let backend_layer = syntax_backend.map(|backend| BackendLayer {
+        name: backend.name().to_string(),
+        producers: backend_producers,
+        served: routes
+            .iter()
+            .map(|route| {
+                route
+                    .language
+                    .as_deref()
+                    .is_some_and(|language| backend.supports_language(language))
+            })
+            .collect(),
+    });
     // Lemmas, POS, morphology and trees come only from the UD models; sentences
     // without one get none (their reports say why).
     let lemmas = LemmatizationResult {
@@ -931,6 +1109,7 @@ fn analyze_text_with_config_and_labeler(
         &options.morphology,
         &options.dependency_parsing,
         &sentence_presets,
+        backend_layer.as_ref(),
     );
     // Language-specific layers keep results only for sentences whose report says so;
     // chunks, events, topics and style still see every sentence's internal layers.
@@ -1006,6 +1185,18 @@ fn analyze_text_with_config_and_labeler(
             )
         })
         .collect();
+    let syntax = syntax
+        .into_iter()
+        .filter(|sentence| {
+            keeps(
+                LinguisticOperation::Morphology,
+                Some(sentence.sentence_index),
+            ) || keeps(
+                LinguisticOperation::DependencySyntax,
+                Some(sentence.sentence_index),
+            )
+        })
+        .collect();
 
     Ok(LinguisticAnalysis {
         profile: config.profile,
@@ -1023,6 +1214,7 @@ fn analyze_text_with_config_and_labeler(
         pos,
         chunks,
         dependencies,
+        syntax,
         entities,
         canonical_entities,
         coreference,
@@ -1145,6 +1337,9 @@ pub enum LinguisticAnalysisError {
         /// How to provide the model or opt out of the capability.
         hint: String,
     },
+    /// The selected [`SyntaxBackend`] failed: it is unreachable, lacks the model for
+    /// a sentence's language, or answered outside its protocol. No fallback runs.
+    SyntaxBackend(SyntaxBackendError),
     /// Input, tokenizer or model execution failed.
     Detect(DetectError),
 }
@@ -1153,6 +1348,7 @@ impl std::fmt::Display for LinguisticAnalysisError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::ModelRequired { hint, .. } => write!(f, "model required: {hint}"),
+            Self::SyntaxBackend(error) => error.fmt(f),
             Self::Detect(error) => error.fmt(f),
         }
     }
@@ -1162,8 +1358,15 @@ impl std::error::Error for LinguisticAnalysisError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::ModelRequired { .. } => None,
+            Self::SyntaxBackend(error) => Some(error),
             Self::Detect(error) => Some(error),
         }
+    }
+}
+
+impl From<SyntaxBackendError> for LinguisticAnalysisError {
+    fn from(error: SyntaxBackendError) -> Self {
+        Self::SyntaxBackend(error)
     }
 }
 
@@ -1179,11 +1382,32 @@ impl From<LinguisticAnalysisError> for DetectError {
     fn from(error: LinguisticAnalysisError) -> Self {
         match error {
             LinguisticAnalysisError::Detect(error) => error,
-            model_required @ LinguisticAnalysisError::ModelRequired { .. } => {
-                DetectError::InvalidArgument(model_required.to_string())
+            other @ (LinguisticAnalysisError::ModelRequired { .. }
+            | LinguisticAnalysisError::SyntaxBackend(_)) => {
+                DetectError::InvalidArgument(other.to_string())
             }
         }
     }
+}
+
+/// The supplied syntax backend and what it did per sentence.
+struct BackendLayer {
+    name: String,
+    /// Producer label per sentence the backend analyzed.
+    producers: Vec<Option<String>>,
+    /// Whether the backend serves each sentence's routed language.
+    served: Vec<bool>,
+}
+
+/// Where one lemma/POS/dependency layer comes from for one sentence.
+enum LayerSource<'a> {
+    Disabled(&'a str),
+    Ud(Option<UdModelPreset>),
+    Backend {
+        name: &'a str,
+        producer: Option<&'a str>,
+        served: bool,
+    },
 }
 
 fn sentence_analyses(
@@ -1192,6 +1416,7 @@ fn sentence_analyses(
     morphology: &MorphologyOptions,
     dependencies: &DependencyParsingOptions,
     sentence_presets: &[Option<UdModelPreset>],
+    backend: Option<&BackendLayer>,
 ) -> Vec<SentenceAnalysis> {
     use LinguisticOperation as Op;
     use OperationSupport as Support;
@@ -1199,7 +1424,8 @@ fn sentence_analyses(
     routes
         .into_iter()
         .zip(sentence_presets)
-        .map(|(route, &preset)| {
+        .enumerate()
+        .map(|(sentence_index, (route, &preset))| {
             let language = route.language.as_deref();
             let detection = language_detection_report(&route);
             let segmentation = OperationReport::new(
@@ -1249,34 +1475,34 @@ fn sentence_analyses(
                     ),
                 ),
             };
-            let morphology_from_ud = morphology.mode == MorphologyMode::LocalModel;
-            let dependencies_from_ud = dependencies.mode == DependencyParsingMode::LocalModel;
+            let backend_source = || match backend {
+                Some(backend) => LayerSource::Backend {
+                    name: &backend.name,
+                    producer: backend.producers[sentence_index].as_deref(),
+                    served: backend.served[sentence_index],
+                },
+                None => LayerSource::Disabled("no syntax backend supplied"),
+            };
+            let morphology_source = match morphology.mode {
+                MorphologyMode::LocalModel => LayerSource::Ud(preset),
+                MorphologyMode::SyntaxBackend => backend_source(),
+                MorphologyMode::Disabled => LayerSource::Disabled("MorphologyMode::Disabled"),
+            };
+            let dependency_source = || match dependencies.mode {
+                DependencyParsingMode::LocalModel => LayerSource::Ud(preset),
+                DependencyParsingMode::SyntaxBackend => backend_source(),
+                DependencyParsingMode::Disabled => {
+                    LayerSource::Disabled("DependencyParsingMode::Disabled")
+                }
+            };
             let operations = vec![
                 detection,
                 segmentation,
                 tokenization,
                 named_entities,
-                layer_report(
-                    Op::Morphology,
-                    language,
-                    morphology_from_ud,
-                    preset,
-                    "MorphologyMode::Disabled",
-                ),
-                layer_report(
-                    Op::PartOfSpeech,
-                    language,
-                    morphology_from_ud,
-                    preset,
-                    "MorphologyMode::Disabled",
-                ),
-                layer_report(
-                    Op::DependencySyntax,
-                    language,
-                    dependencies_from_ud,
-                    preset,
-                    "DependencyParsingMode::Disabled",
-                ),
+                layer_report(Op::Morphology, language, &morphology_source),
+                layer_report(Op::PartOfSpeech, language, &morphology_source),
+                layer_report(Op::DependencySyntax, language, &dependency_source()),
             ];
             SentenceAnalysis {
                 sentence_index: route.detection.sentence_index,
@@ -1352,30 +1578,59 @@ fn undecided_report(operation: LinguisticOperation) -> OperationReport {
     )
 }
 
-/// Report for a lemma/morphology, POS or dependency layer. `requested` says whether
-/// the layer's UD models are selected; `preset` is the sentence's UD model, if any.
+/// Report for a lemma/morphology, POS or dependency layer from `source`.
 fn layer_report(
     operation: LinguisticOperation,
     language: Option<&str>,
-    requested: bool,
-    preset: Option<UdModelPreset>,
-    disabled_mode: &str,
+    source: &LayerSource<'_>,
 ) -> OperationReport {
-    match (requested, language, preset) {
-        (false, _, _) => OperationReport::new(
-            operation,
-            OperationSupport::Unsupported,
-            None,
-            format!("not requested ({disabled_mode}); no heuristic fallback"),
-        ),
-        (true, None, _) => undecided_report(operation),
-        (true, Some(_), Some(preset)) => OperationReport::new(
+    let preset = match source {
+        LayerSource::Disabled(disabled_mode) => {
+            return OperationReport::new(
+                operation,
+                OperationSupport::Unsupported,
+                None,
+                format!("not requested ({disabled_mode}); no heuristic fallback"),
+            );
+        }
+        LayerSource::Backend {
+            name,
+            producer,
+            served,
+        } => {
+            return match (language, producer) {
+                (None, _) => undecided_report(operation),
+                (Some(_), Some(producer)) => OperationReport::new(
+                    operation,
+                    OperationSupport::Supported,
+                    Some((*producer).to_string()),
+                    format!("{name} syntax backend (pinned models)"),
+                ),
+                (Some(language), None) if !served => OperationReport::new(
+                    operation,
+                    OperationSupport::Unsupported,
+                    None,
+                    format!("the {name} syntax backend does not serve `{language}`"),
+                ),
+                (Some(_), None) => OperationReport::new(
+                    operation,
+                    OperationSupport::Unsupported,
+                    None,
+                    format!("the {name} syntax backend returned no analysis"),
+                ),
+            };
+        }
+        LayerSource::Ud(preset) => *preset,
+    };
+    match (language, preset) {
+        (None, _) => undecided_report(operation),
+        (Some(_), Some(preset)) => OperationReport::new(
             operation,
             OperationSupport::Supported,
             Some(format!("ud-model:{}", preset.as_str())),
             format!("{} (UD-treebank-trained, scored)", preset.repo_id()),
         ),
-        (true, Some(language), None) => OperationReport::new(
+        (Some(language), None) => OperationReport::new(
             operation,
             OperationSupport::Unsupported,
             None,

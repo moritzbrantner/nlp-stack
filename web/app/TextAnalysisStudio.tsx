@@ -25,6 +25,7 @@ import {
 } from "./text-analysis-examples";
 
 import { loadAnalysisRuntime, type AnalysisRuntime } from "./analysis-runtime";
+import { analyzeWithStanzaSidecar, defaultStanzaSidecarUrl } from "./stanza-sidecar";
 import { SentencesPanel } from "./SentencesPanel";
 
 type JsonRecord = Record<string, unknown>;
@@ -73,6 +74,8 @@ export function TextAnalysisStudio() {
   const [semanticReport, setSemanticReport] = useState<JsonRecord | null>(null);
   const [corpusReport, setCorpusReport] = useState<JsonRecord | null>(null);
   const [activeTab, setActiveTab] = useState<ResultTab>(defaultTextAnalysisExample.focus);
+  const [stanzaEnabled, setStanzaEnabled] = useState(false);
+  const [stanzaUrl, setStanzaUrl] = useState(defaultStanzaSidecarUrl);
 
   const selectedExample = selectedExampleId
     ? textAnalysisExamples.find((example) => example.id === selectedExampleId) ?? null
@@ -131,6 +134,18 @@ export function TextAnalysisStudio() {
       runtime = await loadAnalysisRuntime(controller.signal);
       controller.signal.throwIfAborted();
       const id = documentId(sourceLabel);
+      // Opt-in: lemmas, POS, morphology and dependency syntax from the local Stanza
+      // sidecar. Rust/Wasm builds the request and verifies the answer; no fallback.
+      let linguistics: Record<string, unknown> = { mode: "modelFree" };
+      if (stanzaEnabled) {
+        setPhase(`Asking the local Stanza sidecar at ${stanzaUrl} for syntax…`);
+        const stanzaRequest = surfaceResult(
+          await runtime.runOperation({ operation: "analysis.stanza-request", input: { text: trimmed } }, { signal: controller.signal }),
+        );
+        const stanzaResponse = await analyzeWithStanzaSidecar(stanzaUrl, stanzaRequest, { signal: controller.signal });
+        controller.signal.throwIfAborted();
+        linguistics = { mode: "stanza", stanzaResponse };
+      }
       setPhase(
         isMultiDocumentCorpus
           ? `Running document analysis and corpus themes across ${corpusItems.length} sources in Rust/Wasm…`
@@ -148,7 +163,7 @@ export function TextAnalysisStudio() {
               summarySentences: 5,
               ngramSizes: [2, 3],
               shingleSizes: [3, 5],
-              linguistics: { mode: "modelFree" },
+              linguistics,
               embedding: { mode: "off" },
               namedEntities: { mode: "huggingFace" },
             },
@@ -383,6 +398,34 @@ export function TextAnalysisStudio() {
             }}
           />
         </label>
+
+        <fieldset className="grid gap-2 rounded-lg border border-line bg-surface px-4 py-3">
+          <legend className="px-1 text-sm font-semibold text-ink">Syntax from a local Stanza sidecar (optional)</legend>
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={stanzaEnabled}
+              disabled={busy}
+              onChange={(event) => setStanzaEnabled(event.target.checked)}
+            />
+            Use the Stanza sidecar for lemmas, part of speech, morphology and dependency syntax (en, de, es)
+          </label>
+          <label className="flex flex-wrap items-center gap-2 text-sm text-ink" htmlFor="stanza-url">
+            <span>Sidecar URL</span>
+            <input
+              id="stanza-url"
+              className="min-h-11 min-w-64 rounded-md border border-line bg-surface px-3 font-mono text-sm text-ink disabled:opacity-50"
+              value={stanzaUrl}
+              disabled={busy || !stanzaEnabled}
+              onChange={(event) => setStanzaUrl(event.target.value)}
+            />
+          </label>
+          <p className="text-xs text-muted">
+            Runs on your machine: <code>bash sidecars/stanza/setup.sh</code> then <code>sidecars/stanza/serve</code> in an
+            nlp-stack checkout. The text is sent only to this address. If the sidecar is not reachable the analysis stops;
+            there is no fallback.
+          </p>
+        </fieldset>
 
         <p className="text-sm text-muted">Browser analysis supports up to 256 KiB of source text and 512 sentences across all documents.</p>
         <div className="flex flex-wrap items-center gap-4">

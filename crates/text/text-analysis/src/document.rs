@@ -273,6 +273,38 @@ fn similarity_section(
     })
 }
 
+/// The sentences a [`LinguisticDepth::StanzaResponse`] analysis of `text` sends to
+/// the Stanza sidecar, as the sidecar's `POST /v1/analyze` body. A caller that
+/// reaches the sidecar itself posts this and passes the answer back unchanged.
+#[cfg(feature = "stanza")]
+pub fn stanza_requests(
+    text: &str,
+    options: &DocumentAnalysisOptions,
+) -> text_linguistics::StanzaAnalyzeRequest {
+    let document = TextDocument::new("stanza-request", text);
+    let processing = effective_processing(&document, options);
+    let mut config = TextNlpConfig::balanced();
+    apply_stanza_layers(&mut config);
+    config.options.processing = processing;
+    if options.language_hint.is_some() {
+        config.options.language_detection.sentence_level = false;
+    }
+    let requests = text_linguistics::syntax_backend_requests(text, &config.options, &|language| {
+        text_linguistics::STANZA_LANGUAGES.contains(&language)
+    });
+    text_linguistics::StanzaAnalyzeRequest::new(&text_linguistics::SyntaxRequest {
+        text,
+        sentences: &requests,
+    })
+}
+
+#[cfg(feature = "stanza")]
+fn apply_stanza_layers(config: &mut TextNlpConfig) {
+    config.options.entity_recognition = EntityRecognitionOptions::disabled();
+    config.options.morphology = MorphologyOptions::syntax_backend();
+    config.options.dependency_parsing = DependencyParsingOptions::syntax_backend();
+}
+
 fn linguistic_section(
     text: &str,
     options: &DocumentAnalysisOptions,
@@ -280,8 +312,15 @@ fn linguistic_section(
     diagnostics: &mut Vec<TextAnalysisDiagnostic>,
 ) -> Option<LinguisticAnalysisSection> {
     let mut config = TextNlpConfig::balanced();
+    #[cfg(feature = "stanza")]
+    let mut stanza = None;
     match &options.linguistic_depth {
         LinguisticDepth::Off => return None,
+        #[cfg(feature = "stanza")]
+        LinguisticDepth::StanzaResponse { body } => {
+            apply_stanza_layers(&mut config);
+            stanza = Some(text_linguistics::RecordedStanzaResponse::new(body.clone()));
+        }
         LinguisticDepth::ModelFree => {
             let models = LinguisticAnalysisOptions::without_models();
             config.options.entity_recognition = models.entity_recognition;
@@ -318,7 +357,15 @@ fn linguistic_section(
         config.options.language_detection.sentence_level = false;
     }
 
-    match TextNlpPipeline::new(config).analyze_text(text) {
+    let pipeline = TextNlpPipeline::new(config);
+    #[cfg(feature = "stanza")]
+    let result = match &stanza {
+        Some(backend) => pipeline.analyze_text_with_syntax_backend(text, backend),
+        None => pipeline.analyze_text(text),
+    };
+    #[cfg(not(feature = "stanza"))]
+    let result = pipeline.analyze_text(text);
+    match result {
         Ok(analysis) => Some(project_linguistic_analysis(analysis)),
         Err(error) => {
             diagnostics.push(TextAnalysisDiagnostic::warning(
@@ -368,6 +415,7 @@ fn project_linguistic_analysis(
         pos: debug_collection(analysis.pos),
         chunks: debug_collection(analysis.chunks),
         dependencies: debug_collection(analysis.dependencies),
+        syntax: serde_json::to_value(&analysis.syntax).unwrap_or_default(),
         entities: debug_collection(analysis.entities),
         canonical_entities: debug_collection(analysis.canonical_entities),
         coreference: debug_collection(analysis.coreference),

@@ -1,0 +1,587 @@
+{
+  "protocol": 1,
+  "sentences": [
+    {
+      "id": 0,
+      "language": "en",
+      "models": {
+        "packages": {
+          "depparse": "combined_charlm",
+          "lemma": "combined_nocharlm",
+          "mwt": "combined",
+          "pos": "combined_charlm",
+          "tokenize": "combined_nocharlm"
+        },
+        "repository": "stanfordnlp/stanza-en",
+        "revision": "4003b0a5a175588fd8f6cb17fde741350f5fd725"
+      },
+      "tokens": [
+        {
+          "end_char": 5,
+          "start_char": 0,
+          "text": "Sarah",
+          "words": [
+            {
+              "deprel": "nsubj",
+              "feats": "Number=Sing",
+              "head": 2,
+              "id": 1,
+              "lemma": "Sarah",
+              "text": "Sarah",
+              "upos": "PROPN",
+              "xpos": "NNP"
+            }
+          ]
+        },
+        {
+          "end_char": 10,
+          "start_char": 6,
+          "text": "says",
+          "words": [
+            {
+              "deprel": "root",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin",
+              "head": 0,
+              "id": 2,
+              "lemma": "say",
+              "text": "says",
+              "upos": "VERB",
+              "xpos": "VBZ"
+            }
+          ]
+        },
+        {
+          "end_char": 15,
+          "start_char": 11,
+          "text": "that",
+          "words": [
+            {
+              "deprel": "mark",
+              "feats": null,
+              "head": 6,
+              "id": 3,
+              "lemma": "that",
+              "text": "that",
+              "upos": "SCONJ",
+              "xpos": "IN"
+            }
+          ]
+        },
+        {
+          "end_char": 20,
+          "start_char": 16,
+          "text": "John",
+          "words": [
+            {
+              "deprel": "nsubj",
+              "feats": "Number=Sing",
+              "head": 6,
+              "id": 4,
+              "lemma": "John",
+              "text": "John",
+              "upos": "PROPN",
+              "xpos": "NNP"
+            }
+          ]
+        },
+        {
+          "end_char": 23,
+          "start_char": 21,
+          "text": "is",
+          "words": [
+            {
+              "deprel": "cop",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin",
+              "head": 6,
+              "id": 5,
+              "lemma": "be",
+              "text": "is",
+              "upos": "AUX",
+              "xpos": "VBZ"
+            }
+          ]
+        },
+        {
+          "end_char": 28,
+          "start_char": 24,
+          "text": "late",
+          "words": [
+            {
+              "deprel": "ccomp",
+              "feats": "Degree=Pos",
+              "head": 2,
+              "id": 6,
+              "lemma": "late",
+              "text": "late",
+              "upos": "ADJ",
+              "xpos": "JJ"
+            }
+          ]
+        },
+        {
+          "end_char": 34,
+          "start_char": 29,
+          "text": "again",
+          "words": [
+            {
+              "deprel": "advmod",
+              "feats": null,
+              "head": 6,
+              "id": 7,
+              "lemma": "again",
+              "text": "again",
+              "upos": "ADV",
+              "xpos": "RB"
+            }
+          ]
+        },
+        {
+          "end_char": 35,
+          "start_char": 34,
+          "text": ".",
+          "words": [
+            {
+              "deprel": "punct",
+              "feats": null,
+              "head": 2,
+              "id": 8,
+              "lemma": ".",
+              "text": ".",
+              "upos": "PUNCT",
+              "xpos": "."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "language": "de",
+      "models": {
+        "packages": {
+          "depparse": "combined_charlm",
+          "lemma": "combined_nocharlm",
+          "mwt": "combined",
+          "pos": "combined_charlm",
+          "tokenize": "combined_nocharlm"
+        },
+        "repository": "stanfordnlp/stanza-de",
+        "revision": "e7acb8e5f0ff683032c9c60fe95c2a003c672a16"
+      },
+      "tokens": [
+        {
+          "end_char": 2,
+          "start_char": 0,
+          "text": "Er",
+          "words": [
+            {
+              "deprel": "nsubj",
+              "feats": "Case=Nom|Gender=Masc|Number=Sing|Person=3|PronType=Prs",
+              "head": 2,
+              "id": 1,
+              "lemma": "er",
+              "text": "Er",
+              "upos": "PRON",
+              "xpos": "PPER"
+            }
+          ]
+        },
+        {
+          "end_char": 9,
+          "start_char": 3,
+          "text": "glaubt",
+          "words": [
+            {
+              "deprel": "root",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin",
+              "head": 0,
+              "id": 2,
+              "lemma": "glauben",
+              "text": "glaubt",
+              "upos": "VERB",
+              "xpos": "VVFIN"
+            }
+          ]
+        },
+        {
+          "end_char": 10,
+          "start_char": 9,
+          "text": ",",
+          "words": [
+            {
+              "deprel": "punct",
+              "feats": null,
+              "head": 10,
+              "id": 3,
+              "lemma": ",",
+              "text": ",",
+              "upos": "PUNCT",
+              "xpos": "$,"
+            }
+          ]
+        },
+        {
+          "end_char": 15,
+          "start_char": 11,
+          "text": "dass",
+          "words": [
+            {
+              "deprel": "mark",
+              "feats": null,
+              "head": 10,
+              "id": 4,
+              "lemma": "dass",
+              "text": "dass",
+              "upos": "SCONJ",
+              "xpos": "KOUS"
+            }
+          ]
+        },
+        {
+          "end_char": 20,
+          "start_char": 16,
+          "text": "John",
+          "words": [
+            {
+              "deprel": "nsubj",
+              "feats": "Case=Nom|Gender=Masc|Number=Sing",
+              "head": 10,
+              "id": 5,
+              "lemma": "John",
+              "text": "John",
+              "upos": "PROPN",
+              "xpos": "NE"
+            }
+          ]
+        },
+        {
+          "end_char": 26,
+          "start_char": 21,
+          "text": "nicht",
+          "words": [
+            {
+              "deprel": "advmod",
+              "feats": "Polarity=Neg",
+              "head": 10,
+              "id": 6,
+              "lemma": "nicht",
+              "text": "nicht",
+              "upos": "PART",
+              "xpos": "PTKNEG"
+            }
+          ]
+        },
+        {
+          "end_char": 30,
+          "start_char": 27,
+          "text": "zum",
+          "words": [
+            {
+              "deprel": "case",
+              "feats": null,
+              "head": 9,
+              "id": 7,
+              "lemma": "zu",
+              "text": "zu",
+              "upos": "ADP",
+              "xpos": "APPR"
+            },
+            {
+              "deprel": "det",
+              "feats": "Case=Dat|Definite=Def|Gender=Masc|Number=Sing|PronType=Art",
+              "head": 9,
+              "id": 8,
+              "lemma": "der",
+              "text": "dem",
+              "upos": "DET",
+              "xpos": "ART"
+            }
+          ]
+        },
+        {
+          "end_char": 38,
+          "start_char": 31,
+          "text": "Bahnhof",
+          "words": [
+            {
+              "deprel": "obl",
+              "feats": "Case=Dat|Gender=Masc|Number=Sing",
+              "head": 10,
+              "id": 9,
+              "lemma": "Bahnhof",
+              "text": "Bahnhof",
+              "upos": "NOUN",
+              "xpos": "NN"
+            }
+          ]
+        },
+        {
+          "end_char": 45,
+          "start_char": 39,
+          "text": "kommen",
+          "words": [
+            {
+              "deprel": "ccomp",
+              "feats": "VerbForm=Inf",
+              "head": 2,
+              "id": 10,
+              "lemma": "kommen",
+              "text": "kommen",
+              "upos": "VERB",
+              "xpos": "VVINF"
+            }
+          ]
+        },
+        {
+          "end_char": 50,
+          "start_char": 46,
+          "text": "wird",
+          "words": [
+            {
+              "deprel": "aux",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin|Voice=Pass",
+              "head": 10,
+              "id": 11,
+              "lemma": "werden",
+              "text": "wird",
+              "upos": "AUX",
+              "xpos": "VAFIN"
+            }
+          ]
+        },
+        {
+          "end_char": 51,
+          "start_char": 50,
+          "text": ".",
+          "words": [
+            {
+              "deprel": "punct",
+              "feats": null,
+              "head": 2,
+              "id": 12,
+              "lemma": ".",
+              "text": ".",
+              "upos": "PUNCT",
+              "xpos": "$."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "language": "es",
+      "models": {
+        "packages": {
+          "depparse": "combined_charlm",
+          "lemma": "combined_nocharlm",
+          "mwt": "combined",
+          "pos": "combined_charlm",
+          "tokenize": "combined_nocharlm"
+        },
+        "repository": "stanfordnlp/stanza-es",
+        "revision": "6c5cf2278847a76cd1efd05ee4fddd80594b569d"
+      },
+      "tokens": [
+        {
+          "end_char": 5,
+          "start_char": 0,
+          "text": "María",
+          "words": [
+            {
+              "deprel": "nsubj",
+              "feats": null,
+              "head": 2,
+              "id": 1,
+              "lemma": "María",
+              "text": "María",
+              "upos": "PROPN",
+              "xpos": "np00000"
+            }
+          ]
+        },
+        {
+          "end_char": 10,
+          "start_char": 6,
+          "text": "dijo",
+          "words": [
+            {
+              "deprel": "root",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin",
+              "head": 0,
+              "id": 2,
+              "lemma": "decir",
+              "text": "dijo",
+              "upos": "VERB",
+              "xpos": "vmis3s0"
+            }
+          ]
+        },
+        {
+          "end_char": 14,
+          "start_char": 11,
+          "text": "que",
+          "words": [
+            {
+              "deprel": "mark",
+              "feats": null,
+              "head": 6,
+              "id": 3,
+              "lemma": "que",
+              "text": "que",
+              "upos": "SCONJ",
+              "xpos": "cs"
+            }
+          ]
+        },
+        {
+          "end_char": 17,
+          "start_char": 15,
+          "text": "el",
+          "words": [
+            {
+              "deprel": "det",
+              "feats": "Definite=Def|Gender=Masc|Number=Sing|PronType=Art",
+              "head": 5,
+              "id": 4,
+              "lemma": "el",
+              "text": "el",
+              "upos": "DET",
+              "xpos": "da0ms0"
+            }
+          ]
+        },
+        {
+          "end_char": 22,
+          "start_char": 18,
+          "text": "niño",
+          "words": [
+            {
+              "deprel": "nsubj",
+              "feats": "Gender=Masc|Number=Sing",
+              "head": 6,
+              "id": 5,
+              "lemma": "niño",
+              "text": "niño",
+              "upos": "NOUN",
+              "xpos": "ncms000"
+            }
+          ]
+        },
+        {
+          "end_char": 29,
+          "start_char": 23,
+          "text": "volvió",
+          "words": [
+            {
+              "deprel": "ccomp",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin",
+              "head": 2,
+              "id": 6,
+              "lemma": "volver",
+              "text": "volvió",
+              "upos": "VERB",
+              "xpos": "vmis3s0"
+            }
+          ]
+        },
+        {
+          "end_char": 33,
+          "start_char": 30,
+          "text": "del",
+          "words": [
+            {
+              "deprel": "case",
+              "feats": null,
+              "head": 9,
+              "id": 7,
+              "lemma": "de",
+              "text": "de",
+              "upos": "ADP",
+              "xpos": "spcms"
+            },
+            {
+              "deprel": "det",
+              "feats": "Definite=Def|Gender=Masc|Number=Sing|PronType=Art",
+              "head": 9,
+              "id": 8,
+              "lemma": "el",
+              "text": "el",
+              "upos": "DET",
+              "xpos": null
+            }
+          ]
+        },
+        {
+          "end_char": 37,
+          "start_char": 34,
+          "text": "río",
+          "words": [
+            {
+              "deprel": "obl",
+              "feats": "Gender=Masc|Number=Sing",
+              "head": 6,
+              "id": 9,
+              "lemma": "río",
+              "text": "río",
+              "upos": "NOUN",
+              "xpos": "ncms000"
+            }
+          ]
+        },
+        {
+          "end_char": 41,
+          "start_char": 38,
+          "text": "muy",
+          "words": [
+            {
+              "deprel": "advmod",
+              "feats": null,
+              "head": 11,
+              "id": 10,
+              "lemma": "mucho",
+              "text": "muy",
+              "upos": "ADV",
+              "xpos": "rg"
+            }
+          ]
+        },
+        {
+          "end_char": 49,
+          "start_char": 42,
+          "text": "cansado",
+          "words": [
+            {
+              "deprel": "amod",
+              "feats": "Gender=Masc|Number=Sing|VerbForm=Part",
+              "head": 9,
+              "id": 11,
+              "lemma": "cansado",
+              "text": "cansado",
+              "upos": "ADJ",
+              "xpos": "aq0msp"
+            }
+          ]
+        },
+        {
+          "end_char": 50,
+          "start_char": 49,
+          "text": ".",
+          "words": [
+            {
+              "deprel": "punct",
+              "feats": "PunctType=Peri",
+              "head": 2,
+              "id": 12,
+              "lemma": ".",
+              "text": ".",
+              "upos": "PUNCT",
+              "xpos": "fp"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "stanza_version": "1.15.0"
+}

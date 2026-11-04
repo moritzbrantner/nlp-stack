@@ -11,6 +11,8 @@ pub mod workspace;
 use std::path::PathBuf;
 
 pub use corpus::analyze_corpus;
+#[cfg(feature = "stanza")]
+pub use document::stanza_requests;
 pub use document::{analyze_document, analyze_text};
 pub use fingerprint::{shingle_hamming_distance, simhash64, DocumentSimilarityPair};
 pub use semantic::{
@@ -64,6 +66,14 @@ pub enum LinguisticDepth {
         bundle_dir: PathBuf,
         auto_download: bool,
         download_progress: bool,
+    },
+    /// Lemmas, POS, morphology and dependency syntax from a Stanza sidecar response
+    /// the caller obtained for [`stanza_requests`] (the browser workbench calls the
+    /// local sidecar itself). Named entities stay off. A response that does not
+    /// answer this text's sentences fails as a `linguistics_unavailable` diagnostic.
+    #[cfg(feature = "stanza")]
+    StanzaResponse {
+        body: String,
     },
 }
 
@@ -348,6 +358,11 @@ pub struct LinguisticAnalysisSection {
     pub pos: serde_json::Value,
     pub chunks: serde_json::Value,
     pub dependencies: serde_json::Value,
+    /// Word-level syntax from a syntax backend (`text_linguistics::SyntaxSentence`:
+    /// tokens with exact byte spans, multi-word expansions, UPOS/lemma/features,
+    /// heads and relations, backend and model versions); `[]` without one.
+    #[serde(default)]
+    pub syntax: serde_json::Value,
     pub entities: serde_json::Value,
     pub canonical_entities: serde_json::Value,
     pub coreference: serde_json::Value,

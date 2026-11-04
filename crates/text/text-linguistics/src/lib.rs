@@ -12,8 +12,11 @@ mod pipeline;
 mod reporting;
 mod routing;
 mod scope;
+#[cfg(feature = "stanza")]
+mod stanza;
 pub mod surface;
 mod syntax;
+mod syntax_backend;
 mod temporal;
 mod tokenization;
 mod ud_model;
@@ -29,7 +32,13 @@ pub use pipeline::*;
 pub use reporting::*;
 pub use routing::*;
 pub use scope::*;
+#[cfg(feature = "stanza")]
+pub use stanza::*;
 pub use syntax::*;
+pub use syntax_backend::{
+    SyntaxBackend, SyntaxBackendError, SyntaxModelVersion, SyntaxProvenance, SyntaxRequest,
+    SyntaxSentence, SyntaxSentenceRequest, SyntaxToken, SyntaxWord,
+};
 pub use temporal::*;
 pub use tokenization::*;
 pub use ud_model::*;

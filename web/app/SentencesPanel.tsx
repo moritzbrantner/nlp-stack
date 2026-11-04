@@ -7,6 +7,7 @@ import {
   type ReportingView,
   type ScopeNode,
   type ScopeView,
+  type SyntaxView,
 } from "./sentence-operations";
 
 type JsonRecord = Record<string, unknown>;
@@ -174,6 +175,48 @@ function ScopeSection({ scope }: { scope: ScopeView }) {
   );
 }
 
+function SyntaxSection({ syntax }: { syntax: SyntaxView | null }) {
+  if (!syntax) return null;
+  return (
+    <div className="mt-4 border-t border-line pt-3">
+      <p className="text-sm font-semibold text-ink">Syntax</p>
+      <p className="mt-1 text-xs text-muted">
+        <span className="font-mono text-ink">{syntax.producer}</span> · {syntax.models}
+      </p>
+      <div className="mt-2 overflow-x-auto">
+        <table className="w-full min-w-[36rem] border-collapse text-left text-sm" aria-label="Syntactic words">
+          <thead>
+            <tr className="border-b border-line text-muted">
+              <th className="py-1 pr-3 font-medium">Word</th>
+              <th className="py-1 pr-3 font-medium">Lemma</th>
+              <th className="py-1 pr-3 font-medium">UPOS</th>
+              <th className="py-1 pr-3 font-medium">Features</th>
+              <th className="py-1 font-medium">Head and relation</th>
+            </tr>
+          </thead>
+          <tbody>
+            {syntax.words.map((word) => (
+              <tr key={word.index} className="border-b border-line/70 align-top">
+                <th scope="row" className="py-1 pr-3 font-medium text-ink">
+                  {word.form}
+                  {word.token ? <span className="ml-1 text-xs font-normal text-muted">(in {word.token})</span> : null}
+                </th>
+                <td className="py-1 pr-3">{word.lemma ?? "–"}</td>
+                <td className="py-1 pr-3 font-mono text-xs">{word.upos ?? "–"}</td>
+                <td className="py-1 pr-3 font-mono text-xs break-all">{word.feats}</td>
+                <td className="py-1">
+                  <span className="font-mono text-xs">{word.relation}</span>
+                  {word.head ? ` → ${word.head}` : " (sentence root)"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export function SentencesPanel({ documentReport }: { documentReport: JsonRecord | null }) {
   const sentences = sentenceViews(documentReport);
   return (
@@ -231,6 +274,7 @@ export function SentencesPanel({ documentReport }: { documentReport: JsonRecord 
             </div>
             <ReportingSection reporting={sentence.reporting} />
             <ScopeSection scope={sentence.scope} />
+            <SyntaxSection syntax={sentence.syntax} />
           </article>
         ))}
       </div>

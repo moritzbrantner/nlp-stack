@@ -218,6 +218,50 @@ LAS, and on the fixtures below 0.90 UAS or 0.85 LAS. It also checks that every
 predicted tree is well formed. Parsing adds little to the encoder cost:
 relation scores are computed only for the decoded arcs.
 
+## Syntax backends and the Stanza oracle (feature `stanza`)
+
+`SyntaxBackend` is the backend-neutral seam for word-level syntax. A backend
+tokenizes each sentence itself, including multi-word token expansion (`zum` →
+`zu` + `dem`, `del` → `de` + `el`), and returns `SyntaxSentence`s: surface
+`SyntaxToken`s with exact UTF-8 half-open byte spans, `SyntaxWord`s (form, lemma,
+UPOS, XPOS, UD features, head word, relation and subtype) and a
+`SyntaxProvenance` naming the backend version and every model package and
+revision. Select it per layer with `MorphologyOptions::syntax_backend()` and/or
+`DependencyParsingOptions::syntax_backend()` and call
+`analyze_text_with_syntax_backend`. Sentences go to the backend in their own
+routed language; a language the backend does not serve is reported
+`Unsupported`, an undecided one `Unknown`. The pipeline aligns backend tokens to
+its own tokens by span: a token spanning several words takes the UPOS, lemma,
+features and attachment of the word nearest the root, and the full word-level
+analysis stays in `LinguisticAnalysis::syntax`. Choosing a backend mode without
+supplying a backend fails with `ModelRequired`; a backend failure fails with
+`LinguisticAnalysisError::SyntaxBackend(SyntaxBackendError)` (`Unavailable`,
+`ModelMissing`, `UnsupportedLanguage`, `Protocol`, `Failed`). Nothing falls back.
+
+The `stanza` feature adds the Stanza oracle: `StanzaSidecar` talks to the local
+`sidecars/stanza` HTTP/JSON sidecar (`GET /v1/health`, `POST /v1/analyze`,
+default `http://127.0.0.1:8765`, `NLP_STANZA_URL` to override), which runs
+Stanza 1.15.0 with the default UD packages for en, de and es, every model file
+pinned by Hugging Face revision and SHA-256 in `sidecars/stanza/models.lock.json`.
+The adapter converts Stanza's code-point offsets to byte spans and refuses a
+response whose spans do not reproduce the token text, whose sentences do not
+answer the request, or whose Stanza version differs from `STANZA_VERSION`.
+`RecordedStanzaResponse` replays a response obtained elsewhere (a committed
+recording, or the workbench, which calls the sidecar from the browser) through
+the same checks. Stanza reports no probabilities, so token-level confidences are
+a fixed 1.0, not a calibrated score.
+
+```sh
+bash sidecars/stanza/setup.sh        # idempotent: pinned uv venv + verified models
+sidecars/stanza/serve &              # 127.0.0.1:8765
+cargo test -p moenarch-text-linguistics --features stanza \
+    --test stanza_sidecar_external -- --ignored
+```
+
+CI replays `tests/fixtures/stanza/sample-en-de-es.json`, recorded from the real
+sidecar with `NLP_STANZA_RECORD=1` on the test above. UPOS/lemma/LAS accuracy of
+the oracle is not recorded yet: it waits for the labelled gold sets (#187).
+
 ## Nested reported speech and belief (en/de/es)
 
 `reporting_constructions(&analysis)` reads reporting and belief constructions from

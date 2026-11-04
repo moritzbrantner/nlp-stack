@@ -9,6 +9,7 @@ bash scripts/check-model-feature-compatibility.sh registry
 python3 scripts/check_repository_boundaries.py --check
 python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json
 python3 -m unittest discover -s scripts -p 'test_*.py'
+python3 -m unittest discover -s sidecars/stanza/tests -p 'test_*.py'
 cargo fmt --all -- --check
 cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 cargo test --locked --workspace --all-features
