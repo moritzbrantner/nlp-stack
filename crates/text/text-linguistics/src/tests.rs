@@ -142,6 +142,7 @@ fn coreference_and_event_requests_fail_without_a_model_backend() {
         let message = error.to_string();
         assert!(message.contains("model required"), "{message}");
         assert!(message.contains(capability), "{message}");
+        assert_model_required(error, capability);
     }
 }
 
@@ -714,6 +715,7 @@ fn discourse_topic_and_style_requests_fail_without_a_model_backend() {
         let message = error.to_string();
         assert!(message.contains("model required"), "{message}");
         assert!(message.contains(capability), "{message}");
+        assert_model_required(error, capability);
     }
 }
 
@@ -1131,4 +1133,18 @@ fn ud_lemmatizer_applies_table_rules_and_exceptions() {
     let table = UdLemmatizer::parse("C\tNOUN\nR\tNOUN\ter\t2\t\nE\tmänner\tNOUN\tMann\n");
     assert_eq!(table.lemmatize("Lehrer", PosTag::Noun), "Lehr");
     assert_eq!(table.lemmatize("Männer", PosTag::Noun), "Mann");
+}
+
+/// Missing models surface as the typed `ModelRequired` variant, not a formatted string.
+fn assert_model_required(error: LinguisticAnalysisError, capability: &str) {
+    match error {
+        LinguisticAnalysisError::ModelRequired {
+            capability: required,
+            hint,
+        } => {
+            assert_eq!(required, capability);
+            assert!(hint.contains("set `enable_"), "{hint}");
+        }
+        other => panic!("expected a typed ModelRequired error, got {other:?}"),
+    }
 }

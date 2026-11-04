@@ -525,7 +525,10 @@ impl TextNlpPipeline {
     }
 
     /// Returns analyze text.
-    pub fn analyze_text(&self, text: &str) -> Result<LinguisticAnalysis> {
+    pub fn analyze_text(
+        &self,
+        text: &str,
+    ) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
         analyze_text_with_config(text, &self.config)
     }
 
@@ -534,17 +537,23 @@ impl TextNlpPipeline {
         &self,
         text: &str,
         entity_labeler: &mut dyn SequenceLabeler,
-    ) -> Result<LinguisticAnalysis> {
+    ) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
         analyze_text_with_config_and_labeler(text, &self.config, Some(entity_labeler))
     }
 
     /// Returns analyze document.
-    pub fn analyze_document(&self, document: &TextDocument<'_>) -> Result<LinguisticAnalysis> {
+    pub fn analyze_document(
+        &self,
+        document: &TextDocument<'_>,
+    ) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
         self.analyze_text(document.text)
     }
 
     /// Returns analyze segment.
-    pub fn analyze_segment(&self, segment: &TextSegment<'_>) -> Result<LinguisticAnalysis> {
+    pub fn analyze_segment(
+        &self,
+        segment: &TextSegment<'_>,
+    ) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
         self.analyze_text(segment.text)
     }
 
@@ -717,7 +726,7 @@ pub struct SubtitleLinguisticAnalysis {
 pub fn analyze_document(
     document: &TextDocument<'_>,
     options: &LinguisticAnalysisOptions,
-) -> Result<LinguisticAnalysis> {
+) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
     TextNlpPipeline::new(TextNlpConfig::from_options(options.clone())).analyze_document(document)
 }
 
@@ -725,7 +734,7 @@ pub fn analyze_document(
 pub fn analyze_segment(
     segment: &TextSegment<'_>,
     options: &LinguisticAnalysisOptions,
-) -> Result<LinguisticAnalysis> {
+) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
     TextNlpPipeline::new(TextNlpConfig::from_options(options.clone())).analyze_segment(segment)
 }
 
@@ -759,7 +768,10 @@ pub fn analyze_transcription_contract(
 }
 
 /// Returns analyze text.
-pub fn analyze_text(text: &str, options: &LinguisticAnalysisOptions) -> Result<LinguisticAnalysis> {
+pub fn analyze_text(
+    text: &str,
+    options: &LinguisticAnalysisOptions,
+) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
     analyze_text_with_config(text, &TextNlpConfig::from_options(options.clone()))
 }
 
@@ -768,7 +780,7 @@ pub fn analyze_text_with_entity_labeler(
     text: &str,
     options: &LinguisticAnalysisOptions,
     entity_labeler: &mut dyn SequenceLabeler,
-) -> Result<LinguisticAnalysis> {
+) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
     analyze_text_with_config_and_labeler(
         text,
         &TextNlpConfig::from_options(options.clone()),
@@ -776,7 +788,10 @@ pub fn analyze_text_with_entity_labeler(
     )
 }
 
-fn analyze_text_with_config(text: &str, config: &TextNlpConfig) -> Result<LinguisticAnalysis> {
+fn analyze_text_with_config(
+    text: &str,
+    config: &TextNlpConfig,
+) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
     analyze_text_with_config_and_labeler(text, config, None)
 }
 
@@ -784,7 +799,7 @@ fn analyze_text_with_config_and_labeler(
     text: &str,
     config: &TextNlpConfig,
     entity_labeler: Option<&mut dyn SequenceLabeler>,
-) -> Result<LinguisticAnalysis> {
+) -> std::result::Result<LinguisticAnalysis, LinguisticAnalysisError> {
     let options = &config.options;
     if options.enable_coreference {
         return Err(model_required(
@@ -1112,10 +1127,63 @@ pub fn local_models_compiled() -> bool {
 
 /// The failure for a requested operation that has no model backend. The pipeline
 /// never substitutes heuristic output.
-fn model_required(capability: &str, opt_out: &str) -> DetectError {
-    DetectError::InvalidArgument(format!(
-        "model required: {capability} has no model backend in text-linguistics yet; {opt_out} to analyze without it"
-    ))
+fn model_required(capability: &str, opt_out: &str) -> LinguisticAnalysisError {
+    LinguisticAnalysisError::ModelRequired {
+        capability: capability.to_owned(),
+        hint: format!("{capability} has no model backend in text-linguistics yet; {opt_out} to analyze without it"),
+    }
+}
+
+/// Errors from a linguistic analysis run.
+#[derive(Debug)]
+pub enum LinguisticAnalysisError {
+    /// A requested capability needs a model that this build or configuration does not
+    /// provide. No heuristic stand-in is run.
+    ModelRequired {
+        /// The capability that was requested, e.g. `coreference resolution`.
+        capability: String,
+        /// How to provide the model or opt out of the capability.
+        hint: String,
+    },
+    /// Input, tokenizer or model execution failed.
+    Detect(DetectError),
+}
+
+impl std::fmt::Display for LinguisticAnalysisError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ModelRequired { hint, .. } => write!(f, "model required: {hint}"),
+            Self::Detect(error) => error.fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for LinguisticAnalysisError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::ModelRequired { .. } => None,
+            Self::Detect(error) => Some(error),
+        }
+    }
+}
+
+impl From<DetectError> for LinguisticAnalysisError {
+    fn from(error: DetectError) -> Self {
+        Self::Detect(error)
+    }
+}
+
+/// Lets callers that report shared detection errors keep using `?`; the model-required
+/// case becomes an `InvalidArgument` carrying the same message.
+impl From<LinguisticAnalysisError> for DetectError {
+    fn from(error: LinguisticAnalysisError) -> Self {
+        match error {
+            LinguisticAnalysisError::Detect(error) => error,
+            model_required @ LinguisticAnalysisError::ModelRequired { .. } => {
+                DetectError::InvalidArgument(model_required.to_string())
+            }
+        }
+    }
 }
 
 fn sentence_analyses(
