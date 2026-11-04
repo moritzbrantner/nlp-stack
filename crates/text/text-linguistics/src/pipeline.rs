@@ -1376,15 +1376,17 @@ impl From<DetectError> for LinguisticAnalysisError {
     }
 }
 
-/// Lets callers that report shared detection errors keep using `?`; the model-required
-/// case becomes an `InvalidArgument` carrying the same message.
+/// Lets callers that report shared detection errors keep using `?` without
+/// losing the typed missing-model contract.
 impl From<LinguisticAnalysisError> for DetectError {
     fn from(error: LinguisticAnalysisError) -> Self {
         match error {
             LinguisticAnalysisError::Detect(error) => error,
-            other @ (LinguisticAnalysisError::ModelRequired { .. }
-            | LinguisticAnalysisError::SyntaxBackend(_)) => {
-                DetectError::InvalidArgument(other.to_string())
+            LinguisticAnalysisError::ModelRequired { capability, hint } => {
+                DetectError::ModelRequired { capability, hint }
+            }
+            LinguisticAnalysisError::SyntaxBackend(error) => {
+                DetectError::InvalidArgument(error.to_string())
             }
         }
     }
