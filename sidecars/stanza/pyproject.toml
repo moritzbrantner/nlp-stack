@@ -2,7 +2,7 @@
 name = "nlp-stack-stanza-sidecar"
 version = "0.1.0"
 description = "Local Stanza oracle sidecar for nlp-stack: en/de/es tokens, lemmas, POS, morphology and dependency syntax over HTTP/JSON."
-requires-python = "==3.12.*"
+requires-python = "==3.15.*"
 license = "MIT OR Apache-2.0"
 dependencies = [
     "stanza==1.15.0",
