@@ -23,14 +23,14 @@ CARGO_PACKAGE_COUNT = 52
 BUN_PACKAGE_COUNT = 26
 
 FOUNDATION_DEPENDENCIES = {
-    "moenarch-data-inversion-core": "=0.1.1",
-    "moenarch-math-sparse-data": "=0.1.1",
-    "moenarch-media-core": "=0.1.0",
+    "moenarch-data-inversion-core": "=0.2.0",
+    "moenarch-math-sparse-data": "=0.2.0",
+    "moenarch-media-core": "=0.2.0",
     "moenarch-model-runtime": "=0.1.1",
     "moenarch-runtime-core": "=0.2.1",
     "moenarch-runtime-onnx": "=0.1.1",
-    "moenarch-vector-analysis-core": "=0.1.1",
-    "moenarch-vector-analysis-index": "=0.1.1",
+    "moenarch-vector-analysis-core": "=0.2.0",
+    "moenarch-vector-analysis-index": "=0.2.0",
 }
 
 

@@ -39,14 +39,14 @@ unicode-segmentation = "1.12.0"
 # Registry coordinates remain the distribution contract. Normal development may
 # activate the exact foundation source revision declared in
 # .coding-tooling.source-deps.json; committed manifests stay registry-based.
-data-inversion-core = { package = "moenarch-data-inversion-core", version = "=0.1.1" }
-math-sparse-data = { package = "moenarch-math-sparse-data", version = "=0.1.1" }
-media-core = { package = "moenarch-media-core", version = "=0.1.0" }
+data-inversion-core = { package = "moenarch-data-inversion-core", version = "=0.2.0" }
+math-sparse-data = { package = "moenarch-math-sparse-data", version = "=0.2.0" }
+media-core = { package = "moenarch-media-core", version = "=0.2.0" }
 model-runtime = { package = "moenarch-model-runtime", version = "=0.1.1" }
 runtime-core = { package = "moenarch-runtime-core", version = "=0.2.1" }
 runtime-onnx = { package = "moenarch-runtime-onnx", version = "=0.1.1" }
-vector-analysis-core = { package = "moenarch-vector-analysis-core", version = "=0.1.1" }
-vector-analysis-index = { package = "moenarch-vector-analysis-index", version = "=0.1.1" }
+vector-analysis-core = { package = "moenarch-vector-analysis-core", version = "=0.2.0" }
+vector-analysis-index = { package = "moenarch-vector-analysis-index", version = "=0.2.0" }
 
 text-analysis = { package = "moenarch-text-analysis", version = "=0.1.1", path = "crates/text/text-analysis" }
 text-classification = { package = "moenarch-text-classification", version = "=0.1.1", path = "crates/text/text-classification" }

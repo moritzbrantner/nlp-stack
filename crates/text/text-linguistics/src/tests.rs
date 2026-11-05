@@ -1,7 +1,7 @@
 use super::*;
 
-use text_core::Result;
 use text_core::{split_sentence_spans, tokenize, AnnotationProvenance, TextProcessingOptions};
+use text_core::{DetectError, Result};
 #[cfg(feature = "transcripts")]
 use text_transcripts::{
     parse_srt, parse_webvtt, TranscriptSegment, TranscriptSegmentContract, TranscriptionContract,
@@ -1147,4 +1147,19 @@ fn assert_model_required(error: LinguisticAnalysisError, capability: &str) {
         }
         other => panic!("expected a typed ModelRequired error, got {other:?}"),
     }
+}
+
+#[test]
+fn missing_model_remains_typed_through_shared_detect_error() {
+    let error: DetectError = LinguisticAnalysisError::ModelRequired {
+        capability: "entity recognition".into(),
+        hint: "configure an entity model".into(),
+    }
+    .into();
+
+    assert!(matches!(
+        error,
+        DetectError::ModelRequired { capability, hint }
+            if capability == "entity recognition" && hint == "configure an entity model"
+    ));
 }
