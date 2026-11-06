@@ -109,6 +109,13 @@ class SyntaxTests(unittest.TestCase):
         self.assertAlmostEqual(f1(result, "uas"), 1.0)
         self.assertAlmostEqual(f1(result, "las"), 2 / 3)
 
+    def test_words_crossing_a_multiword_span_stay_unaligned(self) -> None:
+        # Gold `al` (a + el) covers [0, 2); the system word `ala` covers [0, 3).
+        gold = _sentence("s", [("al", [("a", "ADP", 3, "case"), ("el", "DET", 3, "det")]), ("a", [("a", "NOUN", 0, "root")])])
+        system = _sentence("s", [("ala", [("a", "NOUN", 0, "root")])])
+        result = score_syntax([gold], [system])
+        self.assertEqual(result["alignedWords"], 0)
+
     def test_tokenization_errors_cost_precision_and_recall(self) -> None:
         gold = _sentence("s", [("New", [("New", "PROPN", 2, "compound")]), ("York", [("York", "PROPN", 0, "root")])])
         system = _sentence("s", [("NewYork", [("NewYork", "PROPN", 0, "root")])])
@@ -250,6 +257,10 @@ class GateTests(unittest.TestCase):
             self.assertTrue(check_gates(gates, directory)[0].passed)
             self._report(directory, 0.75)
             self.assertIn("< 0.8", check_gates(gates, directory)[0].problem)
+            self._report(directory, float("nan"))
+            self.assertFalse(check_gates(gates, directory)[0].passed)
+            self._report(directory, float("inf"))
+            self.assertFalse(check_gates(gates, directory)[0].passed)
             self._report(directory, 0.9, model="other/model")
             self.assertIn("not the gated model", check_gates(gates, directory)[0].problem)
             self._report(directory, 0.9)

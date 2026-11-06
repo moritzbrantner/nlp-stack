@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence
@@ -101,6 +102,8 @@ def metric_value(report: Mapping[str, Any], metric: str) -> float:
         value = value.get("f1")
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ScoreRecordError(f"report has no numeric metric {metric!r}")
+    if not math.isfinite(value) or not 0.0 <= value <= 1.0:
+        raise ScoreRecordError(f"metric {metric!r} must be a finite score in [0, 1], got {value!r}")
     return float(value)
 
 

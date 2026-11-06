@@ -90,14 +90,18 @@ def align_words(gold: Sequence[_SpanWord], system: Sequence[_SpanWord]) -> Dict[
             changed = True
             while changed:
                 changed = False
-                while gi < len(gold) and gold[gi].start < end:
-                    if gold[gi].multiword and gold[gi].end > end:
-                        end = gold[gi].end
+                # Multi-word tokens that start inside the span extend it; ordinary
+                # words join only when they lie completely inside it.
+                while gi < len(gold) and (
+                    gold[gi].start < end if gold[gi].multiword else gold[gi].end <= end
+                ):
+                    end = max(end, gold[gi].end)
                     gi += 1
                     changed = True
-                while si < len(system) and system[si].start < end:
-                    if system[si].multiword and system[si].end > end:
-                        end = system[si].end
+                while si < len(system) and (
+                    system[si].start < end if system[si].multiword else system[si].end <= end
+                ):
+                    end = max(end, system[si].end)
                     si += 1
                     changed = True
             for g, s in _lcs_pairs(gold[g0:gi], system[s0:si]):

@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 from evaluation.gold.manifest import GoldCorpus, load_manifest
-from evaluation.gold.scores import metric_value, read_report
+from evaluation.gold.scores import ScoreRecordError, metric_value, read_report
 
 GATES_PATH = Path(__file__).with_name("gates.json")
 STATUSES = ("proposed", "agreed")
@@ -140,7 +140,10 @@ def check_requirement(
     if not _model_matches(gate, report):
         system = report["system"]
         return failed(f"report system {system['backend']} {system['model']}@{system['revision']} is not the gated model")
-    score = metric_value(report, requirement.metric)
+    try:
+        score = metric_value(report, requirement.metric)
+    except ScoreRecordError as error:
+        return failed(str(error))
     if score < requirement.threshold:
         return failed(f"{requirement.metric} {score:.4f} < {requirement.threshold}", score)
     return RequirementResult(gate.id, requirement, score, True)
