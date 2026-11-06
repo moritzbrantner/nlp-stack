@@ -1,0 +1,41 @@
+# newdoc id = weblog-blogspot.com_zentelligence_20040423000200_ENG_20040423_000200
+# sent_id = weblog-blogspot.com_zentelligence_20040423000200_ENG_20040423_000200-0001
+# newpar id = weblog-blogspot.com_zentelligence_20040423000200_ENG_20040423_000200-p0001
+# text = What if Google Morphed Into GoogleOS?
+1	What	what	PRON	WP	PronType=Int	0	root	0:root	Cxn=Conditional-Interrogative|CxnElt=1:Conditional-Interrogative.Apodosis
+2	if	if	SCONJ	IN	_	4	mark	4:mark	_
+3	Google	Google	PROPN	NNP	Number=Sing	4	nsubj	4:nsubj	_
+4	Morphed	morph	VERB	VBD	Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin	1	advcl	1:advcl:if	CxnElt=1:Conditional-Interrogative.Protasis
+5	Into	into	ADP	IN	_	6	case	6:case	_
+6	GoogleOS	GoogleOS	PROPN	NNP	Number=Sing	4	obl	4:obl:into	SpaceAfter=No
+7	?	?	PUNCT	.	_	4	punct	4:punct	_
+
+# sent_id = weblog-blogspot.com_marketview_20050511222700_ENG_20050511_222700-0007
+# newpar id = weblog-blogspot.com_marketview_20050511222700_ENG_20050511_222700-p0002
+# text = I'm staying away from the stock.
+1-2	I'm	_	_	_	_	_	_	_	_
+1	I	I	PRON	PRP	Case=Nom|Number=Sing|Person=1|PronType=Prs	3	nsubj	3:nsubj	_
+2	'm	be	AUX	VBP	Mood=Ind|Number=Sing|Person=1|Tense=Pres|VerbForm=Fin	3	aux	3:aux	_
+3	staying	stay	VERB	VBG	Tense=Pres|VerbForm=Part	0	root	0:root	_
+4	away	away	ADV	RB	_	3	advmod	3:advmod	_
+5	from	from	ADP	IN	_	7	case	7:case	_
+6	the	the	DET	DT	Definite=Def|PronType=Art	7	det	7:det	_
+7	stock	stock	NOUN	NN	Number=Sing	4	obl	4:obl:from	SpaceAfter=No
+8	.	.	PUNCT	.	_	3	punct	3:punct	_
+
+# sent_id = weblog-blogspot.com_marketview_20050224181500_ENG_20050224_181500-0002
+# text = I'm not fond of the Google-hates-privacy argument
+1-2	I'm	_	_	_	_	_	_	_	_
+1	I	I	PRON	PRP	Case=Nom|Number=Sing|Person=1|PronType=Prs	4	nsubj	4:nsubj	_
+2	'm	be	AUX	VBP	Mood=Ind|Number=Sing|Person=1|Tense=Pres|VerbForm=Fin	4	cop	4:cop	_
+3	not	not	PART	RB	Polarity=Neg	4	advmod	4:advmod	_
+4	fond	fond	ADJ	JJ	Degree=Pos	0	root	0:root	_
+5	of	of	ADP	IN	_	12	case	12:case	_
+6	the	the	DET	DT	Definite=Def|PronType=Art	12	det	12:det	_
+7	Google	Google	PROPN	NNP	Number=Sing	9	nsubj	9:nsubj	SpaceAfter=No
+8	-	-	PUNCT	HYPH	_	7	punct	7:punct	SpaceAfter=No
+9	hates	hate	VERB	VBZ	Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin	12	compound	12:compound	SpaceAfter=No
+10	-	-	PUNCT	HYPH	_	11	punct	11:punct	SpaceAfter=No
+11	privacy	privacy	NOUN	NN	Number=Sing	9	obj	9:obj	_
+12	argument	argument	NOUN	NN	Number=Sing	4	obl	4:obl:of	_
+
