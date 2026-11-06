@@ -1,0 +1,60 @@
+{
+ "version": "1.1",
+ "data": [
+  {
+   "title": "Super_Bowl_50",
+   "paragraphs": [
+    {
+     "context": "Die Verteidigung der Panthers gab nur 308 Punkte ab und belegte den sechsten Platz in der Liga, während sie die NFL mit 24 Interceptions in dieser Kategorie anführte und sich mit vier Pro Bowl-Selektionen rühmen konnte. Pro Bowl Defensive Tackle Kawann Short führte das Team mit 11 Sacks an, erzwang zudem drei Fumbles und erzielte zwei Fumble Recoverys. Mario Addison, ebenfalls Lineman, addierte 6½ Sacks hinzu. Die Panthers-Line präsentierte auch den erfahrenen Defensive End Jared Allen, einen 5-fachen Pro-Bowler, der mit 136 Sacks der aktive Anführer in der NFL-Kategorie Karriere-Sacks war, sowie den Defensive End Kony Ealy, der 5 Sacks in nur 9 Starts erzielte. Nach ihnen wurden zwei der drei Linebacker der Panthers ausgewählt, um im Pro Bowl zu spielen: Thomas Davis und Luke Kuechly. Davis erzielte 5½ Sacks, vier erzwungene Fumbles und vier Interceptions, während Kuechly das Team bei den Tackles anführte (118), zwei Fumbles erzwang und vier Pässe abfing. Carolinas Secondarys bestanden aus dem Pro Bowl-Safety Kurt Coleman, der das Team mit einem Karrierehoch von sieben Interceptions anführte und gleichzeitig 88 Tackles erzielen konnte, und Pro Bowl-Cornerback Josh Norman, der sich während der Saison zur Shutdown Corner entwickelte und vier Interceptions erzielte, von denen zwei zu Touchdowns für sein Team wurden.",
+     "qas": [
+      {
+       "id": "56beb4343aeaaa14008c925b",
+       "question": "Wie viele Punkte gab die Verteidigung der Panthers ab?",
+       "answers": [
+        {
+         "answer_start": 38,
+         "text": "308"
+        }
+       ]
+      },
+      {
+       "id": "56beb4343aeaaa14008c925c",
+       "question": "Wie viele Sacks erzielte Jared Allen in seiner Karriere?",
+       "answers": [
+        {
+         "answer_start": 527,
+         "text": "136"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "context": "Die Broncos besiegten die Pittsburgh Steelers in der Divisional Round, 23-16, indem sie in den letzten drei Minuten des Spiels 11 Punkte erzielten. Sie schlugen daraufhin im AFC-Championship-Spiel den verteidigenden Super Bowl XLIX-Champion, die New England Patriots, 20-18, indem sie bei nur 17 Sekunden verbleibender Spielzeit New Englands Versuch, eine 2-Point Conversion zu erzielen, abfingen. Trotz Mannings Problemen mit Interceptions während der Saison verfehlte er in den beiden Playoff-Spielen keine einzige.",
+     "qas": [
+      {
+       "id": "56beb7953aeaaa14008c92ab",
+       "question": "Wer verlor in der Divisional Round gegen die Broncos?",
+       "answers": [
+        {
+         "answer_start": 22,
+         "text": "die Pittsburgh Steelers"
+        }
+       ]
+      },
+      {
+       "id": "56beb7953aeaaa14008c92ac",
+       "question": "Wie viele Punkte erzielten die Broncos in den letzten drei Minuten des Spiels gegen Pittsburgh?",
+       "answers": [
+        {
+         "answer_start": 127,
+         "text": "11"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

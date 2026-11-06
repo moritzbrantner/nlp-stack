@@ -1,0 +1,99 @@
+# newdoc id = n01001
+# sent_id = n01001-0001
+# text = „Ein Großteil des digitalen Übergangs ist für die Vereinigten Staaten neu, ein friedlicher Machtwechsel hingegen nicht“, schrieb Obamas Sonderberaterin Kori Schulman an dem Montag in einem Blogeintrag.
+1	„	O	-	-
+2	Ein	O	-	-
+3	Großteil	O	-	-
+4	des	O	-	-
+5	digitalen	O	-	-
+6	Übergangs	O	-	-
+7	ist	O	-	-
+8	für	O	-	-
+9	die	O	-	-
+10	Vereinigten	B-LOC	-	stefan
+11	Staaten	I-LOC	-	stefan
+12	neu	O	-	-
+13	,	O	-	-
+14	ein	O	-	-
+15	friedlicher	O	-	-
+16	Machtwechsel	O	-	-
+17	hingegen	O	-	-
+18	nicht	O	-	-
+19	“	O	-	-
+20	,	O	-	-
+21	schrieb	O	-	-
+22	Obamas	B-PER	-	stefan
+23	Sonderberaterin	O	-	-
+24	Kori	B-PER	-	stefan
+25	Schulman	I-PER	-	stefan
+26	an	O	-	-
+27	dem	O	-	-
+28	Montag	O	-	-
+29	in	O	-	-
+30	einem	O	-	-
+31	Blogeintrag	O	-	-
+32	.	O	-	-
+
+# sent_id = n01001-0002
+# text = Für alle, die Social-Media-Übergänge auf dem Capitol Hill verfolgen, wird dieser Übergang ein wenig anders sein.
+1	Für	O	-	-
+2	alle	O	-	-
+3	,	O	-	-
+4	die	O	-	-
+5	Social	O	-	-
+6	-	O	-	-
+7	Media	O	-	-
+8	-	O	-	-
+9	Übergänge	O	-	-
+10	auf	O	-	-
+11	dem	O	-	-
+12	Capitol	B-LOC	-	stefan
+13	Hill	I-LOC	-	stefan
+14	verfolgen	O	-	-
+15	,	O	-	-
+16	wird	O	-	-
+17	dieser	O	-	-
+18	Übergang	O	-	-
+19	ein	O	-	-
+20	wenig	O	-	-
+21	anders	O	-	-
+22	sein	O	-	-
+23	.	O	-	-
+
+# newdoc id = n01002
+# sent_id = n01002-0001
+# text = Entgegen seinen bisherigen Äußerungen zu der Begrenzung der Einwanderung verkündete der Nominierte der Republikanischen Partei, dass er als Präsident „enorm viele“ legale Einwanderer basierend auf einem Punktesystem akzeptieren würde.
+1	Entgegen	O	-	-
+2	seinen	O	-	-
+3	bisherigen	O	-	-
+4	Äußerungen	O	-	-
+5	zu	O	-	-
+6	der	O	-	-
+7	Begrenzung	O	-	-
+8	der	O	-	-
+9	Einwanderung	O	-	-
+10	verkündete	O	-	-
+11	der	O	-	-
+12	Nominierte	O	-	-
+13	der	O	-	-
+14	Republikanischen	B-ORG	-	stefan
+15	Partei	I-ORG	-	stefan
+16	,	O	-	-
+17	dass	O	-	-
+18	er	O	-	-
+19	als	O	-	-
+20	Präsident	O	-	-
+21	„	O	-	-
+22	enorm	O	-	-
+23	viele	O	-	-
+24	“	O	-	-
+25	legale	O	-	-
+26	Einwanderer	O	-	-
+27	basierend	O	-	-
+28	auf	O	-	-
+29	einem	O	-	-
+30	Punktesystem	O	-	-
+31	akzeptieren	O	-	-
+32	würde	O	-	-
+33	.	O	-	-
+
