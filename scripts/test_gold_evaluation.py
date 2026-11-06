@@ -143,11 +143,12 @@ class StanzaAdapterTests(unittest.TestCase):
                 {"id": 3, "text": "dem", "lemma": "der", "upos": "DET", "head": 4, "deprel": "det"},
             ]},
             {"start_char": 10, "end_char": 14, "text": "Fest", "words": [{"id": 4, "text": "Fest", "lemma": "Fest", "upos": "NOUN", "head": 1, "deprel": "nmod"}]},
-            {"start_char": 14, "end_char": 15, "text": ".", "words": [{"id": 5, "text": ".", "lemma": ".", "upos": "PUNCT", "head": 1, "deprel": "punct"}]},
+            {"start_char": 14, "end_char": 15, "text": ".", "words": [{"id": 5, "text": "<UNK>", "lemma": ".", "upos": "PUNCT", "head": 1, "deprel": "punct"}]},
         ]
         sentence = sentence_from_response("s1", text, tokens)
         self.assertEqual([t.form for t in sentence.tokens], ["Grüße", "zum", "Fest", "."])
         self.assertEqual([t.space_after for t in sentence.tokens], [True, True, False, True])
+        self.assertEqual(sentence.tokens[3].words[0].form, ".")
         self.assertTrue(sentence.tokens[1].is_multiword)
         self.assertEqual(sentence.tokens[1].words[1].feats, "_")
         buffer = io.StringIO()

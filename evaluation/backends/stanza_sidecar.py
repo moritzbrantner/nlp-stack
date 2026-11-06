@@ -15,6 +15,7 @@ import os
 import sys
 import urllib.error
 import urllib.request
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
@@ -80,7 +81,12 @@ def sentence_from_response(sent_id: str, text: str, tokens: Sequence[Mapping[str
             )
             for word in token["words"]
         ]
-        sentence.tokens.append(Token(text[start:end], words, space_after=following > end))
+        surface = text[start:end]
+        if len(words) == 1 and words[0].form != surface:
+            # A single-word token's FORM is its surface text; Stanza may report a
+            # normalized word text (for example `<UNK>` for some URLs).
+            words[0] = replace(words[0], form=surface)
+        sentence.tokens.append(Token(surface, words, space_after=following > end))
     return sentence
 
 
