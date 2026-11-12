@@ -41,6 +41,43 @@ two APIs field-for-field identical.
 See [`docs/FOUNDATION_RETRIEVAL_BOUNDARY.md`](../../../docs/FOUNDATION_RETRIEVAL_BOUNDARY.md)
 for the lossless mapping, dependency rule, and extraction criteria.
 
+## Optional external HNSW (`hnsw` feature)
+
+With the `hnsw` feature, unfiltered semantic hits (`search` without a filter and
+`related_chunks`) over at least 4,096 chunks are selected by Foundation's
+`vector_analysis_index::hnsw::CosineHnswIndex` (external `hnsw_rs`, #119)
+instead of a full exact scan. Candidates are re-scored with exact cosine and
+ordered by `(distance, id)`, so scores and tie order keep exact semantics. The
+graph is built lazily on the first eligible query and dropped whenever the
+exact index is rebuilt (ingest, replace, snapshot import); clones start without
+it. Filtered queries, smaller corpora and default builds keep the exact
+`VectorSearchIndex`, which is always the source of truth and the fallback.
+There is no runtime backend switch: the Cargo feature plus the corpus-size
+threshold are the whole seam.
+
+Measured with the deterministic hashed-fixture workload (128 dims, 48 topics,
+one chunk per document, related-chunk top-10, 200 queries, one thread; release
+build on a shared, loaded 8-core laptop, so treat times as indicative):
+
+| chunks | exact query | HNSW ef=64 query | HNSW recall@10 | HNSW build | LSH best recall@10 |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1,024 | 0.62 ms | 0.24 ms | 1.000 | 0.35 s | 0.469 |
+| 4,096 | 2.63 ms | 0.64 ms | 1.000 | 5.9 s | 0.507 |
+| 16,384 | 11.2 ms | 0.97 ms | 0.9995 | 30 s | 0.310 |
+
+The build amortizes after roughly 900-3,000 queries, so the feature suits
+long-lived, query-heavy indexes; the first eligible query pays the build. Below
+4,096 chunks an exact query stays under ~3 ms and exact, so the graph is not
+built. Reproduce with:
+
+```bash
+cargo run --release -p moenarch-text-retrieval --features hnsw --example ann_three_way [sizes...]
+```
+
+Real embedding models (Candle/ONNX) were not measured; the hashed fixture is a
+lexical stand-in. `text-index` still rebuilds an exact index per query from its
+store and is not wired to HNSW.
+
 ## Quality and limits
 
 Hybrid score calibration and ranking quality are best-effort. Persistence helper
