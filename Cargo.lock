@@ -62,6 +62,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
 
 [[package]]
+name = "anndists"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a8396b473aa0bceed68fb32462505387ea39fa47c7029417e0a49f10592b036"
+dependencies = [
+ "anyhow",
+ "cfg-if",
+ "cpu-time",
+ "env_logger",
+ "lazy_static",
+ "log",
+ "num-traits",
+ "num_cpus",
+ "rayon",
+]
+
+[[package]]
 name = "anstream"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -353,6 +370,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527"
 
 [[package]]
+name = "chacha20"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65c35e4b699c7e15ccbe7ee35c005e4fc0a278d22238a2857e6ce2dadeda1b06"
+dependencies = [
+ "cfg-if",
+ "cpufeatures 0.3.1",
+ "rand_core 0.10.1",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -444,6 +472,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
 
 [[package]]
+name = "combine"
+version = "4.6.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4356eba6976435498d05a311ee9fc486da3bc81c200d3f0d7dd9703b41913f92"
+dependencies = [
+ "bytes",
+ "memchr",
+]
+
+[[package]]
 name = "compact_str"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -527,6 +565,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "66e8e052be91f1c8aae2c1d81307d9f6e67f5f37001e3ddee419e971e73f03bc"
 dependencies = [
  "num-traits",
+]
+
+[[package]]
+name = "cpu-time"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9e393a7668fe1fad3075085b86c781883000b4ede868f43627b34a87c8b7ded"
+dependencies = [
+ "libc",
+ "winapi",
 ]
 
 [[package]]
@@ -875,10 +923,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_filter"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "900d271a03799a1ee8d1ca9b19893b48ca674a9284fefcfb85f05e74ed314217"
+dependencies = [
+ "log",
+ "regex",
+]
+
+[[package]]
 name = "env_home"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c7f84e12ccf0a7ddc17a6c41c93326024c42920d7ee630d04950e6926645c0fe"
+
+[[package]]
+name = "env_logger"
+version = "0.11.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de671bd27a75a797dc9ae289ba1e77276e75e2026408aab65185384e2d5cd3f6"
+dependencies = [
+ "anstream",
+ "anstyle",
+ "env_filter",
+ "jiff",
+ "log",
+]
 
 [[package]]
 name = "equivalent"
@@ -979,6 +1050,12 @@ name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+
+[[package]]
+name = "foldhash"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
 
 [[package]]
 name = "foldhash"
@@ -1199,6 +1276,7 @@ dependencies = [
  "js-sys",
  "libc",
  "r-efi 6.0.0",
+ "rand_core 0.10.1",
  "wasm-bindgen",
 ]
 
@@ -1231,13 +1309,24 @@ checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 
 [[package]]
 name = "hashbrown"
+version = "0.15.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
+dependencies = [
+ "allocator-api2",
+ "equivalent",
+ "foldhash 0.1.5",
+]
+
+[[package]]
+name = "hashbrown"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
 dependencies = [
  "allocator-api2",
  "equivalent",
- "foldhash",
+ "foldhash 0.2.0",
  "serde",
  "serde_core",
 ]
@@ -1248,7 +1337,7 @@ version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
 dependencies = [
- "foldhash",
+ "foldhash 0.2.0",
 ]
 
 [[package]]
@@ -1289,6 +1378,30 @@ dependencies = [
  "thiserror 2.0.21",
  "ureq",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "hnsw_rs"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9b4dcb9840006fae9964e97dfdb354cd00b7a15d69d143caae7eeca0410af9f"
+dependencies = [
+ "anndists",
+ "anyhow",
+ "cfg-if",
+ "cpu-time",
+ "env_logger",
+ "hashbrown 0.15.5",
+ "indexmap",
+ "lazy_static",
+ "log",
+ "mmap-rs",
+ "num-traits",
+ "num_cpus",
+ "parking_lot",
+ "rand 0.10.3",
+ "rayon",
+ "serde",
 ]
 
 [[package]]
@@ -1523,6 +1636,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3bd1574e617a9a6c1f8f8181bd7e841e1f20e4277607ef28945765188d6284d4"
 
 [[package]]
+name = "jiff"
+version = "0.2.43"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26699905cc795a23e3949585cc7ba3ee8ade090872a27e4316304a777297894a"
+dependencies = [
+ "jiff-core",
+ "jiff-static",
+ "log",
+ "portable-atomic",
+ "portable-atomic-util",
+ "serde_core",
+]
+
+[[package]]
+name = "jiff-core"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffe6854081f5ac0a3046a9b223729ccd7a20b1e0e8277e44dc0660eedf67dfe2"
+dependencies = [
+ "log",
+]
+
+[[package]]
+name = "jiff-static"
+version = "0.2.43"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b4ff49b2887190c760b86207b55cdcaabbdecaf7a0660d68aa2ed6f652abf0a"
+dependencies = [
+ "jiff-core",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "js-sys"
 version = "0.3.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1532,6 +1680,12 @@ dependencies = [
  "futures-util",
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "lazy_static"
+version = "1.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 
 [[package]]
 name = "libc"
@@ -1701,6 +1855,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d15f86d12da44cd8d4ec3c73984537eb7f4cadcb9776a575a0a8a05ca11005c"
 
 [[package]]
+name = "mach2"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d640282b302c0bb0a2a8e0233ead9035e3bed871f0b7e81fe4a1ec829765db44"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "macro_rules_attribute"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1765,13 +1928,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "mmap-rs"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ecce9d566cb9234ae3db9e249c8b55665feaaf32b0859ff1e27e310d2beb3d8"
+dependencies = [
+ "bitflags",
+ "combine",
+ "libc",
+ "mach2",
+ "nix 0.30.1",
+ "sysctl",
+ "thiserror 2.0.21",
+ "widestring",
+ "windows",
+]
+
+[[package]]
 name = "moenarch-data-inversion-core"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e229866800a9efb92e965d2493e27514bc1b02dfa1ea83776245bb924d4fa1f6"
 dependencies = [
  "moenarch-media-core",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "serde",
  "serde_json",
 ]
@@ -1783,7 +1963,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b197d9c2b606635898dc59bf6b3c9081ee728c4180e0c5cebfaac408f46aa865"
 dependencies = [
  "chrono",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -1796,8 +1976,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac71230f722505817c305c1e8f35bee5bd20a64125061fbde5584c74fb0cd4d3"
 dependencies = [
  "moenarch-media-core",
- "moenarch-numbers-core",
- "moenarch-runtime-core",
+ "moenarch-numbers-core 0.2.0",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-tensor-data",
  "moenarch-vector-analysis-core",
  "serde",
@@ -1812,8 +1992,8 @@ checksum = "d8ca4cf15eb2d5923ce18be2f387c6e98fc588baa77cf0f7c4f8d501176141f5"
 dependencies = [
  "moenarch-math-linear",
  "moenarch-media-core",
- "moenarch-numbers-core",
- "moenarch-runtime-core",
+ "moenarch-numbers-core 0.2.0",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-vector-analysis-core",
  "search-kernels",
  "serde",
@@ -1823,8 +2003,7 @@ dependencies = [
 [[package]]
 name = "moenarch-media-core"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "671d82131dd4a342353fdecf82056c883e1e4db2a5960584698eca12f0d3ecb1"
+source = "git+https://github.com/moritzbrantner/moenarch-foundation?rev=38136ee541d9567cf8b54a2f8b5b9fc3692a2d67#38136ee541d9567cf8b54a2f8b5b9fc3692a2d67"
 dependencies = [
  "serde",
  "serde_json",
@@ -1839,7 +2018,7 @@ dependencies = [
  "chrono",
  "hf-hub",
  "moenarch-jobs-core",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "serde",
  "serde_json",
 ]
@@ -1848,7 +2027,7 @@ dependencies = [
 name = "moenarch-nlp-package-registry"
 version = "0.1.0"
 dependencies = [
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-analysis",
  "moenarch-text-classification",
  "moenarch-text-core",
@@ -1870,7 +2049,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "moenarch-nlp-package-registry",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "serde_json",
 ]
 
@@ -1880,7 +2059,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "moenarch-nlp-package-registry",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "serde_json",
 ]
 
@@ -1890,7 +2069,7 @@ version = "0.1.0"
 dependencies = [
  "js-sys",
  "moenarch-nlp-package-registry",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "serde-wasm-bindgen",
  "wasm-bindgen",
 ]
@@ -1902,7 +2081,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "946ba7f1839bf01bbdb148bd8d9d0625b0913f731e22b7797fbaf5a97e21d02d"
 dependencies = [
  "moenarch-media-core",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "moenarch-numbers-core"
+version = "0.2.1"
+source = "git+https://github.com/moritzbrantner/moenarch-foundation?rev=38136ee541d9567cf8b54a2f8b5b9fc3692a2d67#38136ee541d9567cf8b54a2f8b5b9fc3692a2d67"
+dependencies = [
+ "moenarch-media-core",
+ "moenarch-runtime-core 0.2.2",
  "rust_decimal",
  "serde",
  "serde_json",
@@ -1914,6 +2106,15 @@ name = "moenarch-runtime-core"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc237d2007ca2cde1668cf92f5da46fe3d40dd6c8b575bf4938f8daecc931daf"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "moenarch-runtime-core"
+version = "0.2.2"
+source = "git+https://github.com/moritzbrantner/moenarch-foundation?rev=38136ee541d9567cf8b54a2f8b5b9fc3692a2d67#38136ee541d9567cf8b54a2f8b5b9fc3692a2d67"
 dependencies = [
  "serde",
  "serde_json",
@@ -1937,7 +2138,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5451b1075701eb3772d1ea3c12aec6c8637a7b232cfab97ef02a0befd6f850c2"
 dependencies = [
  "moenarch-media-core",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "serde",
  "serde_json",
 ]
@@ -1948,7 +2149,7 @@ version = "0.1.1"
 dependencies = [
  "criterion",
  "moenarch-model-runtime",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-classification",
  "moenarch-text-core",
  "moenarch-text-embeddings",
@@ -1966,7 +2167,7 @@ name = "moenarch-text-analysis-cli"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-analysis",
  "serde_json",
 ]
@@ -1976,7 +2177,7 @@ name = "moenarch-text-analysis-server"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-analysis",
  "serde_json",
 ]
@@ -1986,7 +2187,7 @@ name = "moenarch-text-analysis-wasm"
 version = "0.1.1"
 dependencies = [
  "js-sys",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-analysis",
  "serde",
  "serde-wasm-bindgen",
@@ -2002,7 +2203,7 @@ dependencies = [
  "candle-nn",
  "candle-transformers",
  "moenarch-model-runtime",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-runtime-onnx",
  "moenarch-text-core",
  "moenarch-text-lexical",
@@ -2018,7 +2219,7 @@ name = "moenarch-text-classification-cli"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-classification",
  "serde_json",
 ]
@@ -2028,7 +2229,7 @@ name = "moenarch-text-classification-server"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-classification",
  "serde_json",
 ]
@@ -2038,7 +2239,7 @@ name = "moenarch-text-classification-wasm"
 version = "0.1.1"
 dependencies = [
  "js-sys",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-classification",
  "serde",
  "serde-wasm-bindgen",
@@ -2052,7 +2253,7 @@ version = "0.1.1"
 dependencies = [
  "criterion",
  "moenarch-media-core",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "serde",
  "serde_json",
  "unicode-casefold",
@@ -2065,7 +2266,7 @@ name = "moenarch-text-core-cli"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-core",
  "serde_json",
 ]
@@ -2075,7 +2276,7 @@ name = "moenarch-text-core-server"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-core",
  "serde_json",
 ]
@@ -2085,7 +2286,7 @@ name = "moenarch-text-core-wasm"
 version = "0.1.1"
 dependencies = [
  "js-sys",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-core",
  "serde",
  "serde-wasm-bindgen",
@@ -2103,7 +2304,7 @@ dependencies = [
  "criterion",
  "moenarch-math-sparse-data",
  "moenarch-model-runtime",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-runtime-onnx",
  "moenarch-text-core",
  "moenarch-text-lexical",
@@ -2120,7 +2321,7 @@ name = "moenarch-text-embeddings-cli"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-embeddings",
  "serde_json",
 ]
@@ -2130,7 +2331,7 @@ name = "moenarch-text-embeddings-server"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-embeddings",
  "serde_json",
 ]
@@ -2140,7 +2341,7 @@ name = "moenarch-text-embeddings-wasm"
 version = "0.1.1"
 dependencies = [
  "js-sys",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-embeddings",
  "serde",
  "serde-wasm-bindgen",
@@ -2153,7 +2354,7 @@ name = "moenarch-text-generation"
 version = "0.1.1"
 dependencies = [
  "moenarch-data-inversion-core",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-core",
  "serde",
  "serde_json",
@@ -2164,7 +2365,7 @@ name = "moenarch-text-generation-cli"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-generation",
  "serde_json",
 ]
@@ -2174,7 +2375,7 @@ name = "moenarch-text-generation-linguistics"
 version = "0.1.1"
 dependencies = [
  "moenarch-data-inversion-core",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-core",
  "moenarch-text-generation",
  "moenarch-text-linguistics",
@@ -2187,7 +2388,7 @@ name = "moenarch-text-generation-linguistics-cli"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-generation-linguistics",
  "serde_json",
 ]
@@ -2197,7 +2398,7 @@ name = "moenarch-text-generation-linguistics-server"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-generation-linguistics",
  "serde_json",
 ]
@@ -2207,7 +2408,7 @@ name = "moenarch-text-generation-linguistics-wasm"
 version = "0.1.1"
 dependencies = [
  "js-sys",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-generation-linguistics",
  "serde",
  "serde-wasm-bindgen",
@@ -2220,7 +2421,7 @@ name = "moenarch-text-generation-server"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-generation",
  "serde_json",
 ]
@@ -2230,7 +2431,7 @@ name = "moenarch-text-generation-wasm"
 version = "0.1.1"
 dependencies = [
  "js-sys",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-generation",
  "serde",
  "serde-wasm-bindgen",
@@ -2242,7 +2443,7 @@ dependencies = [
 name = "moenarch-text-index"
 version = "0.1.1"
 dependencies = [
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-core",
  "moenarch-text-embeddings",
  "moenarch-text-lexical",
@@ -2259,7 +2460,7 @@ name = "moenarch-text-index-cli"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-index",
  "serde_json",
 ]
@@ -2268,7 +2469,7 @@ dependencies = [
 name = "moenarch-text-index-server"
 version = "0.1.1"
 dependencies = [
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-index",
 ]
 
@@ -2277,7 +2478,7 @@ name = "moenarch-text-index-wasm"
 version = "0.1.1"
 dependencies = [
  "js-sys",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-index",
  "serde",
  "serde-wasm-bindgen",
@@ -2291,7 +2492,7 @@ version = "0.1.1"
 dependencies = [
  "criterion",
  "moenarch-math-sparse-data",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-core",
  "serde",
  "serde_json",
@@ -2302,7 +2503,7 @@ name = "moenarch-text-lexical-cli"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-lexical",
  "serde_json",
 ]
@@ -2312,7 +2513,7 @@ name = "moenarch-text-lexical-server"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-lexical",
  "serde_json",
 ]
@@ -2322,7 +2523,7 @@ name = "moenarch-text-lexical-wasm"
 version = "0.1.1"
 dependencies = [
  "js-sys",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-lexical",
  "serde",
  "serde-wasm-bindgen",
@@ -2340,7 +2541,7 @@ dependencies = [
  "criterion",
  "lingua",
  "moenarch-model-runtime",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-core",
  "moenarch-text-lexical",
  "moenarch-text-transcripts",
@@ -2356,7 +2557,7 @@ name = "moenarch-text-linguistics-cli"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-linguistics",
  "serde_json",
 ]
@@ -2366,7 +2567,7 @@ name = "moenarch-text-linguistics-server"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-linguistics",
  "serde_json",
 ]
@@ -2376,7 +2577,7 @@ name = "moenarch-text-linguistics-wasm"
 version = "0.1.1"
 dependencies = [
  "js-sys",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-linguistics",
  "serde",
  "serde-wasm-bindgen",
@@ -2390,7 +2591,7 @@ version = "0.1.1"
 dependencies = [
  "moenarch-media-core",
  "moenarch-model-runtime",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-runtime-onnx",
  "moenarch-text-core",
  "moenarch-text-embeddings",
@@ -2407,7 +2608,7 @@ name = "moenarch-text-question-answering-cli"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-question-answering",
  "serde_json",
 ]
@@ -2417,7 +2618,7 @@ name = "moenarch-text-question-answering-server"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-question-answering",
  "serde_json",
 ]
@@ -2427,7 +2628,7 @@ name = "moenarch-text-question-answering-wasm"
 version = "0.1.1"
 dependencies = [
  "js-sys",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-question-answering",
  "serde",
  "serde-wasm-bindgen",
@@ -2440,7 +2641,7 @@ name = "moenarch-text-retrieval"
 version = "0.1.1"
 dependencies = [
  "criterion",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-core",
  "moenarch-text-embeddings",
  "moenarch-text-index",
@@ -2458,7 +2659,7 @@ name = "moenarch-text-retrieval-cli"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-retrieval",
  "serde_json",
 ]
@@ -2468,7 +2669,7 @@ name = "moenarch-text-retrieval-server"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-retrieval",
  "serde_json",
 ]
@@ -2478,7 +2679,7 @@ name = "moenarch-text-retrieval-wasm"
 version = "0.1.1"
 dependencies = [
  "js-sys",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-retrieval",
  "serde",
  "serde-wasm-bindgen",
@@ -2490,7 +2691,7 @@ dependencies = [
 name = "moenarch-text-transcripts"
 version = "0.1.3"
 dependencies = [
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-core",
  "serde",
  "serde_json",
@@ -2503,7 +2704,7 @@ name = "moenarch-text-transcripts-cli"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-transcripts",
  "serde_json",
 ]
@@ -2513,7 +2714,7 @@ name = "moenarch-text-transcripts-server"
 version = "0.1.1"
 dependencies = [
  "clap",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-transcripts",
  "serde_json",
 ]
@@ -2523,7 +2724,7 @@ name = "moenarch-text-transcripts-wasm"
 version = "0.1.1"
 dependencies = [
  "js-sys",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.1",
  "moenarch-text-transcripts",
  "serde",
  "serde-wasm-bindgen",
@@ -2534,12 +2735,11 @@ dependencies = [
 [[package]]
 name = "moenarch-vector-analysis-core"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7e146fd70ca0378eff98f70251452b7338e4d7e34d733332ea17d2453741226"
+source = "git+https://github.com/moritzbrantner/moenarch-foundation?rev=38136ee541d9567cf8b54a2f8b5b9fc3692a2d67#38136ee541d9567cf8b54a2f8b5b9fc3692a2d67"
 dependencies = [
  "moenarch-media-core",
- "moenarch-numbers-core",
- "moenarch-runtime-core",
+ "moenarch-numbers-core 0.2.1",
+ "moenarch-runtime-core 0.2.2",
  "serde",
  "serde_json",
 ]
@@ -2547,11 +2747,11 @@ dependencies = [
 [[package]]
 name = "moenarch-vector-analysis-index"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f57458eea54bbcce1b5d4445bb7d548b2363e9596e87431782205b526485c12"
+source = "git+https://github.com/moritzbrantner/moenarch-foundation?rev=38136ee541d9567cf8b54a2f8b5b9fc3692a2d67#38136ee541d9567cf8b54a2f8b5b9fc3692a2d67"
 dependencies = [
+ "hnsw_rs",
  "moenarch-media-core",
- "moenarch-runtime-core",
+ "moenarch-runtime-core 0.2.2",
  "moenarch-vector-analysis-core",
  "search-kernels",
  "serde",
@@ -2593,6 +2793,18 @@ dependencies = [
  "portable-atomic",
  "portable-atomic-util",
  "rawpointer",
+]
+
+[[package]]
+name = "nix"
+version = "0.30.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74523f3a35e05aba87a1d978330aef40f67b0304ac79c1c00b294c9830543db6"
+dependencies = [
+ "bitflags",
+ "cfg-if",
+ "cfg_aliases",
+ "libc",
 ]
 
 [[package]]
@@ -2919,6 +3131,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65c9fb96cbc91e3478eaae79a69fcd3f1ae4ad052e471fe6732fff548984b4af"
+dependencies = [
+ "chacha20",
+ "getrandom 0.4.3",
+ "rand_core 0.10.1",
+]
+
+[[package]]
 name = "rand_chacha"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2955,6 +3178,12 @@ checksum = "76afc826de14238e6e8c374ddcc1fa19e374fd8dd986b0d2af0d02377261d83c"
 dependencies = [
  "getrandom 0.3.4",
 ]
+
+[[package]]
+name = "rand_core"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63b8176103e19a2643978565ca18b50549f6101881c443590420e4dc998a3c69"
 
 [[package]]
 name = "rand_distr"
@@ -3914,6 +4143,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "widestring"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72069c3113ab32ab29e5584db3c6ec55d416895e60715417b5b883a357c3e471"
+
+[[package]]
 name = "winapi"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3943,6 +4178,15 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
+
+[[package]]
+name = "windows"
+version = "0.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e686886bc078bc1b0b600cac0147aadb815089b6e4da64016cbd754b6342700f"
+dependencies = [
+ "windows-targets 0.48.5",
+]
 
 [[package]]
 name = "windows-core"
@@ -4009,7 +4253,7 @@ version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "282be5f36a8ce781fad8c8ae18fa3f9beff57ec1b52cb3de0789201425d9a33d"
 dependencies = [
- "windows-targets",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -4023,19 +4267,40 @@ dependencies = [
 
 [[package]]
 name = "windows-targets"
+version = "0.48.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a2fa6e2155d7247be68c096456083145c183cbbbc2764150dda45a87197940c"
+dependencies = [
+ "windows_aarch64_gnullvm 0.48.5",
+ "windows_aarch64_msvc 0.48.5",
+ "windows_i686_gnu 0.48.5",
+ "windows_i686_msvc 0.48.5",
+ "windows_x86_64_gnu 0.48.5",
+ "windows_x86_64_gnullvm 0.48.5",
+ "windows_x86_64_msvc 0.48.5",
+]
+
+[[package]]
+name = "windows-targets"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b724f72796e036ab90c1021d4780d4d3d648aca59e491e6b98e725b84e99973"
 dependencies = [
- "windows_aarch64_gnullvm",
- "windows_aarch64_msvc",
- "windows_i686_gnu",
+ "windows_aarch64_gnullvm 0.52.6",
+ "windows_aarch64_msvc 0.52.6",
+ "windows_i686_gnu 0.52.6",
  "windows_i686_gnullvm",
- "windows_i686_msvc",
- "windows_x86_64_gnu",
- "windows_x86_64_gnullvm",
- "windows_x86_64_msvc",
+ "windows_i686_msvc 0.52.6",
+ "windows_x86_64_gnu 0.52.6",
+ "windows_x86_64_gnullvm 0.52.6",
+ "windows_x86_64_msvc 0.52.6",
 ]
+
+[[package]]
+name = "windows_aarch64_gnullvm"
+version = "0.48.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b38e32f0abccf9987a4e3079dfb67dcd799fb61361e53e2882c3cbaf0d905d8"
 
 [[package]]
 name = "windows_aarch64_gnullvm"
@@ -4045,9 +4310,21 @@ checksum = "32a4622180e7a0ec044bb555404c800bc9fd9ec262ec147edd5989ccd0c02cd3"
 
 [[package]]
 name = "windows_aarch64_msvc"
+version = "0.48.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc35310971f3b2dbbf3f0690a219f40e2d9afcf64f9ab7cc1be722937c26b4bc"
+
+[[package]]
+name = "windows_aarch64_msvc"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09ec2a7bb152e2252b53fa7803150007879548bc709c039df7627cabbd05d469"
+
+[[package]]
+name = "windows_i686_gnu"
+version = "0.48.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a75915e7def60c94dcef72200b9a8e58e5091744960da64ec734a6c6e9b3743e"
 
 [[package]]
 name = "windows_i686_gnu"
@@ -4063,9 +4340,21 @@ checksum = "0eee52d38c090b3caa76c563b86c3a4bd71ef1a819287c19d586d7334ae8ed66"
 
 [[package]]
 name = "windows_i686_msvc"
+version = "0.48.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f55c233f70c4b27f66c523580f78f1004e8b5a8b659e05a4eb49d4166cca406"
+
+[[package]]
+name = "windows_i686_msvc"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "240948bc05c5e7c6dabba28bf89d89ffce3e303022809e73deaefe4f6ec56c66"
+
+[[package]]
+name = "windows_x86_64_gnu"
+version = "0.48.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53d40abd2583d23e4718fddf1ebec84dbff8381c07cae67ff7768bbf19c6718e"
 
 [[package]]
 name = "windows_x86_64_gnu"
@@ -4075,9 +4364,21 @@ checksum = "147a5c80aabfbf0c7d901cb5895d1de30ef2907eb21fbbab29ca94c5b08b1a78"
 
 [[package]]
 name = "windows_x86_64_gnullvm"
+version = "0.48.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b7b52767868a23d5bab768e390dc5f5c55825b6d30b86c844ff2dc7414044cc"
+
+[[package]]
+name = "windows_x86_64_gnullvm"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24d5b23dc417412679681396f2b49f3de8c1473deb516bd34410872eff51ed0d"
+
+[[package]]
+name = "windows_x86_64_msvc"
+version = "0.48.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed94fce61571a4006852b7389a063ab983c02eb1bb37b47f8272ce92d06d9538"
 
 [[package]]
 name = "windows_x86_64_msvc"
@@ -4241,7 +4542,7 @@ dependencies = [
  "indexmap",
  "libc",
  "memchr",
- "nix",
+ "nix 0.31.3",
  "typed-path",
  "windows-sys 0.61.2",
  "zeroize",

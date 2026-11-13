@@ -31,6 +31,8 @@ vector-analysis-index.workspace = true
 default = []
 sqlite = ["text-index/sqlite"]
 transcripts = ["dep:text-transcripts"]
+# External HNSW candidates for unfiltered semantic hits on large corpora (#119).
+hnsw = ["vector-analysis-index/hnsw"]
 # Opt-in real-model checks (#188): Candle multilingual embedding presets.
 external-tests = ["text-embeddings/candle", "text-embeddings/model-bundles"]
 
@@ -38,6 +40,10 @@ external-tests = ["text-embeddings/candle", "text-embeddings/model-bundles"]
 criterion.workspace = true
 tempfile.workspace = true
 text-embeddings.workspace = true
+
+[[example]]
+name = "ann_three_way"
+required-features = ["hnsw"]
 
 [[bench]]
 name = "retrieval_index"
