@@ -1,5 +1,7 @@
 #![doc = include_str!("../README.md")]
 
+#[cfg(feature = "hnsw")]
+mod ann;
 mod document;
 mod index;
 mod ingestion;

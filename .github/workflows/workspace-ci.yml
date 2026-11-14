@@ -122,6 +122,10 @@ jobs:
         run: cargo test --workspace
       - name: Test no default features
         run: cargo test --workspace --no-default-features
+      - name: Test external HNSW retrieval seam
+        run: |
+          cargo clippy -p moenarch-text-retrieval --all-targets --features hnsw -- -D warnings
+          cargo test -p moenarch-text-retrieval --features hnsw
       - name: Reclaim space before documentation
         run: cargo clean
       - name: Documentation

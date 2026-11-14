@@ -4,10 +4,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 use text_core::{tokenize, Result as CoreResult, TextProcessingOptions};
-use text_embeddings::{EmbeddingModelInfo, TextEmbedderBackend};
+use text_embeddings::{DenseVector, EmbeddingModelInfo, TextEmbedderBackend};
 use text_lexical::{Bm25Corpus, Bm25Options, CorpusOptions};
 use vector_analysis_index::{
-    SerializableVectorRecord, VectorRecord, VectorRecordMetadata, VectorSearchIndex,
+    SerializableVectorRecord, VectorHit, VectorRecord, VectorRecordMetadata, VectorSearchFilter,
+    VectorSearchIndex,
 };
 
 use crate::ingestion::{chunk_document, validate_document, validate_ingestion_options};
@@ -44,6 +45,8 @@ pub struct RetrievalIndex<B> {
     document_chunks: BTreeMap<String, Vec<String>>,
     vectors: VectorSearchIndex,
     bm25: Bm25Corpus,
+    #[cfg(feature = "hnsw")]
+    ann: crate::ann::SemanticAnn,
 }
 
 impl<B: TextEmbedderBackend> RetrievalIndex<B> {
@@ -67,6 +70,8 @@ impl<B: TextEmbedderBackend> RetrievalIndex<B> {
             raw_text_by_chunk_id: BTreeMap::new(),
             document_chunks: BTreeMap::new(),
             vectors: VectorSearchIndex::new(),
+            #[cfg(feature = "hnsw")]
+            ann: crate::ann::SemanticAnn::default(),
         }
     }
 
@@ -84,7 +89,7 @@ impl<B: TextEmbedderBackend> RetrievalIndex<B> {
             index.insert_chunk_state(chunk);
         }
         index.raw_text_by_chunk_id = raw_text_by_chunk_id;
-        index.vectors = VectorSearchIndex::import_records(vector_records)?;
+        index.set_vectors(VectorSearchIndex::import_records(vector_records)?);
         index.rebuild_bm25()?;
         index.validate_vector_state()?;
         Ok(index)
@@ -207,8 +212,8 @@ impl<B: TextEmbedderBackend> RetrievalIndex<B> {
             // The model sees the query as written; lexical normalization is for BM25.
             let query_vector = self.embedder.embed_query(&query.text)?;
             self.validate_query_dimensions(query_vector.dimensions())?;
-            self.vectors.search_filtered(
-                query_vector.as_slice(),
+            self.semantic_hits(
+                &query_vector,
                 post_filter_limit,
                 filter.map(search_filter_to_vector_filter).as_ref(),
             )?
@@ -298,9 +303,7 @@ impl<B: TextEmbedderBackend> RetrievalIndex<B> {
             .iter()
             .find(|record| record.id == chunk_id)
             .ok_or_else(|| invalid_argument(format!("chunk `{chunk_id}` was not indexed")))?;
-        let hits = self
-            .vectors
-            .search_filtered(query_record.vector.as_slice(), top_k + 1, None)?;
+        let hits = self.semantic_hits(&query_record.vector, top_k + 1, None)?;
 
         let mut results = hits
             .into_iter()
@@ -320,6 +323,32 @@ impl<B: TextEmbedderBackend> RetrievalIndex<B> {
             .collect::<Vec<_>>();
         results.truncate(top_k);
         Ok(results)
+    }
+
+    /// Replaces the exact vector index and drops any derived approximate graph.
+    fn set_vectors(&mut self, vectors: VectorSearchIndex) {
+        self.vectors = vectors;
+        #[cfg(feature = "hnsw")]
+        {
+            self.ann = crate::ann::SemanticAnn::default();
+        }
+    }
+
+    /// Nearest semantic hits. With the `hnsw` feature, unfiltered queries over at
+    /// least `HNSW_MIN_CHUNKS` chunks use the external HNSW graph; filtered
+    /// queries and smaller corpora keep the exact index.
+    fn semantic_hits(
+        &self,
+        query: &DenseVector,
+        limit: usize,
+        filter: Option<&VectorSearchFilter>,
+    ) -> CoreResult<Vec<VectorHit>> {
+        #[cfg(feature = "hnsw")]
+        if filter.is_none() && self.vectors.records().len() >= crate::ann::HNSW_MIN_CHUNKS {
+            return self.ann.search(&self.vectors, query, limit);
+        }
+        self.vectors
+            .search_filtered(query.as_slice(), limit, filter)
     }
 
     fn insert_chunk_state(&mut self, chunk: DocumentChunk) {
@@ -342,7 +371,7 @@ impl<B: TextEmbedderBackend> RetrievalIndex<B> {
     fn rebuild_indices(&mut self) -> CoreResult<()> {
         self.rebuild_bm25()?;
         if self.chunks.is_empty() {
-            self.vectors = VectorSearchIndex::new();
+            self.set_vectors(VectorSearchIndex::new());
             return Ok(());
         }
 
@@ -375,7 +404,7 @@ impl<B: TextEmbedderBackend> RetrievalIndex<B> {
                 },
             ))?;
         }
-        self.vectors = index;
+        self.set_vectors(index);
         Ok(())
     }
 

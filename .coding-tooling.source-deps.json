@@ -16,12 +16,6 @@
         "localPath": "../moenarch-foundation/crates/math/math-sparse-data"
       },
       {
-        "package": "moenarch-media-core",
-        "git": "https://github.com/moritzbrantner/moenarch-foundation",
-        "rev": "d257917b4d72da581e3de707ea4c94d07afe6cfd",
-        "localPath": "../moenarch-foundation/crates/media/media-core"
-      },
-      {
         "package": "moenarch-model-runtime",
         "git": "https://github.com/moritzbrantner/moenarch-foundation",
         "rev": "d257917b4d72da581e3de707ea4c94d07afe6cfd",
@@ -32,18 +26,6 @@
         "git": "https://github.com/moritzbrantner/moenarch-foundation",
         "rev": "d257917b4d72da581e3de707ea4c94d07afe6cfd",
         "localPath": "../moenarch-foundation/crates/runtime/runtime-core"
-      },
-      {
-        "package": "moenarch-vector-analysis-core",
-        "git": "https://github.com/moritzbrantner/moenarch-foundation",
-        "rev": "d257917b4d72da581e3de707ea4c94d07afe6cfd",
-        "localPath": "../moenarch-foundation/crates/vector/vector-analysis-core"
-      },
-      {
-        "package": "moenarch-vector-analysis-index",
-        "git": "https://github.com/moritzbrantner/moenarch-foundation",
-        "rev": "d257917b4d72da581e3de707ea4c94d07afe6cfd",
-        "localPath": "../moenarch-foundation/crates/vector/vector-analysis-index"
       }
     ]
   }

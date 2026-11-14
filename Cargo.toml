@@ -67,3 +67,19 @@ text-transcripts = { package = "moenarch-text-transcripts", version = "=0.1.3", 
 # source (ort rc.15) returns typed RuntimeUnavailable / RuntimeTooOld errors.
 [patch.crates-io]
 moenarch-runtime-onnx = { git = "https://github.com/moritzbrantner/moenarch-foundation", rev = "cf8d6f1052ad1d5c567e797a56d3bb8910828920" }
+# The optional `hnsw` feature of text-retrieval needs Foundation's unreleased
+# `vector_analysis_index::hnsw` (moenarch-foundation#119). The vector index and
+# the crates whose types it exchanges with NLP are pinned to one exact revision
+# so a single copy of each is resolved; a release task replaces this pin.
+moenarch-media-core = { git = "https://github.com/moritzbrantner/moenarch-foundation", rev = "38136ee541d9567cf8b54a2f8b5b9fc3692a2d67" }
+moenarch-vector-analysis-core = { git = "https://github.com/moritzbrantner/moenarch-foundation", rev = "38136ee541d9567cf8b54a2f8b5b9fc3692a2d67" }
+moenarch-vector-analysis-index = { git = "https://github.com/moritzbrantner/moenarch-foundation", rev = "38136ee541d9567cf8b54a2f8b5b9fc3692a2d67" }
+
+# The optional `hnsw` test builds graphs of thousands of vectors; unoptimized
+# hnsw_rs makes that suite take minutes. Optimizing only these dependencies keeps
+# debug tests fast without changing first-party code generation.
+[profile.dev.package.hnsw_rs]
+opt-level = 3
+
+[profile.dev.package.anndists]
+opt-level = 3
