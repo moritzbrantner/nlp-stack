@@ -5,7 +5,7 @@ description = "Local Stanza oracle sidecar for nlp-stack: en/de/es tokens, lemma
 requires-python = "==3.15.*"
 license = "MIT OR Apache-2.0"
 dependencies = [
-    "stanza==1.15.0",
+    "stanza==1.15.1",
     "torch==2.15.0",
 ]
 
