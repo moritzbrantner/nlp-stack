@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "ruleId": "VITEST-001",
+  "enforcement": {
+    "kind": "builtin",
+    "check": "vitest-kinds"
+  }
+}
