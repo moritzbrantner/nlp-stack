@@ -5,10 +5,10 @@
 - Interact through user-facing controls and assert observable outcomes, not React internals.
 - Tests should survive implementation-preserving refactors; do not assert hook state, private functions, lifecycle details, or child-component internals merely to increase coverage.
 
-## RTL-002 — Prefer accessible queries
+## RTL-002 — Use Testing Library's semantic query APIs
 
-- Prefer semantic queries that reflect how users and assistive technology find the UI, especially roles with accessible names, then labels and visible text.
-- Use test markers only when no stable user-facing query exists.
+- Apply TEST-020 through Testing Library's user-facing query APIs, preferring roles with accessible names, then labels and visible text where appropriate.
+- Use `getByTestId`/`findByTestId` or related test-marker queries only when TEST-020 permits a deliberate test identifier because no stable user-facing semantic target exists.
 
 ## RTL-003 — Apply DOM testing progressively
 

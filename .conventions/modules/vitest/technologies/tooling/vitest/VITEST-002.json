@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "ruleId": "VITEST-002",
+  "enforcement": {
+    "kind": "oxlint",
+    "technologies": ["vitest"],
+    "config": {
+      "plugins": ["vitest"],
+      "rules": {
+        "vitest/no-focused-tests": "error",
+        "vitest/no-disabled-tests": "error",
+        "vitest/no-commented-out-tests": "error"
+      }
+    }
+  }
+}
